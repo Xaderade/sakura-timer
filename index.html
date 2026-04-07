@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Timer - 10% Threshold</title>
+    <title>Sakura Timer - Dynamic Start</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
@@ -37,18 +37,24 @@
 
         .pop-effect { animation: nintendoPop 0.3s forwards; }
 
+        /* --- CONTROL PANEL --- */
         #controls { 
             background: white; border: 6px solid #000; border-radius: 30px; 
             padding: 20px; text-align: center; box-shadow: 0 10px 0 #333; 
-            z-index: 100; font-family: sans-serif; margin-top: 40px; display: none; 
+            z-index: 100; font-family: sans-serif; margin-top: 20px; display: none; 
         }
-        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
-        button { padding: 12px 25px; font-size: 20px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 3px solid #000; box-shadow: 0 4px 0 #000; transition: 0.1s; }
+        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+        
+        input { font-size: 18px; padding: 10px; width: 120px; border: 3px solid #000; border-radius: 10px; text-align: center; margin-bottom: 10px; }
+        
+        button { padding: 10px 20px; font-size: 18px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 3px solid #000; box-shadow: 0 4px 0 #000; transition: 0.1s; }
         button:active { transform: translateY(3px); box-shadow: 0 1px 0 #000; }
+        
         .start { background: #43B047; color: white; }
         .pause { background: #E52521; color: white; }
         .reset { background: #FBD000; color: black; }
-        .sync-btn { background: #eee; border: 2px solid #ccc; font-size: 11px; padding: 8px 15px; margin-top: 15px; border-radius: 5px; cursor: pointer; }
+        .update-btn { background: #000; color: #fff; font-size: 14px; padding: 10px; width: 100%; margin-top: 5px; }
+        .sync-btn { background: #eee; border: 2px solid #ccc; font-size: 11px; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -58,31 +64,40 @@
     </div>
 
     <div id="controls">
-        <div style="font-weight: bold; font-size: 20px;">TIMER REMOTE</div>
-        <div id="conn-status" style="font-size: 10px; color: #666; margin-bottom: 5px;">Connecting...</div>
+        <div style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">TIMER REMOTE</div>
+        
+        <div style="background: #f9f9f9; padding: 10px; border-radius: 15px; border: 2px dashed #ccc;">
+            <div style="font-size: 12px; margin-bottom: 5px;">SET STARTING SECONDS:</div>
+            <input type="number" id="new-max" value="200000">
+            <button class="update-btn" onclick="updateMaxVal()">UPDATE START TIME</button>
+        </div>
+
+        <div id="conn-status" style="font-size: 10px; color: #666; margin: 10px 0;">Connecting...</div>
+        
         <div class="btn-group">
             <button class="start" onclick="triggerAction('start')">START</button>
             <button class="pause" onclick="triggerAction('pause')">PAUSE</button>
             <button class="reset" onclick="triggerAction('reset')">RESET</button>
         </div>
+        
         <button class="sync-btn" onclick="requestManualSync()">FORCE SYNC FROM OBS</button>
     </div>
 
     <script>
         const TIMER_ID = 'mugi-sakura-timer-2026'; 
         const isController = window.location.hash === '#control';
-        const MAX_VAL = 200000; // The total amount
-        const THRESHOLD = MAX_VAL * 0.10; // 10% (20,000s)
         
         if (isController) document.getElementById('controls').style.display = 'block';
 
-        let baseSeconds = localStorage.getItem('sakura_base') ? parseInt(localStorage.getItem('sakura_base')) : MAX_VAL;
+        let maxVal = localStorage.getItem('sakura_max') ? parseInt(localStorage.getItem('sakura_max')) : 200000;
+        let baseSeconds = localStorage.getItem('sakura_base') ? parseInt(localStorage.getItem('sakura_base')) : maxVal;
         let startTime = localStorage.getItem('sakura_start') ? parseInt(localStorage.getItem('sakura_start')) : null;
         let interval;
         let conn;
 
-        const peer = new Peer(isController ? null : TIMER_ID);
+        document.getElementById('timer').innerText = baseSeconds;
 
+        const peer = new Peer(isController ? null : TIMER_ID);
         peer.on('open', () => { if (isController) connectToOBS(); });
         peer.on('connection', (c) => { conn = c; setupConnection(c); });
 
@@ -103,14 +118,14 @@
 
             conn.on('data', (data) => {
                 if (data.action === 'requestSync' && !isController) {
-                    conn.send({ action: 'syncResponse', base: baseSeconds, start: startTime });
+                    conn.send({ action: 'syncResponse', base: baseSeconds, start: startTime, max: maxVal });
                 }
                 if (data.action === 'syncResponse') {
-                    baseSeconds = data.base;
-                    startTime = data.start;
-                    if (startTime) runStart(startTime);
-                    else runPause(baseSeconds);
+                    maxVal = data.max; baseSeconds = data.base; startTime = data.start;
+                    document.getElementById('new-max').value = maxVal;
+                    if (startTime) runStart(startTime); else runPause(baseSeconds);
                 }
+                if (data.action === 'updateMax') runUpdateMax(data.val);
                 if (data.action === 'start') runStart(data.time);
                 if (data.action === 'pause') runPause(data.val);
                 if (data.action === 'reset') runReset();
@@ -118,26 +133,15 @@
         }
 
         function getColorForTime(seconds) {
-            // Above 10% (20,000s) = Pure White
-            if (seconds > THRESHOLD) return "rgb(255, 255, 255)";
-            
-            // From 10% down to 2.5% = White to Yellow
-            const midPoint = MAX_VAL * 0.025; // 5,000s
+            const threshold = maxVal * 0.10;
+            if (seconds > threshold) return "rgb(255, 255, 255)";
+            const midPoint = maxVal * 0.025;
             if (seconds > midPoint) {
-                const range = THRESHOLD - midPoint;
-                const ratio = (seconds - midPoint) / range;
-                const r = 255;
-                const g = 255;
-                const b = Math.floor(255 * ratio);
-                return `rgb(${r},${g},${b})`;
-            } 
-            // From 2.5% to 0% = Yellow to Red
-            else {
+                const ratio = (seconds - midPoint) / (threshold - midPoint);
+                return `rgb(255, 255, ${Math.floor(255 * ratio)})`;
+            } else {
                 const ratio = seconds / midPoint;
-                const r = 255;
-                const g = Math.floor(255 * ratio);
-                const b = 0;
-                return `rgb(${r},${g},${b})`;
+                return `rgb(255, ${Math.floor(255 * ratio)}, 0)`;
             }
         }
 
@@ -147,82 +151,11 @@
                 const elapsed = Math.floor((Date.now() - startTime) / 1000);
                 current = Math.max(0, baseSeconds - elapsed);
             }
-            const display = document.getElementById('timer');
-            const wrapper = document.getElementById('timer-wrapper');
-            
-            display.innerText = current;
-            wrapper.style.color = getColorForTime(current);
-
-            if (current === 0) {
-                clearInterval(interval);
-                wrapper.style.color = "rgb(255, 0, 0)";
-            }
+            document.getElementById('timer').innerText = current;
+            document.getElementById('timer-wrapper').style.color = getColorForTime(current);
+            if (current === 0) clearInterval(interval);
         }
 
-        function runStart(remoteTime) {
-            startTime = remoteTime || Date.now();
-            localStorage.setItem('sakura_start', startTime);
-            localStorage.setItem('sakura_base', baseSeconds);
-            clearInterval(interval);
-            interval = setInterval(updateDisplay, 1000);
-            triggerFlash();
-        }
-
-        function runPause(val) {
-            clearInterval(interval);
-            baseSeconds = val;
-            startTime = null;
-            localStorage.setItem('sakura_base', baseSeconds);
-            localStorage.removeItem('sakura_start');
-            updateDisplay();
-            triggerFlash();
-        }
-
-        function runReset() {
-            clearInterval(interval);
-            baseSeconds = MAX_VAL;
-            startTime = null;
-            localStorage.setItem('sakura_base', MAX_VAL);
-            localStorage.removeItem('sakura_start');
-            updateDisplay();
-            triggerFlash();
-        }
-
-        function triggerFlash() {
-            const wrapper = document.getElementById('timer-wrapper');
-            wrapper.classList.remove('pop-effect');
-            void wrapper.offsetWidth;
-            wrapper.classList.add('pop-effect');
-        }
-
-        function triggerAction(action) {
-            const now = Date.now();
-            let currentSec = baseSeconds;
-            if (startTime) {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                currentSec = Math.max(0, baseSeconds - elapsed);
-            }
-
-            if (action === 'start') {
-                runStart(now);
-                if (conn) conn.send({ action: 'start', time: now });
-            } else if (action === 'pause') {
-                runPause(currentSec);
-                if (conn) conn.send({ action: 'pause', val: currentSec });
-            } else if (action === 'reset') {
-                if(confirm("Reset to " + MAX_VAL + "?")) {
-                    runReset();
-                    if (conn) conn.send({ action: 'reset' });
-                }
-            }
-        }
-
-        function requestManualSync() {
-            if (conn && conn.open) conn.send({ action: 'requestSync' });
-        }
-
-        if (startTime) runStart(startTime);
-        updateDisplay();
-    </script>
-</body>
-</html>
+        function updateMaxVal() {
+            const val = parseInt(document.getElementById('new-max').value);
+            run
