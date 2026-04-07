@@ -1,44 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Gamer Counter</title>
+    <title>Sakura Nintendo Counter</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
+        /* A friendly, rounded font that mimics the Nintendo UI style */
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@700&display=swap');
 
-        body { background: #00ff00; font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        body { background: #00ff00; font-family: 'Fredoka', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
         
-        /* The Gamer Text Style */
         #counter { 
-            font-size: 200px; 
-            font-weight: 900;
-            color: #fff;
-            /* Pink to Purple Gradient */
-            background: linear-gradient(to bottom, #ff69b4 0%, #da70d6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            /* Aggressive Outlines */
-            filter: drop-shadow(5px 5px 0px #000) drop-shadow(-2px -2px 0px #000);
-            transition: transform 0.05s ease-out;
+            font-size: 220px; 
+            color: #E52521; /* Mario Red */
+            /* Thick Nintendo-style white border with black outer shadow */
+            -webkit-text-stroke: 8px white;
+            filter: drop-shadow(8px 8px 0px #000);
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             user-select: none;
+            position: relative;
         }
 
-        /* Shake Animation */
-        @keyframes gamerShake {
-            0% { transform: scale(1.2) rotate(2deg); }
-            25% { transform: scale(1.25) rotate(-2deg); }
-            50% { transform: scale(1.2) rotate(1deg); }
-            100% { transform: scale(1) rotate(0deg); }
+        /* The "Impact Flash" Animation */
+        @keyframes nintendoPop {
+            0% { transform: scale(1); filter: brightness(1) drop-shadow(8px 8px 0px #000); }
+            20% { transform: scale(1.4); filter: brightness(5) drop-shadow(0px 0px 30px white); } /* The White Flash */
+            100% { transform: scale(1); filter: brightness(1) drop-shadow(8px 8px 0px #000); }
         }
 
-        .hit { animation: gamerShake 0.15s ease-out; }
+        .pop-effect { animation: nintendoPop 0.3s forwards; }
 
-        .admin-panel { background: rgba(0,0,0,0.8); color: white; padding: 20px; border: 2px solid #ff69b4; border-radius: 10px; text-align: center; font-family: sans-serif; min-width: 250px; margin-top: 20px; }
-        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
-        button { padding: 15px 25px; font-size: 20px; cursor: pointer; font-weight: bold; border-radius: 5px; border: none; text-transform: uppercase; }
-        .plus { background: #00ffcc; color: black; }
-        .minus { background: #ff4d4d; color: white; }
-        .sync-btn { background: #444; color: #fff; margin-top: 10px; width: 100%; font-size: 11px; }
+        /* Manager UI Styling */
+        .admin-panel { background: white; border: 6px solid #049CD8; border-radius: 30px; padding: 20px; text-align: center; box-shadow: 0 10px 0 #026b94; }
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
+        button { 
+            padding: 15px 30px; font-size: 30px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 4px solid #000; 
+            box-shadow: 0 5px 0 #000; transition: 0.1s;
+        }
+        button:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
+        .plus { background: #43B047; color: white; } /* Luigi Green */
+        .minus { background: #FBD000; color: black; } /* Coin Yellow */
         .hidden { display: none; }
     </style>
 </head>
@@ -47,19 +47,17 @@
     <div id="counter">0</div>
 
     <div id="controls" class="admin-panel hidden">
-        <div id="connection-msg">LINKING TO OBS...</div>
+        <div style="font-weight: bold; color: #E52521;">MANAGER REMOTE</div>
         <div class="btn-group">
             <button class="minus" onclick="changeCount(-1)">-</button>
             <button class="plus" onclick="changeCount(1)">+</button>
         </div>
-        <button onclick="resetCount()" style="background:none; color:gray; font-size:12px;">Reset</button>
-        <button class="sync-btn" onclick="requestManualSync()">RE-SYNC CLOUD</button>
+        <button onclick="resetCount()" style="margin-top:15px; font-size:14px; background:#eee;">RESET</button>
     </div>
 
     <script>
         const COUNTER_ID = 'mugi-sakura-counter-2026'; 
         const isController = window.location.hash === '#control';
-        
         let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
         let conn;
 
@@ -67,7 +65,6 @@
         document.getElementById('counter').innerText = count;
 
         const peer = new Peer(isController ? null : COUNTER_ID);
-
         peer.on('open', () => { if (isController) connectToOBS(); });
         peer.on('connection', (c) => { conn = c; setupConnection(c); });
 
@@ -78,21 +75,15 @@
 
         function setupConnection(c) {
             conn = c;
-            conn.on('open', () => {
-                if (isController) {
-                    document.getElementById('connection-msg').innerText = "SYSTEMS ONLINE";
-                    setTimeout(() => { requestManualSync(); }, 500);
-                }
-            });
-
             conn.on('data', (data) => {
-                if (data.action === 'requestSync' && !isController) {
-                    conn.send({ action: 'syncResponse', val: count });
-                }
+                if (data.action === 'requestSync' && !isController) conn.send({ action: 'syncResponse', val: count });
                 if (data.action === 'syncResponse') updateCount(data.val, false);
                 if (data.action === 'update') updateCount(data.val, true);
                 if (data.action === 'reset') updateCount(0, false);
             });
+            if (isController) {
+                conn.on('open', () => setTimeout(() => conn.send({ action: 'requestSync' }), 500));
+            }
         }
 
         function updateCount(newVal, animate) {
@@ -102,10 +93,9 @@
             el.innerText = count;
 
             if (animate) {
-                // Restart animation
-                el.classList.remove('hit');
-                void el.offsetWidth; // Force reflow
-                el.classList.add('hit');
+                el.classList.remove('pop-effect');
+                void el.offsetWidth; // Trigger reflow
+                el.classList.add('pop-effect');
             }
         }
 
@@ -120,10 +110,6 @@
                 updateCount(0, false);
                 if (conn) conn.send({ action: 'reset' });
             }
-        }
-
-        function requestManualSync() {
-            if (conn && conn.open) conn.send({ action: 'requestSync' });
         }
     </script>
 </body>
