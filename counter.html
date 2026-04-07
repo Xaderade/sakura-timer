@@ -1,21 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Remote Counter</title>
+    <title>Sakura Gamer Counter</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { background: #00ff00; font-family: 'Arial Black', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        
-        #counter { font-size: 180px; color: #ff69b4; -webkit-text-stroke: 4px black; text-shadow: 4px 4px 0px #000; transition: transform 0.1s ease-out; }
-        .pop { transform: scale(1.3); }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
 
-        .admin-panel { background: white; padding: 20px; border: 3px solid black; border-radius: 15px; text-align: center; font-family: sans-serif; min-width: 250px; margin-top: 20px; }
+        body { background: #00ff00; font-family: 'Orbitron', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        
+        /* The Gamer Text Style */
+        #counter { 
+            font-size: 200px; 
+            font-weight: 900;
+            color: #fff;
+            /* Pink to Purple Gradient */
+            background: linear-gradient(to bottom, #ff69b4 0%, #da70d6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            /* Aggressive Outlines */
+            filter: drop-shadow(5px 5px 0px #000) drop-shadow(-2px -2px 0px #000);
+            transition: transform 0.05s ease-out;
+            user-select: none;
+        }
+
+        /* Shake Animation */
+        @keyframes gamerShake {
+            0% { transform: scale(1.2) rotate(2deg); }
+            25% { transform: scale(1.25) rotate(-2deg); }
+            50% { transform: scale(1.2) rotate(1deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .hit { animation: gamerShake 0.15s ease-out; }
+
+        .admin-panel { background: rgba(0,0,0,0.8); color: white; padding: 20px; border: 2px solid #ff69b4; border-radius: 10px; text-align: center; font-family: sans-serif; min-width: 250px; margin-top: 20px; }
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
-        button { padding: 15px 25px; font-size: 24px; cursor: pointer; font-weight: bold; border-radius: 8px; border: 2px solid black; }
-        .plus { background: #90ee90; }
-        .minus { background: #ffcccb; }
-        .sync-btn { background: #87ceeb; margin-top: 10px; width: 100%; font-size: 14px; padding: 10px; }
-        #status { font-size: 12px; margin-top: 10px; color: #666; font-weight: bold; }
+        button { padding: 15px 25px; font-size: 20px; cursor: pointer; font-weight: bold; border-radius: 5px; border: none; text-transform: uppercase; }
+        .plus { background: #00ffcc; color: black; }
+        .minus { background: #ff4d4d; color: white; }
+        .sync-btn { background: #444; color: #fff; margin-top: 10px; width: 100%; font-size: 11px; }
         .hidden { display: none; }
     </style>
 </head>
@@ -24,18 +47,16 @@
     <div id="counter">0</div>
 
     <div id="controls" class="admin-panel hidden">
-        <div id="connection-msg">Connecting to Counter...</div>
+        <div id="connection-msg">LINKING TO OBS...</div>
         <div class="btn-group">
-            <button class="minus" onclick="changeCount(-1)">-1</button>
-            <button class="plus" onclick="changeCount(1)">+1</button>
+            <button class="minus" onclick="changeCount(-1)">-</button>
+            <button class="plus" onclick="changeCount(1)">+</button>
         </div>
-        <button onclick="resetCount()">RESET</button>
-        <button class="sync-btn" onclick="requestManualSync()">FORCE SYNC FROM OBS</button>
-        <div id="status">STATUS: INITIALIZING</div>
+        <button onclick="resetCount()" style="background:none; color:gray; font-size:12px;">Reset</button>
+        <button class="sync-btn" onclick="requestManualSync()">RE-SYNC CLOUD</button>
     </div>
 
     <script>
-        // Use a different ID from the timer so they don't clash
         const COUNTER_ID = 'mugi-sakura-counter-2026'; 
         const isController = window.location.hash === '#control';
         
@@ -47,24 +68,19 @@
 
         const peer = new Peer(isController ? null : COUNTER_ID);
 
-        peer.on('open', (id) => {
-            if (isController) {
-                const connection = peer.connect(COUNTER_ID);
-                setupConnection(connection);
-            }
-        });
+        peer.on('open', () => { if (isController) connectToOBS(); });
+        peer.on('connection', (c) => { conn = c; setupConnection(c); });
 
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnection(c);
-        });
+        function connectToOBS() {
+            conn = peer.connect(COUNTER_ID);
+            setupConnection(conn);
+        }
 
         function setupConnection(c) {
             conn = c;
             conn.on('open', () => {
                 if (isController) {
-                    document.getElementById('connection-msg').innerText = "CONNECTED TO COUNTER";
-                    document.getElementById('status').innerText = "STATUS: READY";
+                    document.getElementById('connection-msg').innerText = "SYSTEMS ONLINE";
                     setTimeout(() => { requestManualSync(); }, 500);
                 }
             });
@@ -73,12 +89,7 @@
                 if (data.action === 'requestSync' && !isController) {
                     conn.send({ action: 'syncResponse', val: count });
                 }
-                
-                if (data.action === 'syncResponse') {
-                    updateCount(data.val, false);
-                    document.getElementById('status').innerText = "STATUS: SYNCED";
-                }
-
+                if (data.action === 'syncResponse') updateCount(data.val, false);
                 if (data.action === 'update') updateCount(data.val, true);
                 if (data.action === 'reset') updateCount(0, false);
             });
@@ -91,8 +102,10 @@
             el.innerText = count;
 
             if (animate) {
-                el.classList.add('pop');
-                setTimeout(() => el.classList.remove('pop'), 100);
+                // Restart animation
+                el.classList.remove('hit');
+                void el.offsetWidth; // Force reflow
+                el.classList.add('hit');
             }
         }
 
@@ -103,16 +116,14 @@
         }
 
         function resetCount() {
-            if(confirm("Reset counter to 0?")) {
+            if(confirm("Reset?")) {
                 updateCount(0, false);
                 if (conn) conn.send({ action: 'reset' });
             }
         }
 
         function requestManualSync() {
-            if (conn && conn.open) {
-                conn.send({ action: 'requestSync' });
-            }
+            if (conn && conn.open) conn.send({ action: 'requestSync' });
         }
     </script>
 </body>
