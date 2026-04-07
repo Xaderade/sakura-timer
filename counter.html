@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Nintendo Counter - Clean Edition</title>
+    <title>Sakura Nintendo Counter - Final Fixed</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
@@ -18,27 +18,28 @@
             overflow: hidden; 
         }
         
+        /* The Counter Display */
         #counter-wrapper { 
             display: flex;
             align-items: center;
             font-size: 180px;
             color: #FFFFFF;
-            /* Black Outline Only - Pink Shadow Removed */
-            -webkit-text-stroke: 12px black;
+            -webkit-text-stroke: 8px black; /* Bold Black Outline */
             user-select: none;
             transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Subtle black depth for visibility against light backgrounds */
+            filter: drop-shadow(8px 8px 0px rgba(0,0,0,0.4));
         }
 
+        .emoji { margin-right: 20px; }
+        
         .x-char { 
             font-size: 0.6em; 
             margin-top: 25px; 
-            margin-right: 30px; /* This adds the space between x and the number */
+            margin-right: 40px; /* Space between X and Numbers */
         }
 
-        .emoji {
-            margin-right: 15px;
-        }
-
+        /* Nintendo "Impact Flash" Animation */
         @keyframes nintendoPop {
             0% { transform: scale(1); filter: brightness(1); }
             20% { transform: scale(1.2); filter: brightness(3); } 
@@ -57,13 +58,13 @@
             box-shadow: 0 10px 0 #333; 
             z-index: 100;
             font-family: sans-serif;
-            margin-top: 20px;
+            margin-top: 40px;
+            /* Hidden by default, shown via JavaScript */
             display: none; 
         }
 
-        body.is-controller #controls { display: block; }
-
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
+        
         button { 
             padding: 15px 30px; 
             font-size: 30px; 
@@ -74,10 +75,22 @@
             box-shadow: 0 5px 0 #000; 
             transition: 0.1s; 
         }
+        
         button:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
+        
         .plus { background: #43B047; color: white; }
         .minus { background: #FBD000; color: black; }
-        .sync-btn { background: #eee; border: 2px solid #ccc; font-size: 12px; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
+        
+        .sync-btn { 
+            background: #eee; 
+            border: 2px solid #ccc; 
+            font-size: 12px; 
+            padding: 8px 15px; 
+            margin-top: 15px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -89,8 +102,8 @@
     </div>
 
     <div id="controls">
-        <div style="font-weight: bold; font-size: 20px;">MANAGER REMOTE</div>
-        <div id="conn-status" style="font-size: 10px; color: #999;">Connecting...</div>
+        <div style="font-weight: bold; font-size: 22px; color: #000;">MANAGER REMOTE</div>
+        <div id="conn-status" style="font-size: 11px; color: #666; margin-bottom: 10px;">Connecting to PeerJS...</div>
         <div class="btn-group">
             <button class="minus" onclick="changeCount(-1)">-</button>
             <button class="plus" onclick="changeCount(1)">+</button>
@@ -104,7 +117,10 @@
         const COUNTER_ID = 'mugi-sakura-counter-2026'; 
         const isController = window.location.hash === '#control';
         
-        if (isController) document.body.classList.add('is-controller');
+        // MANUALLY SHOW CONTROLS IF #CONTROL IS PRESENT
+        if (isController) {
+            document.getElementById('controls').style.display = 'block';
+        }
 
         let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
         let conn;
@@ -113,8 +129,19 @@
 
         const peer = new Peer(isController ? null : COUNTER_ID);
 
-        peer.on('open', (id) => { if (isController) connectToOBS(); });
-        peer.on('connection', (c) => { conn = c; setupConnection(c); });
+        peer.on('open', (id) => {
+            if (isController) {
+                document.getElementById('conn-status').innerText = "PEER ID CREATED. CONNECTING...";
+                connectToOBS();
+            } else {
+                console.log("OBS Receiver Online as: " + id);
+            }
+        });
+
+        peer.on('connection', (c) => {
+            conn = c;
+            setupConnection(c);
+        });
 
         function connectToOBS() {
             conn = peer.connect(COUNTER_ID);
@@ -125,14 +152,24 @@
             conn = c;
             conn.on('open', () => {
                 if (isController) {
-                    document.getElementById('conn-status').innerText = "CONNECTED";
+                    document.getElementById('conn-status').innerText = "CONNECTED TO OBS";
+                    document.getElementById('conn-status').style.color = "green";
+                    // Request current count from OBS
                     setTimeout(() => { requestManualSync(); }, 500);
                 }
             });
 
             conn.on('data', (data) => {
-                if (data.action === 'requestSync' && !isController) conn.send({ action: 'syncResponse', val: count });
-                if (data.action === 'syncResponse') updateCount(data.val, false);
+                // OBS PC side: sends current value to requesting controller
+                if (data.action === 'requestSync' && !isController) {
+                    conn.send({ action: 'syncResponse', val: count });
+                }
+                
+                // Controller side: receives value from OBS
+                if (data.action === 'syncResponse') {
+                    updateCount(data.val, false);
+                }
+
                 if (data.action === 'update') updateCount(data.val, true);
                 if (data.action === 'reset') updateCount(0, false);
             });
@@ -143,11 +180,12 @@
             localStorage.setItem('sakura_count', count);
             const counterNum = document.getElementById('counter');
             const wrapper = document.getElementById('counter-wrapper');
+            
             counterNum.innerText = count;
 
             if (animate) {
                 wrapper.classList.remove('pop-effect');
-                void wrapper.offsetWidth; 
+                void wrapper.offsetWidth; // Trigger reflow
                 wrapper.classList.add('pop-effect');
             }
         }
@@ -159,4 +197,17 @@
         }
 
         function resetCount() {
-            if(
+            if(confirm("Reset counter to 0?")) {
+                updateCount(0, false);
+                if (conn) conn.send({ action: 'reset' });
+            }
+        }
+
+        function requestManualSync() {
+            if (conn && conn.open) {
+                conn.send({ action: 'requestSync' });
+            }
+        }
+    </script>
+</body>
+</html>
