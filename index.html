@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Timer - Controller Fixed</title>
+    <title>Sakura Timer - Mario Party Style</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
+        /* Using a heavier, more 'game-like' font */
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
         body { 
@@ -15,59 +16,53 @@
             overflow: hidden; 
             display: flex;
             flex-direction: column;
-            justify-content: center; /* Centers the timer vertically */
-            align-items: flex-start; /* Keeps timer to the left */
+            justify-content: center; 
+            align-items: flex-start; 
         }
         
         #timer-wrapper { 
-            padding-left: 80px; /* Space from left edge */
-            font-size: 200px;
+            padding-left: 80px; 
+            font-size: 240px; /* Slightly bigger for that 'Big Number' feel */
+            
+            /* THE MARIO PARTY COMBO: White text + Black Stroke + 3D offset shadow */
             color: #FFFFFF;
-            -webkit-text-stroke: 8px black; 
+            -webkit-text-stroke: 10px #000; 
+            
+            /* Creates that 'hard' block shadow seen in Nintendo UI */
+            filter: drop-shadow(12px 12px 0px #000);
+            
+            /* Slants the numbers slightly to the right for energy */
+            transform: skewX(-5deg); 
+            
             user-select: none;
             transition: color 1s linear;
-            filter: drop-shadow(8px 8px 0px rgba(0,0,0,0.4));
-            font-variant-numeric: tabular-nums; /* Stops the numbers from moving */
+            font-variant-numeric: tabular-nums;
         }
 
+        /* The 'Nintendo Pop' - makes it feel like it's bouncing out of a block */
         @keyframes nintendoPop {
-            0% { transform: scale(1); filter: brightness(1); }
-            20% { transform: scale(1.1); filter: brightness(3); } 
-            100% { transform: scale(1); filter: brightness(1); }
+            0% { transform: skewX(-5deg) scale(1); }
+            30% { transform: skewX(-5deg) scale(1.15); filter: drop-shadow(15px 15px 0px #000) brightness(1.2); } 
+            100% { transform: skewX(-5deg) scale(1); }
         }
 
         .pop-effect { 
-            animation: nintendoPop 0.3s forwards; 
+            animation: nintendoPop 0.25s ease-out forwards; 
             transform-origin: left center; 
         }
 
-        /* --- CONTROL PANEL (FORCE VISIBLE ON BOTTOM) --- */
+        /* --- CONTROL PANEL (Manager Remote) --- */
         #controls { 
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%); /* Centers the remote on your screen */
-            background: white; 
-            border: 6px solid #000; 
-            border-radius: 30px; 
-            padding: 20px; 
-            text-align: center; 
-            box-shadow: 0 10px 0 #333; 
-            z-index: 9999; 
-            font-family: sans-serif;
-            display: none; /* Controlled by JS below */
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #fff; border: 6px solid #000; border-radius: 30px; 
+            padding: 20px; text-align: center; box-shadow: 0 10px 0 #333; 
+            z-index: 9999; font-family: sans-serif; display: none; 
         }
-        
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
         input { font-size: 18px; padding: 10px; width: 120px; border: 3px solid #000; border-radius: 10px; text-align: center; margin-bottom: 10px; }
         button { padding: 10px 20px; font-size: 18px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 3px solid #000; box-shadow: 0 4px 0 #000; transition: 0.1s; }
         button:active { transform: translateY(3px); box-shadow: 0 1px 0 #000; }
-        
-        .start { background: #43B047; color: white; }
-        .pause { background: #E52521; color: white; }
-        .reset { background: #FBD000; color: black; }
         .update-btn { background: #000; color: #fff; font-size: 14px; width: 100%; margin-top: 5px; cursor: pointer; }
-        .sync-btn { background: #eee; border: 2px solid #ccc; font-size: 11px; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -78,33 +73,23 @@
 
     <div id="controls">
         <div style="font-weight: bold; font-size: 18px; margin-bottom: 5px; color: #000;">MANAGER REMOTE</div>
-        
         <div style="background: #f0f0f0; padding: 10px; border-radius: 15px; border: 2px dashed #000;">
             <div style="font-size: 11px; margin-bottom: 5px; font-weight: bold;">STARTING SECONDS:</div>
             <input type="number" id="new-max" value="200000">
             <button class="update-btn" onclick="updateMaxVal()">UPDATE & RESET</button>
         </div>
-
         <div id="conn-status" style="font-size: 10px; color: #666; margin: 8px 0;">Status: Offline</div>
-        
         <div class="btn-group">
-            <button class="minus" onclick="triggerAction('pause')" style="background:#E52521; color:white;">PAUSE</button>
-            <button class="plus" onclick="triggerAction('start')" style="background:#43B047; color:white;">START</button>
+            <button onclick="triggerAction('pause')" style="background:#E52521; color:white;">PAUSE</button>
+            <button onclick="triggerAction('start')" style="background:#43B047; color:white;">START</button>
         </div>
-        
         <button onclick="triggerAction('reset')" style="margin-top:10px; font-size:12px; background:#FBD000; border:2px solid #000; box-shadow:none;">RESET TO START</button>
-        <br>
-        <button class="sync-btn" onclick="requestManualSync()">RE-SYNC FROM OBS</button>
     </div>
 
     <script>
         const TIMER_ID = 'mugi-sakura-timer-2026'; 
         const isController = window.location.hash.includes('control');
-        
-        // FORCE DISPLAY IMMEDIATELY
-        if (isController) {
-            document.getElementById('controls').style.display = 'block';
-        }
+        if (isController) document.getElementById('controls').style.display = 'block';
 
         let maxVal = localStorage.getItem('sakura_max') ? parseInt(localStorage.getItem('sakura_max')) : 200000;
         let baseSeconds = localStorage.getItem('sakura_base') ? parseInt(localStorage.getItem('sakura_base')) : maxVal;
@@ -115,23 +100,10 @@
         document.getElementById('timer').innerText = baseSeconds;
 
         const peer = new Peer(isController ? null : TIMER_ID);
+        peer.on('open', () => { if (isController) connectToOBS(); });
+        peer.on('connection', (c) => { conn = c; setupConnection(c); });
 
-        peer.on('open', (id) => {
-            if (isController) {
-                document.getElementById('conn-status').innerText = "Status: Connecting...";
-                connectToOBS();
-            }
-        });
-
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnection(c);
-        });
-
-        function connectToOBS() {
-            conn = peer.connect(TIMER_ID);
-            setupConnection(conn);
-        }
+        function connectToOBS() { conn = peer.connect(TIMER_ID); setupConnection(conn); }
 
         function setupConnection(c) {
             conn = c;
@@ -158,17 +130,18 @@
             });
         }
 
+        // --- COLOR LOGIC (20% YELLOW / 5% RED) ---
         function getColorForTime(seconds) {
-            const threshold = maxVal * 0.10;
-            if (seconds > threshold) return "rgb(255, 255, 255)";
-            const midPoint = maxVal * 0.025;
-            if (seconds > midPoint) {
-                const ratio = (seconds - midPoint) / (threshold - midPoint);
+            const thresholdYellow = maxVal * 0.20; 
+            const thresholdRed = maxVal * 0.05;    
+
+            if (seconds > thresholdYellow) return "rgb(255, 255, 255)";
+            if (seconds > thresholdRed) {
+                const range = thresholdYellow - thresholdRed;
+                const ratio = (seconds - thresholdRed) / range;
                 return `rgb(255, 255, ${Math.floor(255 * ratio)})`;
-            } else {
-                const ratio = seconds / midPoint;
-                return `rgb(255, ${Math.floor(255 * ratio)}, 0)`;
-            }
+            } 
+            return "rgb(255, 0, 0)";
         }
 
         function updateDisplay() {
@@ -229,7 +202,7 @@
             const cur = parseInt(document.getElementById('timer').innerText);
             if (action === 'start') { runStart(now); if (conn) conn.send({ action: 'start', time: now }); }
             else if (action === 'pause') { runPause(cur); if (conn) conn.send({ action: 'pause', val: cur }); }
-            else if (action === 'reset') { if(confirm("Reset to Start?")) { runReset(); if (conn) conn.send({ action: 'reset' }); } }
+            else if (action === 'reset') { if(confirm("Reset?")) { runReset(); if (conn) conn.send({ action: 'reset' }); } }
         }
 
         function requestManualSync() { if (conn && conn.open) conn.send({ action: 'requestSync' }); }
