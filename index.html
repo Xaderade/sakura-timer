@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Remote Master</title>
+    <title>Sakura Remote Master v2</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { background: #00ff00; font-family: 'Arial Black', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
         #timer { font-size: 160px; color: #ff69b4; -webkit-text-stroke: 4px black; text-shadow: 4px 4px 0px #000; margin-bottom: 20px; }
-        .admin-panel { background: white; padding: 20px; border: 3px solid black; border-radius: 15px; text-align: center; font-family: sans-serif; }
+        .admin-panel { background: white; padding: 20px; border: 3px solid black; border-radius: 15px; text-align: center; font-family: sans-serif; min-width: 300px; }
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
-        button { padding: 15px 25px; font-size: 18px; cursor: pointer; font-weight: bold; border-radius: 8px; border: 2px solid black; }
+        button { padding: 15px 25px; font-size: 18px; cursor: pointer; font-weight: bold; border-radius: 8px; border: 2px solid black; transition: 0.1s; }
+        button:active { transform: translateY(2px); }
         .start { background: #90ee90; }
         .pause { background: #ffcccb; }
-        #status { font-size: 12px; margin-top: 10px; color: #666; }
-        /* Hide UI if not in control mode */
+        #status { font-size: 12px; margin-top: 10px; color: #666; font-weight: bold; }
         .hidden { display: none; }
     </style>
 </head>
@@ -27,11 +27,11 @@
             <button class="pause" onclick="triggerAction('pause')">PAUSE</button>
             <button onclick="triggerAction('reset')">RESET</button>
         </div>
-        <div id="status">Mode: Controller</div>
+        <div id="status">STATUS: INITIALIZING</div>
     </div>
 
     <script>
-        const TIMER_ID = 'mugi-sakura-timer-2026'; // Unique ID for your link
+        const TIMER_ID = 'mugi-sakura-timer-2026'; 
         const isController = window.location.hash === '#control';
         
         let baseSeconds = 200000;
@@ -39,22 +39,17 @@
         let interval;
         let conn;
 
-        // Show UI only on the control laptop
         if (isController) document.getElementById('controls').classList.remove('hidden');
 
-        // Initialize PeerJS
         const peer = new Peer(isController ? null : TIMER_ID);
 
         peer.on('open', (id) => {
             if (isController) {
                 const connection = peer.connect(TIMER_ID);
                 setupConnection(connection);
-            } else {
-                console.log("OBS Timer Ready. ID: " + id);
             }
         });
 
-        // Listen for connections (on the OBS PC)
         peer.on('connection', (c) => {
             conn = c;
             setupConnection(c);
@@ -63,10 +58,30 @@
         function setupConnection(c) {
             conn = c;
             conn.on('open', () => {
-                if (isController) document.getElementById('connection-msg').innerText = "CONNECTED TO OBS";
+                if (isController) {
+                    document.getElementById('connection-msg').innerText = "CONNECTED TO OBS";
+                    document.getElementById('status').innerText = "STATUS: SYNCING...";
+                    // AS THE CONTROLLER: Ask the OBS PC for its current time
+                    conn.send({ action: 'requestSync' });
+                }
             });
 
             conn.on('data', (data) => {
+                // If I am the OBS PC and the Controller asks for sync:
+                if (data.action === 'requestSync' && !isController) {
+                    conn.send({ action: 'syncResponse', base: baseSeconds, start: startTime });
+                }
+                
+                // If I am the Controller and receive the sync data:
+                if (data.action === 'syncResponse') {
+                    baseSeconds = data.base;
+                    startTime = data.start;
+                    if (startTime) runStart(startTime);
+                    else updateDisplay();
+                    document.getElementById('status').innerText = "STATUS: READY";
+                }
+
+                // Standard controls
                 if (data.action === 'start') runStart(data.time);
                 if (data.action === 'pause') runPause(data.val);
                 if (data.action === 'reset') runReset();
