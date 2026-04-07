@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sakura 200k Timer</title>
+    <style>
+        body { background: #00ff00; font-family: 'Arial Black', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        #timer { font-size: 150px; color: #ff69b4; -webkit-text-stroke: 4px black; margin-bottom: 20px; }
+        .controls { display: flex; gap: 10px; opacity: 0.1; transition: opacity 0.3s; }
+        .controls:hover { opacity: 1.0; } /* Only shows buttons when you hover mouse */
+        button { padding: 10px 20px; font-size: 20px; cursor: pointer; border-radius: 8px; border: 2px solid black; background: white; }
+    </style>
+</head>
+<body>
+    <div id="timer">200000</div>
+    <div class="controls">
+        <button onclick="start()">START</button>
+        <button onclick="pause()">PAUSE</button>
+        <button onclick="reset()">RESET TO 200k</button>
+    </div>
+
+    <script>
+        // Check if there is a saved time on this computer, otherwise start at 200k
+        let seconds = localStorage.getItem('sakura_time') ? parseInt(localStorage.getItem('sakura_time')) : 200000;
+        let running = false;
+        let interval;
+
+        function updateDisplay() { 
+            document.getElementById('timer').innerText = seconds; 
+            localStorage.setItem('sakura_time', seconds); // Save every time it changes
+        }
+        
+        function start() { 
+            if(!running) { 
+                running = true; 
+                interval = setInterval(() => { 
+                    if(seconds > 0) { 
+                        seconds--; 
+                        updateDisplay(); 
+                    } 
+                }, 1000); 
+            } 
+        }
+        
+        function pause() { 
+            running = false; 
+            clearInterval(interval); 
+            localStorage.setItem('sakura_time', seconds); // Double-save on pause
+        }
+        
+        function reset() { 
+            if(confirm("Are you sure you want to reset to 200,000?")) {
+                pause(); 
+                seconds = 200000; 
+                updateDisplay(); 
+            }
+        }
+
+        updateDisplay(); // Show saved time immediately on load
+    </script>
+</body>
+</html>
