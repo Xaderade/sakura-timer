@@ -1,63 +1,104 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Nintendo Counter</title>
+    <title>Sakura Nintendo Counter - Final</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* A friendly, rounded font that mimics the Nintendo UI style */
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
-        body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        body { 
+            background: #00ff00; 
+            font-family: 'Luckiest Guy', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden; 
+        }
         
-        #counter { 
-            font-size: 220px; 
-            color: #E52521; /* Mario Red */
-            /* Thick Nintendo-style white border with black outer shadow */
-            -webkit-text-stroke: 8px white;
-            filter: drop-shadow(8px 8px 0px #000);
-            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* Container for the whole unit */
+        #counter-wrapper { 
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 180px;
+            color: #FFFFFF;
+            -webkit-text-stroke: 8px black;
             user-select: none;
-            position: relative;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* The "Impact Flash" Animation */
+        /* Apply pink shadow ONLY to text elements, skipping the emoji */
+        .x-char, #counter {
+            text-shadow: 12px 12px 0px #FFB7C5; 
+        }
+
+        .x-char { font-size: 0.6em; margin-top: 25px; }
+
+        /* Nintendo "Impact Flash" Animation */
         @keyframes nintendoPop {
-            0% { transform: scale(1); filter: brightness(1) drop-shadow(8px 8px 0px #000); }
-            20% { transform: scale(1.4); filter: brightness(5) drop-shadow(0px 0px 30px white); } /* The White Flash */
-            100% { transform: scale(1); filter: brightness(1) drop-shadow(8px 8px 0px #000); }
+            0% { transform: scale(1); filter: brightness(1); }
+            20% { transform: scale(1.2); filter: brightness(3); } 
+            100% { transform: scale(1); filter: brightness(1); }
         }
 
         .pop-effect { animation: nintendoPop 0.3s forwards; }
 
         /* Manager UI Styling */
-        .admin-panel { background: white; border: 6px solid #049CD8; border-radius: 30px; padding: 20px; text-align: center; box-shadow: 0 10px 0 #026b94; }
+        .admin-panel { 
+            background: white; 
+            border: 6px solid #FFB7C5; 
+            border-radius: 30px; 
+            padding: 20px; 
+            text-align: center; 
+            box-shadow: 0 10px 0 #e5a4b1; 
+            z-index: 100;
+            font-family: sans-serif;
+        }
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
         button { 
-            padding: 15px 30px; font-size: 30px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 4px solid #000; 
-            box-shadow: 0 5px 0 #000; transition: 0.1s;
+            padding: 15px 30px; 
+            font-size: 30px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            border-radius: 50px; 
+            border: 4px solid #000; 
+            box-shadow: 0 5px 0 #000; 
+            transition: 0.1s; 
         }
         button:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
-        .plus { background: #43B047; color: white; } /* Luigi Green */
-        .minus { background: #FBD000; color: black; } /* Coin Yellow */
+        .plus { background: #43B047; color: white; }
+        .minus { background: #FBD000; color: black; }
+        .sync-btn { background: #eee; border: 2px solid #ccc; font-size: 12px; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <div id="counter">0</div>
+    <div id="counter-wrapper">
+        <span class="emoji">🌸</span>
+        <span class="x-char">x</span>
+        <span id="counter">0</span>
+    </div>
 
     <div id="controls" class="admin-panel hidden">
-        <div style="font-weight: bold; color: #E52521;">MANAGER REMOTE</div>
+        <div style="font-weight: bold; color: #FFB7C5; font-size: 20px;">SAKURA REMOTE</div>
+        <div id="conn-status" style="font-size: 10px; color: #999;">Connecting...</div>
         <div class="btn-group">
             <button class="minus" onclick="changeCount(-1)">-</button>
             <button class="plus" onclick="changeCount(1)">+</button>
         </div>
-        <button onclick="resetCount()" style="margin-top:15px; font-size:14px; background:#eee;">RESET</button>
+        <button onclick="resetCount()" style="margin-top:15px; font-size:14px; background:#f0f0f0; border: 2px solid #000; box-shadow: none; padding: 5px 15px;">RESET</button>
+        <br>
+        <button class="sync-btn" onclick="requestManualSync()">FORCE SYNC FROM OBS</button>
     </div>
 
     <script>
         const COUNTER_ID = 'mugi-sakura-counter-2026'; 
         const isController = window.location.hash === '#control';
+        
         let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
         let conn;
 
@@ -65,52 +106,3 @@
         document.getElementById('counter').innerText = count;
 
         const peer = new Peer(isController ? null : COUNTER_ID);
-        peer.on('open', () => { if (isController) connectToOBS(); });
-        peer.on('connection', (c) => { conn = c; setupConnection(c); });
-
-        function connectToOBS() {
-            conn = peer.connect(COUNTER_ID);
-            setupConnection(conn);
-        }
-
-        function setupConnection(c) {
-            conn = c;
-            conn.on('data', (data) => {
-                if (data.action === 'requestSync' && !isController) conn.send({ action: 'syncResponse', val: count });
-                if (data.action === 'syncResponse') updateCount(data.val, false);
-                if (data.action === 'update') updateCount(data.val, true);
-                if (data.action === 'reset') updateCount(0, false);
-            });
-            if (isController) {
-                conn.on('open', () => setTimeout(() => conn.send({ action: 'requestSync' }), 500));
-            }
-        }
-
-        function updateCount(newVal, animate) {
-            count = newVal;
-            localStorage.setItem('sakura_count', count);
-            const el = document.getElementById('counter');
-            el.innerText = count;
-
-            if (animate) {
-                el.classList.remove('pop-effect');
-                void el.offsetWidth; // Trigger reflow
-                el.classList.add('pop-effect');
-            }
-        }
-
-        function changeCount(delta) {
-            const newVal = count + delta;
-            updateCount(newVal, true);
-            if (conn) conn.send({ action: 'update', val: newVal });
-        }
-
-        function resetCount() {
-            if(confirm("Reset?")) {
-                updateCount(0, false);
-                if (conn) conn.send({ action: 'reset' });
-            }
-        }
-    </script>
-</body>
-</html>
