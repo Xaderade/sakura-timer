@@ -1,93 +1,152 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Master Sync v3</title>
+    <title>Sakura Nintendo Timer - Final</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { background: #00ff00; font-family: 'Arial Black', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
-        #timer { font-size: 160px; color: #ff69b4; -webkit-text-stroke: 4px black; text-shadow: 4px 4px 0px #000; margin-bottom: 20px; }
-        .admin-panel { background: white; padding: 20px; border: 3px solid black; border-radius: 15px; text-align: center; font-family: sans-serif; min-width: 300px; }
-        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
-        button { padding: 12px 20px; font-size: 16px; cursor: pointer; font-weight: bold; border-radius: 8px; border: 2px solid black; }
-        .start { background: #90ee90; }
-        .pause { background: #ffcccb; }
-        .sync-btn { background: #87ceeb; margin-top: 10px; width: 100%; }
-        #status { font-size: 12px; margin-top: 10px; color: #666; font-weight: bold; }
-        .hidden { display: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
+
+        body { 
+            background: #00ff00; 
+            font-family: 'Luckiest Guy', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden; 
+        }
+        
+        /* Matching the Counter Wrapper style */
+        #timer-wrapper { 
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 160px;
+            color: #FFFFFF;
+            -webkit-text-stroke: 8px black; /* Bold Black Outline */
+            user-select: none;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Subtle black depth for visibility */
+            filter: drop-shadow(8px 8px 0px rgba(0,0,0,0.4));
+        }
+
+        .emoji { margin-right: 15px; }
+
+        /* Nintendo "Impact Flash" Animation */
+        @keyframes nintendoPop {
+            0% { transform: scale(1); filter: brightness(1); }
+            20% { transform: scale(1.1); filter: brightness(3); } 
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+
+        .pop-effect { animation: nintendoPop 0.3s forwards; }
+
+        /* --- CONTROL PANEL STYLING --- */
+        #controls { 
+            background: white; 
+            border: 6px solid #000; 
+            border-radius: 30px; 
+            padding: 20px; 
+            text-align: center; 
+            box-shadow: 0 10px 0 #333; 
+            z-index: 100;
+            font-family: sans-serif;
+            margin-top: 40px;
+            display: none; /* Hidden by default, shown via JS */
+        }
+
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
+        
+        button { 
+            padding: 12px 25px; 
+            font-size: 20px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            border-radius: 50px; 
+            border: 3px solid #000; 
+            box-shadow: 0 4px 0 #000; 
+            transition: 0.1s; 
+        }
+        
+        button:active { transform: translateY(3px); box-shadow: 0 1px 0 #000; }
+        
+        .start { background: #43B047; color: white; } /* Luigi Green */
+        .pause { background: #E52521; color: white; } /* Mario Red */
+        .reset { background: #FBD000; color: black; } /* Coin Yellow */
+        
+        .sync-btn { 
+            background: #eee; 
+            border: 2px solid #ccc; 
+            font-size: 11px; 
+            padding: 8px 15px; 
+            margin-top: 15px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+        }
     </style>
 </head>
 <body>
 
-    <div id="timer">200000</div>
+    <div id="timer-wrapper">
+        <span class="emoji">🌸</span>
+        <span class="emoji">⏰</span>
+        <span id="timer">200000</span>
+    </div>
 
-    <div id="controls" class="admin-panel hidden">
-        <div id="connection-msg">Connecting to Stream PC...</div>
+    <div id="controls">
+        <div style="font-weight: bold; font-size: 20px;">TIMER REMOTE</div>
+        <div id="conn-status" style="font-size: 10px; color: #666; margin-bottom: 5px;">Connecting...</div>
         <div class="btn-group">
             <button class="start" onclick="triggerAction('start')">START</button>
             <button class="pause" onclick="triggerAction('pause')">PAUSE</button>
-            <button onclick="triggerAction('reset')">RESET</button>
+            <button class="reset" onclick="triggerAction('reset')">RESET</button>
         </div>
         <button class="sync-btn" onclick="requestManualSync()">FORCE SYNC FROM OBS</button>
-        <div id="status">STATUS: INITIALIZING</div>
     </div>
 
     <script>
         const TIMER_ID = 'mugi-sakura-timer-2026'; 
         const isController = window.location.hash === '#control';
         
-        // LOAD FROM LOCAL STORAGE IMMEDIATELY
+        if (isController) document.getElementById('controls').style.display = 'block';
+
         let baseSeconds = localStorage.getItem('sakura_base') ? parseInt(localStorage.getItem('sakura_base')) : 200000;
         let startTime = localStorage.getItem('sakura_start') ? parseInt(localStorage.getItem('sakura_start')) : null;
-        
         let interval;
         let conn;
 
-        if (isController) document.getElementById('controls').classList.remove('hidden');
-
         const peer = new Peer(isController ? null : TIMER_ID);
 
-        peer.on('open', (id) => {
-            if (isController) {
-                connectToOBS();
-            }
-        });
+        peer.on('open', () => { if (isController) connectToOBS(); });
+        peer.on('connection', (c) => { conn = c; setupConnection(c); });
 
         function connectToOBS() {
             conn = peer.connect(TIMER_ID);
             setupConnection(conn);
         }
 
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnection(c);
-        });
-
         function setupConnection(c) {
             conn = c;
             conn.on('open', () => {
                 if (isController) {
-                    document.getElementById('connection-msg').innerText = "CONNECTED TO OBS";
-                    document.getElementById('status').innerText = "STATUS: READY";
-                    // Request sync after a 500ms delay to ensure data channel is ready
+                    document.getElementById('conn-status').innerText = "CONNECTED";
+                    document.getElementById('conn-status').style.color = "green";
                     setTimeout(() => { requestManualSync(); }, 500);
                 }
             });
 
             conn.on('data', (data) => {
-                // OBS PC side: Received a request for time
                 if (data.action === 'requestSync' && !isController) {
                     conn.send({ action: 'syncResponse', base: baseSeconds, start: startTime });
                 }
-                
-                // Controller side: Received the time from OBS
                 if (data.action === 'syncResponse') {
                     baseSeconds = data.base;
                     startTime = data.start;
                     if (startTime) runStart(startTime);
                     else runPause(baseSeconds);
-                    console.log("Synced with OBS: ", baseSeconds);
                 }
-
                 if (data.action === 'start') runStart(data.time);
                 if (data.action === 'pause') runPause(data.val);
                 if (data.action === 'reset') runReset();
@@ -109,6 +168,7 @@
             localStorage.setItem('sakura_base', baseSeconds);
             clearInterval(interval);
             interval = setInterval(updateDisplay, 1000);
+            triggerFlash();
         }
 
         function runPause(val) {
@@ -118,6 +178,7 @@
             localStorage.setItem('sakura_base', baseSeconds);
             localStorage.removeItem('sakura_start');
             updateDisplay();
+            triggerFlash();
         }
 
         function runReset() {
@@ -127,18 +188,19 @@
             localStorage.setItem('sakura_base', 200000);
             localStorage.removeItem('sakura_start');
             updateDisplay();
+            triggerFlash();
         }
 
-        function requestManualSync() {
-            if (conn && conn.open) {
-                conn.send({ action: 'requestSync' });
-            }
+        function triggerFlash() {
+            const wrapper = document.getElementById('timer-wrapper');
+            wrapper.classList.remove('pop-effect');
+            void wrapper.offsetWidth;
+            wrapper.classList.add('pop-effect');
         }
 
         function triggerAction(action) {
             const now = Date.now();
             const currentVal = parseInt(document.getElementById('timer').innerText);
-
             if (action === 'start') {
                 runStart(now);
                 if (conn) conn.send({ action: 'start', time: now });
@@ -146,14 +208,17 @@
                 runPause(currentVal);
                 if (conn) conn.send({ action: 'pause', val: currentVal });
             } else if (action === 'reset') {
-                if(confirm("Reset to 200,000?")) {
+                if(confirm("Reset timer?")) {
                     runReset();
                     if (conn) conn.send({ action: 'reset' });
                 }
             }
         }
 
-        // Initialize display and start ticker if it was already running
+        function requestManualSync() {
+            if (conn && conn.open) conn.send({ action: 'requestSync' });
+        }
+
         if (startTime) runStart(startTime);
         updateDisplay();
     </script>
