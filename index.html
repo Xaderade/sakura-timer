@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Timer - Left Aligned</title>
+    <title>Sakura Timer - Controller Fixed</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
@@ -9,30 +9,25 @@
         body { 
             background: #00ff00; 
             font-family: 'Luckiest Guy', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            /* Changed from center to flex-start to justify left */
-            align-items: flex-start; 
-            justify-content: center; 
-            height: 100vh; 
             margin: 0; 
-            padding-left: 100px; /* Adjust this to move it away from the screen edge */
+            height: 100vh; 
+            width: 100vw;
             overflow: hidden; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Centers the timer vertically */
+            align-items: flex-start; /* Keeps timer to the left */
         }
         
         #timer-wrapper { 
-            display: flex;
-            align-items: center;
+            padding-left: 80px; /* Space from left edge */
             font-size: 200px;
             color: #FFFFFF;
             -webkit-text-stroke: 8px black; 
             user-select: none;
-            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 1s linear;
+            transition: color 1s linear;
             filter: drop-shadow(8px 8px 0px rgba(0,0,0,0.4));
-            
-            /* KEY FIX: Stops numbers from "jittering" by giving each digit equal width */
-            font-variant-numeric: tabular-nums;
-            text-align: left;
+            font-variant-numeric: tabular-nums; /* Stops the numbers from moving */
         }
 
         @keyframes nintendoPop {
@@ -43,16 +38,24 @@
 
         .pop-effect { 
             animation: nintendoPop 0.3s forwards; 
-            transform-origin: left center; /* Scales from the left so it doesn't shift right */
+            transform-origin: left center; 
         }
 
-        /* --- CONTROL PANEL --- */
+        /* --- CONTROL PANEL (FORCE VISIBLE ON BOTTOM) --- */
         #controls { 
-            background: white; border: 6px solid #000; border-radius: 30px; 
-            padding: 20px; text-align: center; box-shadow: 0 10px 0 #333; 
-            z-index: 100; font-family: sans-serif; margin-top: 20px; 
-            display: none; 
-            align-self: center; /* Keep the remote itself centered on your laptop screen */
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%); /* Centers the remote on your screen */
+            background: white; 
+            border: 6px solid #000; 
+            border-radius: 30px; 
+            padding: 20px; 
+            text-align: center; 
+            box-shadow: 0 10px 0 #333; 
+            z-index: 9999; 
+            font-family: sans-serif;
+            display: none; /* Controlled by JS below */
         }
         
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
@@ -63,7 +66,7 @@
         .start { background: #43B047; color: white; }
         .pause { background: #E52521; color: white; }
         .reset { background: #FBD000; color: black; }
-        .update-btn { background: #000; color: #fff; font-size: 14px; padding: 10px; width: 100%; margin-top: 5px; }
+        .update-btn { background: #000; color: #fff; font-size: 14px; width: 100%; margin-top: 5px; cursor: pointer; }
         .sync-btn { background: #eee; border: 2px solid #ccc; font-size: 11px; padding: 5px 10px; margin-top: 10px; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
@@ -74,25 +77,34 @@
     </div>
 
     <div id="controls">
-        <div style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">TIMER REMOTE</div>
-        <div style="background: #f9f9f9; padding: 10px; border-radius: 15px; border: 2px dashed #ccc;">
-            <div style="font-size: 12px; margin-bottom: 5px;">SET STARTING SECONDS:</div>
+        <div style="font-weight: bold; font-size: 18px; margin-bottom: 5px; color: #000;">MANAGER REMOTE</div>
+        
+        <div style="background: #f0f0f0; padding: 10px; border-radius: 15px; border: 2px dashed #000;">
+            <div style="font-size: 11px; margin-bottom: 5px; font-weight: bold;">STARTING SECONDS:</div>
             <input type="number" id="new-max" value="200000">
-            <button class="update-btn" onclick="updateMaxVal()">UPDATE START TIME</button>
+            <button class="update-btn" onclick="updateMaxVal()">UPDATE & RESET</button>
         </div>
-        <div id="conn-status" style="font-size: 10px; color: #666; margin: 10px 0;">Connecting...</div>
+
+        <div id="conn-status" style="font-size: 10px; color: #666; margin: 8px 0;">Status: Offline</div>
+        
         <div class="btn-group">
-            <button class="start" onclick="triggerAction('start')">START</button>
-            <button class="pause" onclick="triggerAction('pause')">PAUSE</button>
-            <button class="reset" onclick="triggerAction('reset')">RESET</button>
+            <button class="minus" onclick="triggerAction('pause')" style="background:#E52521; color:white;">PAUSE</button>
+            <button class="plus" onclick="triggerAction('start')" style="background:#43B047; color:white;">START</button>
         </div>
-        <button class="sync-btn" onclick="requestManualSync()">FORCE SYNC FROM OBS</button>
+        
+        <button onclick="triggerAction('reset')" style="margin-top:10px; font-size:12px; background:#FBD000; border:2px solid #000; box-shadow:none;">RESET TO START</button>
+        <br>
+        <button class="sync-btn" onclick="requestManualSync()">RE-SYNC FROM OBS</button>
     </div>
 
     <script>
         const TIMER_ID = 'mugi-sakura-timer-2026'; 
-        const isController = window.location.hash === '#control';
-        if (isController) document.getElementById('controls').style.display = 'block';
+        const isController = window.location.hash.includes('control');
+        
+        // FORCE DISPLAY IMMEDIATELY
+        if (isController) {
+            document.getElementById('controls').style.display = 'block';
+        }
 
         let maxVal = localStorage.getItem('sakura_max') ? parseInt(localStorage.getItem('sakura_max')) : 200000;
         let baseSeconds = localStorage.getItem('sakura_base') ? parseInt(localStorage.getItem('sakura_base')) : maxVal;
@@ -103,8 +115,18 @@
         document.getElementById('timer').innerText = baseSeconds;
 
         const peer = new Peer(isController ? null : TIMER_ID);
-        peer.on('open', () => { if (isController) connectToOBS(); });
-        peer.on('connection', (c) => { conn = c; setupConnection(c); });
+
+        peer.on('open', (id) => {
+            if (isController) {
+                document.getElementById('conn-status').innerText = "Status: Connecting...";
+                connectToOBS();
+            }
+        });
+
+        peer.on('connection', (c) => {
+            conn = c;
+            setupConnection(c);
+        });
 
         function connectToOBS() {
             conn = peer.connect(TIMER_ID);
@@ -115,9 +137,9 @@
             conn = c;
             conn.on('open', () => {
                 if (isController) {
-                    document.getElementById('conn-status').innerText = "CONNECTED";
+                    document.getElementById('conn-status').innerText = "Status: CONNECTED";
                     document.getElementById('conn-status').style.color = "green";
-                    setTimeout(() => { requestManualSync(); }, 500);
+                    setTimeout(requestManualSync, 500);
                 }
             });
             conn.on('data', (data) => {
@@ -162,6 +184,7 @@
 
         function updateMaxVal() {
             const val = parseInt(document.getElementById('new-max').value);
+            if (isNaN(val)) return;
             runUpdateMax(val);
             if (conn) conn.send({ action: 'updateMax', val: val });
         }
@@ -206,7 +229,7 @@
             const cur = parseInt(document.getElementById('timer').innerText);
             if (action === 'start') { runStart(now); if (conn) conn.send({ action: 'start', time: now }); }
             else if (action === 'pause') { runPause(cur); if (conn) conn.send({ action: 'pause', val: cur }); }
-            else if (action === 'reset') { if(confirm("Reset?")) { runReset(); if (conn) conn.send({ action: 'reset' }); } }
+            else if (action === 'reset') { if(confirm("Reset to Start?")) { runReset(); if (conn) conn.send({ action: 'reset' }); } }
         }
 
         function requestManualSync() { if (conn && conn.open) conn.send({ action: 'requestSync' }); }
