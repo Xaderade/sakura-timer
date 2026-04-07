@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Nintendo Counter - Final</title>
+    <title>Sakura Nintendo Counter - Clean Edition</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
@@ -21,19 +21,23 @@
         #counter-wrapper { 
             display: flex;
             align-items: center;
-            gap: 20px;
             font-size: 180px;
             color: #FFFFFF;
-            -webkit-text-stroke: 8px black;
+            /* Black Outline Only - Pink Shadow Removed */
+            -webkit-text-stroke: 12px black;
             user-select: none;
             transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        .x-char, #counter {
-            text-shadow: 12px 12px 0px #FFB7C5; 
+        .x-char { 
+            font-size: 0.6em; 
+            margin-top: 25px; 
+            margin-right: 30px; /* This adds the space between x and the number */
         }
 
-        .x-char { font-size: 0.6em; margin-top: 25px; }
+        .emoji {
+            margin-right: 15px;
+        }
 
         @keyframes nintendoPop {
             0% { transform: scale(1); filter: brightness(1); }
@@ -46,21 +50,18 @@
         /* --- CONTROL PANEL STYLING --- */
         #controls { 
             background: white; 
-            border: 6px solid #FFB7C5; 
+            border: 6px solid #000; 
             border-radius: 30px; 
             padding: 20px; 
             text-align: center; 
-            box-shadow: 0 10px 0 #e5a4b1; 
+            box-shadow: 0 10px 0 #333; 
             z-index: 100;
             font-family: sans-serif;
             margin-top: 20px;
-            display: none; /* Hidden by default */
+            display: none; 
         }
 
-        /* This rule shows the box ONLY when #control is in the URL */
-        body.is-controller #controls {
-            display: block;
-        }
+        body.is-controller #controls { display: block; }
 
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
         button { 
@@ -88,7 +89,7 @@
     </div>
 
     <div id="controls">
-        <div style="font-weight: bold; color: #FFB7C5; font-size: 20px;">SAKURA REMOTE</div>
+        <div style="font-weight: bold; font-size: 20px;">MANAGER REMOTE</div>
         <div id="conn-status" style="font-size: 10px; color: #999;">Connecting...</div>
         <div class="btn-group">
             <button class="minus" onclick="changeCount(-1)">-</button>
@@ -103,10 +104,7 @@
         const COUNTER_ID = 'mugi-sakura-counter-2026'; 
         const isController = window.location.hash === '#control';
         
-        // Add the class to body if we are the controller
-        if (isController) {
-            document.body.classList.add('is-controller');
-        }
+        if (isController) document.body.classList.add('is-controller');
 
         let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
         let conn;
@@ -115,14 +113,8 @@
 
         const peer = new Peer(isController ? null : COUNTER_ID);
 
-        peer.on('open', (id) => {
-            if (isController) connectToOBS();
-        });
-
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnection(c);
-        });
+        peer.on('open', (id) => { if (isController) connectToOBS(); });
+        peer.on('connection', (c) => { conn = c; setupConnection(c); });
 
         function connectToOBS() {
             conn = peer.connect(COUNTER_ID);
@@ -139,9 +131,7 @@
             });
 
             conn.on('data', (data) => {
-                if (data.action === 'requestSync' && !isController) {
-                    conn.send({ action: 'syncResponse', val: count });
-                }
+                if (data.action === 'requestSync' && !isController) conn.send({ action: 'syncResponse', val: count });
                 if (data.action === 'syncResponse') updateCount(data.val, false);
                 if (data.action === 'update') updateCount(data.val, true);
                 if (data.action === 'reset') updateCount(0, false);
@@ -169,15 +159,4 @@
         }
 
         function resetCount() {
-            if(confirm("Reset counter to 0?")) {
-                updateCount(0, false);
-                if (conn) conn.send({ action: 'reset' });
-            }
-        }
-
-        function requestManualSync() {
-            if (conn && conn.open) conn.send({ action: 'requestSync' });
-        }
-    </script>
-</body>
-</html>
+            if(
