@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Nintendo Counter - Final Fixed</title>
+    <title>Sakura Counter - Mixed Styles</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
@@ -9,118 +9,129 @@
         body { 
             background: #00ff00; 
             font-family: 'Luckiest Guy', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
             margin: 0; 
+            height: 100vh; 
+            width: 100vw;
             overflow: hidden; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: flex-start; 
+            padding-left: 120px; 
         }
         
-        /* The Counter Display */
         #counter-wrapper { 
             display: flex;
             align-items: center;
-            font-size: 200px;
-            color: #FFFFFF;
-            -webkit-text-stroke: 14px black; /* Bold Black Outline */
             user-select: none;
-            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            /* Subtle black depth for visibility against light backgrounds */
-            filter: drop-shadow(8px 8px 0px rgba(0,0,0,0.4));
+            white-space: nowrap;
+            transform: skewX(-5deg); 
         }
 
-        .emoji { margin-right: 20px; }
+        /* 1. THE CLEAN EMOJI (No Filter) */
+        .emoji { 
+            font-size: 200px; 
+            margin-right: 30px; 
+            filter: drop-shadow(10px 10px 0px rgba(0,0,0,0.2)); /* Tiny clean shadow only */
+        }
         
+        /* 2. THE CHONKY TEXT (With Filter) */
+        .chonk-text {
+            display: flex;
+            align-items: center;
+            font-size: 260px;
+            color: #FFFFFF;
+            filter: url(#megaChonk3D);
+        }
+
         .x-char { 
             font-size: 0.6em; 
             margin-top: 25px; 
-            margin-right: 40px; /* Space between X and Numbers */
+            margin-right: 20px; 
         }
 
-        /* Nintendo "Impact Flash" Animation */
+        /* Nintendo "Impact Flash" */
         @keyframes nintendoPop {
-            0% { transform: scale(1); filter: brightness(1); }
-            20% { transform: scale(1.2); filter: brightness(3); } 
-            100% { transform: scale(1); filter: brightness(1); }
+            0% { transform: scale(1); filter: url(#megaChonk3D) brightness(1); }
+            20% { transform: scale(1.15); filter: url(#megaChonk3D) brightness(2.5); } 
+            100% { transform: scale(1); filter: url(#megaChonk3D) brightness(1); }
         }
 
-        .pop-effect { animation: nintendoPop 0.3s forwards; }
+        .pop-effect { animation: nintendoPop 0.25s ease-out forwards; }
 
-        /* --- CONTROL PANEL STYLING --- */
+        /* --- REMOTE UI --- */
         #controls { 
-            background: white; 
-            border: 6px solid #000; 
-            border-radius: 30px; 
-            padding: 20px; 
-            text-align: center; 
-            box-shadow: 0 10px 0 #333; 
-            z-index: 100;
-            font-family: sans-serif;
-            margin-top: 40px;
-            /* Hidden by default, shown via JavaScript */
-            display: none; 
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: white; border: 6px solid #000; border-radius: 35px; 
+            padding: 20px; text-align: center; box-shadow: 0 12px 0 #333; 
+            z-index: 9999; font-family: sans-serif; display: none; 
         }
-
         .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
-        
-        button { 
-            padding: 15px 30px; 
-            font-size: 30px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            border-radius: 50px; 
-            border: 4px solid #000; 
-            box-shadow: 0 5px 0 #000; 
-            transition: 0.1s; 
-        }
-        
+        button { padding: 15px 40px; font-size: 35px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 4px solid #000; box-shadow: 0 6px 0 #000; transition: 0.1s; }
         button:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
-        
         .plus { background: #43B047; color: white; }
         .minus { background: #FBD000; color: black; }
-        
-        .sync-btn { 
-            background: #eee; 
-            border: 2px solid #ccc; 
-            font-size: 12px; 
-            padding: 8px 15px; 
-            margin-top: 15px; 
-            border-radius: 5px; 
-            cursor: pointer; 
-            font-weight: bold;
-        }
     </style>
 </head>
 <body>
 
     <div id="counter-wrapper">
         <span class="emoji">🌸</span>
-        <span class="x-char">x</span>
-        <span id="counter">0</span>
+        <div class="chonk-text" id="pop-target">
+            <span class="x-char">x</span>
+            <span id="counter">0</span>
+        </div>
     </div>
+
+    <svg width="0" height="0" style="position: absolute;">
+        <defs>
+            <filter id="megaChonk3D" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
+                <feMorphology in="SourceGraphic" result="thickened" operator="dilate" radius="8"/>
+                <feOffset in="thickened" dx="1" dy="1" result="s1"/>
+                <feOffset in="thickened" dx="2" dy="2" result="s2"/>
+                <feOffset in="thickened" dx="3" dy="3" result="s3"/>
+                <feOffset in="thickened" dx="4" dy="4" result="s4"/>
+                <feOffset in="thickened" dx="5" dy="5" result="s5"/>
+                <feOffset in="thickened" dx="6" dy="6" result="s6"/>
+                <feOffset in="thickened" dx="7" dy="7" result="s7"/>
+                <feOffset in="thickened" dx="8" dy="8" result="s8"/>
+                <feMerge result="blockRaw">
+                    <feMergeNode in="s1"/><feMergeNode in="s2"/><feMergeNode in="s3"/>
+                    <feMergeNode in="s4"/><feMergeNode in="s5"/><feMergeNode in="s6"/>
+                    <feMergeNode in="s7"/><feMergeNode in="s8"/>
+                </feMerge>
+                <feFlood flood-color="#b0bac5" result="silverColor"/>
+                <feComposite in="silverColor" in2="blockRaw" operator="in" result="silverBlock"/>
+                <feMorphology in="silverBlock" result="outerBorderArea" operator="dilate" radius="15"/>
+                <feFlood flood-color="black" result="blackColor"/>
+                <feComposite in="blackColor" in2="outerBorderArea" operator="in" result="blackOutline"/>
+                <feOffset in="blackOutline" dx="20" dy="20" result="hardShadowArea"/>
+                <feFlood flood-color="black" flood-opacity="0.4" result="shadowAlpha"/>
+                <feComposite in="shadowAlpha" in2="hardShadowArea" operator="in" result="finalHardShadow"/>
+                <feMerge>
+                    <feMergeNode in="finalHardShadow"/> 
+                    <feMergeNode in="blackOutline"/>
+                    <feMergeNode in="silverBlock"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+    </svg>
 
     <div id="controls">
         <div style="font-weight: bold; font-size: 22px; color: #000;">MANAGER REMOTE</div>
-        <div id="conn-status" style="font-size: 11px; color: #666; margin-bottom: 10px;">Connecting to PeerJS...</div>
+        <div id="conn-status" style="font-size: 11px; color: #666; margin-bottom: 10px;">Connecting...</div>
         <div class="btn-group">
             <button class="minus" onclick="changeCount(-1)">-</button>
             <button class="plus" onclick="changeCount(1)">+</button>
         </div>
-        <button onclick="resetCount()" style="margin-top:15px; font-size:14px; background:#f0f0f0; border: 2px solid #000; box-shadow: none; padding: 5px 15px;">RESET</button>
-        <br>
-        <button class="sync-btn" onclick="requestManualSync()">FORCE SYNC FROM OBS</button>
+        <button onclick="resetCount()" style="margin-top:20px; font-size:14px; background:#f0f0f0; border: 3px solid #000; width:100%; border-radius:10px;">RESET TO 0</button>
     </div>
 
     <script>
         const COUNTER_ID = 'mugi-sakura-counter-2026'; 
-        const isController = window.location.hash === '#control';
-        
-        // MANUALLY SHOW CONTROLS IF #CONTROL IS PRESENT
-        if (isController) {
-            document.getElementById('controls').style.display = 'block';
-        }
+        const isController = window.location.hash.includes('control');
+        if (isController) document.getElementById('controls').style.display = 'block';
 
         let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
         let conn;
@@ -128,20 +139,8 @@
         document.getElementById('counter').innerText = count;
 
         const peer = new Peer(isController ? null : COUNTER_ID);
-
-        peer.on('open', (id) => {
-            if (isController) {
-                document.getElementById('conn-status').innerText = "PEER ID CREATED. CONNECTING...";
-                connectToOBS();
-            } else {
-                console.log("OBS Receiver Online as: " + id);
-            }
-        });
-
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnection(c);
-        });
+        peer.on('open', () => { if (isController) connectToOBS(); });
+        peer.on('connection', (c) => { conn = c; setupConnection(c); });
 
         function connectToOBS() {
             conn = peer.connect(COUNTER_ID);
@@ -152,24 +151,14 @@
             conn = c;
             conn.on('open', () => {
                 if (isController) {
-                    document.getElementById('conn-status').innerText = "CONNECTED TO OBS";
+                    document.getElementById('conn-status').innerText = "Status: CONNECTED";
                     document.getElementById('conn-status').style.color = "green";
-                    // Request current count from OBS
-                    setTimeout(() => { requestManualSync(); }, 500);
+                    setTimeout(() => { if (conn.open) conn.send({ action: 'requestSync' }); }, 500);
                 }
             });
-
             conn.on('data', (data) => {
-                // OBS PC side: sends current value to requesting controller
-                if (data.action === 'requestSync' && !isController) {
-                    conn.send({ action: 'syncResponse', val: count });
-                }
-                
-                // Controller side: receives value from OBS
-                if (data.action === 'syncResponse') {
-                    updateCount(data.val, false);
-                }
-
+                if (data.action === 'requestSync' && !isController) conn.send({ action: 'syncResponse', val: count });
+                if (data.action === 'syncResponse') updateCount(data.val, false);
                 if (data.action === 'update') updateCount(data.val, true);
                 if (data.action === 'reset') updateCount(0, false);
             });
@@ -178,34 +167,25 @@
         function updateCount(newVal, animate) {
             count = newVal;
             localStorage.setItem('sakura_count', count);
-            const counterNum = document.getElementById('counter');
-            const wrapper = document.getElementById('counter-wrapper');
-            
-            counterNum.innerText = count;
-
+            document.getElementById('counter').innerText = count;
             if (animate) {
-                wrapper.classList.remove('pop-effect');
-                void wrapper.offsetWidth; // Trigger reflow
-                wrapper.classList.add('pop-effect');
+                const target = document.getElementById('pop-target');
+                target.classList.remove('pop-effect');
+                void target.offsetWidth; 
+                target.classList.add('pop-effect');
             }
         }
 
         function changeCount(delta) {
             const newVal = count + delta;
             updateCount(newVal, true);
-            if (conn) conn.send({ action: 'update', val: newVal });
+            if (conn && conn.open) conn.send({ action: 'update', val: newVal });
         }
 
         function resetCount() {
-            if(confirm("Reset counter to 0?")) {
+            if(confirm("Reset counter?")) {
                 updateCount(0, false);
-                if (conn) conn.send({ action: 'reset' });
-            }
-        }
-
-        function requestManualSync() {
-            if (conn && conn.open) {
-                conn.send({ action: 'requestSync' });
+                if (conn && conn.open) conn.send({ action: 'reset' });
             }
         }
     </script>
