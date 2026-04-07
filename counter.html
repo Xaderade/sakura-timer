@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sakura Counter</title>
+    <style>
+        body { background: #00ff00; font-family: 'Arial Black', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        #count { font-size: 150px; color: #ff69b4; -webkit-text-stroke: 4px black; margin-bottom: 20px; }
+        .controls { display: flex; gap: 15px; opacity: 0.1; transition: opacity 0.3s; }
+        .controls:hover { opacity: 1.0; }
+        button { padding: 15px 30px; font-size: 24px; cursor: pointer; border-radius: 8px; border: 3px solid black; background: white; font-weight: bold; }
+        .plus { background: #90ee90; }
+        .minus { background: #ffcccb; }
+    </style>
+</head>
+<body>
+    <div id="count">0</div>
+    <div class="controls">
+        <button class="minus" onclick="change(-1)">-1</button>
+        <button class="plus" onclick="change(1)">+1</button>
+        <button onclick="reset()">RESET</button>
+    </div>
+
+    <script>
+        let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
+
+        function updateDisplay() { 
+            document.getElementById('count').innerText = count; 
+            localStorage.setItem('sakura_count', count);
+        }
+        
+        function change(val) { 
+            count += val;
+            if (count < 0) count = 0;
+            updateDisplay(); 
+        }
+        
+        function reset() { 
+            if(confirm("Reset counter to 0?")) {
+                count = 0; 
+                updateDisplay(); 
+            }
+        }
+
+        updateDisplay();
+    </script>
+</body>
+</html>
