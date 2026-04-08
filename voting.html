@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Universal Rater</title>
+    <title>Mugi Rater - Bulletproof</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tmi.js/1.8.5/tmi.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
@@ -18,45 +18,25 @@
         .smooth-outline { filter: url(#crispOutline); }
 
         #rating-display {
-            text-align: center;
-            transform: skewX(-5deg);
-            padding: 100px;
-            overflow: visible !important;
+            text-align: center; transform: skewX(-5deg); padding: 100px; overflow: visible !important;
         }
 
-        .status-label {
-            color: white; font-size: 60px; text-transform: uppercase;
-            letter-spacing: 4px; margin-bottom: -10px;
-        }
+        .status-label { color: white; font-size: 60px; text-transform: uppercase; letter-spacing: 4px; margin-bottom: -10px; }
 
-        .score-row {
-            display: flex;
-            align-items: baseline;
-            justify-content: center;
-            line-height: 1;
-        }
+        .score-row { display: flex; align-items: baseline; justify-content: center; line-height: 1; }
 
-        .score-prefix {
-            color: white; font-size: 80px; margin-right: 20px;
-        }
+        .score-prefix { color: white; font-size: 80px; margin-right: 20px; }
 
         #average-score {
-            font-size: 200px;
-            font-style: italic;
+            font-size: 200px; font-style: italic;
             background: linear-gradient(to bottom, #FFD700 20%, #FFA500 85%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            padding-right: 80px; 
-            min-width: 300px;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            padding-right: 80px; min-width: 300px;
         }
 
-        #timer-text {
-            color: #FF4444;
-            font-size: 110px;
-            margin-top: 10px;
-        }
+        #timer-text { color: #FF4444; font-size: 110px; margin-top: 10px; }
 
-        /* CONTROL PANEL */
+        /* CONTROL PANEL STYLING */
         #controls { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: white; color: black; z-index: 999;
@@ -64,20 +44,15 @@
             font-family: sans-serif;
         }
         .control-box {
-            background: #f0f0f0; border: 5px solid black; padding: 40px; border-radius: 30px;
+            background: #f0f0f0; border: 5px solid black; padding: 30px; border-radius: 30px;
             text-align: center; width: 450px;
         }
-        input { 
-            width: 80%; padding: 15px; font-size: 20px; margin-bottom: 10px; 
-            border: 3px solid black; border-radius: 10px; text-align: center;
-        }
-        button { 
-            width: 100%; padding: 20px; cursor: pointer; font-weight: bold; 
-            font-size: 24px; border: 4px solid #000; border-radius: 15px; margin-top: 15px; 
-            text-transform: uppercase;
-        }
+        input { width: 40%; padding: 10px; font-size: 20px; margin: 5px; border: 3px solid black; border-radius: 10px; text-align: center; }
+        button { width: 100%; padding: 15px; cursor: pointer; font-weight: bold; font-size: 20px; border: 4px solid #000; border-radius: 15px; margin-top: 10px; text-transform: uppercase; }
         .start-btn { background: #43B047; color: white; }
         .reset-btn { background: #E52521; color: white; }
+        .manual-btn { background: #2196F3; color: white; font-size: 14px; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -106,19 +81,28 @@
 
     <div id="controls">
         <div class="control-box">
-            <h1 style="margin:0">MUGI RATER CONTROL</h1>
-            <p>Target: <b>@CrazyJapanese</b></p>
-            <label style="display:block; margin-top:10px; font-weight:bold;">TIMER (SECONDS):</label>
-            <input type="number" id="timer-input" value="30" min="5" max="300">
+            <h2 style="margin:0">MUGI RATER</h2>
+            <div style="font-size: 12px; margin-bottom: 15px;">
+                <span id="twitch-dot" class="status-dot" style="background: grey;"></span> Twitch: <span id="twitch-status">Connecting...</span> |
+                <span id="peer-dot" class="status-dot" style="background: grey;"></span> OBS: <span id="peer-status">Idle</span>
+            </div>
+
+            <label style="font-weight:bold;">VOTING SECONDS:</label><br>
+            <input type="number" id="timer-input" value="30">
+            
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
-            <button class="reset-btn" onclick="resetAll()">✖ RESET</button>
-            <p id="conn-status" style="margin-top:20px; font-weight:bold; color: orange;">STATUS: INITIALIZING...</p>
+            <button class="reset-btn" onclick="resetAll()">✖ RESET / CLEAR</button>
+            
+            <hr style="margin: 20px 0; border: 1px solid #ccc;">
+            
+            <label style="font-weight:bold;">ADD MANUAL SCORE:</label><br>
+            <input type="number" id="manual-input" step="0.1" placeholder="9.5">
+            <button class="manual-btn" onclick="addManual()">+ ADD VOTE</button>
         </div>
     </div>
 
     <script>
-        // Unique ID to avoid clashing with other Mugi overlays
-        const RATER_ID = 'mugi-rater-v2-active';
+        const RATER_ID = 'mugi-bulletproof-rater';
         const TWITCH_CHANNEL = 'CrazyJapanese';
         const isController = window.location.hash.includes('control');
         
@@ -129,29 +113,20 @@
         let timeLeft = 30;
         let timerInterval;
 
-        // PeerJS Connection Logic
+        // PeerJS Logic
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
 
         peer.on('open', (id) => {
-            if (isController) {
-                // Try to connect to the fixed OBS ID
-                connectToOBS();
-            } else {
-                console.log('OBS Overlay is ready with ID:', id);
-            }
+            if (isController) { connectToOBS(); }
+            else { console.log('Overlay Ready'); }
         });
 
         function connectToOBS() {
             conn = peer.connect(RATER_ID);
             conn.on('open', () => {
-                document.getElementById('conn-status').innerText = "STATUS: CONNECTED TO OBS";
-                document.getElementById('conn-status').style.color = "green";
-            });
-            conn.on('close', () => {
-                document.getElementById('conn-status').innerText = "STATUS: DISCONNECTED - RETRYING...";
-                document.getElementById('conn-status').style.color = "red";
-                setTimeout(connectToOBS, 3000);
+                document.getElementById('peer-status').innerText = "CONNECTED";
+                document.getElementById('peer-dot').style.background = "green";
             });
         }
 
@@ -160,31 +135,35 @@
             conn.on('data', (data) => {
                 if (data.action === 'start') executeStart(data.time);
                 if (data.action === 'reset') executeReset();
+                if (data.action === 'manual') { votes[data.user] = data.val; updateDisplay(); }
             });
         });
 
-        // Twitch Logic (Only on OBS side)
-        if (!isController) {
-            const client = new tmi.Client({ channels: [TWITCH_CHANNEL] });
-            client.connect().catch(console.error);
-            client.on('message', (channel, tags, message) => {
-                if (!isVotingOpen) return;
-                const score = parseFloat(message.trim());
-                if (!isNaN(score) && score >= 0 && score <= 10) {
-                    votes[tags.username] = score;
-                    updateDisplay();
-                }
-            });
-        }
+        // Twitch Logic (Always run it, but only OBS shows the UI)
+        const client = new tmi.Client({ channels: [TWITCH_CHANNEL] });
+        client.connect().then(() => {
+            if(isController) {
+                document.getElementById('twitch-status').innerText = "CONNECTED";
+                document.getElementById('twitch-dot').style.background = "green";
+            }
+        }).catch(err => {
+            if(isController) { document.getElementById('twitch-status').innerText = "ERROR"; }
+        });
+
+        client.on('message', (channel, tags, message) => {
+            if (!isVotingOpen) return;
+            const score = parseFloat(message.trim());
+            if (!isNaN(score) && score >= 0 && score <= 10) {
+                votes[tags.username] = score;
+                updateDisplay();
+                // If it's the OBS side, it updates display. If it's controller, it keeps quiet.
+            }
+        });
 
         function startVoting() {
             const time = parseInt(document.getElementById('timer-input').value) || 30;
-            if (conn && conn.open) {
-                conn.send({ action: 'start', time: time });
-                // We don't execute locally on the controller to ensure OBS is the source of truth
-            } else if (!isController) {
-                executeStart(time);
-            }
+            if (conn) conn.send({ action: 'start', time: time });
+            executeStart(time);
         }
 
         function executeStart(time) {
@@ -204,8 +183,18 @@
             }, 1000);
         }
 
+        function addManual() {
+            const val = parseFloat(document.getElementById('manual-input').value);
+            if (isNaN(val)) return;
+            const user = "Manual_" + Math.random();
+            if (conn) conn.send({ action: 'manual', user: user, val: val });
+            votes[user] = val;
+            updateDisplay();
+            document.getElementById('manual-input').value = "";
+        }
+
         function resetAll() {
-            if (conn && conn.open) conn.send({ action: 'reset' });
+            if (conn) conn.send({ action: 'reset' });
             executeReset();
         }
 
