@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Direct v10.2</title>
+    <title>Mugi Co. | No-Fail v10.3</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
         
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
-        .indicator { font-size: 10px; font-weight: bold; padding: 3px 10px; border-radius: 3px; background: rgba(0,0,0,0.85); border-left: 3px solid #444; width: fit-content; min-width: 140px; }
+        .indicator { font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 3px; background: rgba(0,0,0,0.85); border-left: 3px solid #444; width: fit-content; min-width: 150px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
 
@@ -39,7 +39,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_DIRECT v10.2</h3>
+    <h3 style="margin:0; color:var(--p);">MUGI_STABLE v10.3</h3>
     <label>Twitch Channel</label>
     <input type="text" id="inp-ch" value="CrazyJapanese">
     <label>7TV User ID</label>
@@ -73,31 +73,34 @@
         let count7tv = 0;
 
         try {
-            // THE EXACT FETCH PATH FROM YOUR WORKING SCRIPT
+            // STEP 1: USER CHANNEL EMOTES (v6.2 Path)
             const response = await fetch(`https://7tv.io/v3/users/${userId}`);
             const data = await response.json();
-            const channelEmotes = data.emote_set.emotes;
-
-            channelEmotes.forEach(emote => {
-                // Using 4x for the higher quality center slots
-                emoteMap[emote.name] = `https://cdn.7tv.app/emote/${emote.id}/4x.webp`;
-                count7tv++;
-            });
-
-            // Global Emotes Fetch
-            const gRes = await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json());
-            gRes.emotes.forEach(e => { 
-                if(!emoteMap[e.name]) {
-                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
+            
+            if(data.emote_set && data.emote_set.emotes) {
+                data.emote_set.emotes.forEach(emote => {
+                    emoteMap[emote.name] = `https://cdn.7tv.app/emote/${emote.id}/4x.webp`;
                     count7tv++;
-                }
-            });
+                });
+            }
+
+            // STEP 2: GLOBAL EMOTES
+            const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
+            const gData = await gRes.json();
+            if(gData.emotes) {
+                gData.emotes.forEach(e => { 
+                    if(!emoteMap[e.name]) {
+                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
+                        count7tv++;
+                    }
+                });
+            }
 
             setStat('7tv', `7TV: ${count7tv} LOADED`, 'on');
             setStat('total', `TOTAL: ${Object.keys(emoteMap).length} LOADED`, 'on');
         } catch (err) {
-            console.error(err);
-            setStat('7tv', "7TV FETCH FAILED", 'err');
+            console.error("Asset Load Error:", err);
+            setStat('7tv', "FETCH FAILED", 'err');
         }
     }
 
@@ -114,7 +117,6 @@
     }
 
     async function reboot() {
-        if (typeof tmi === 'undefined') return;
         const CH = document.getElementById('inp-ch').value.trim();
         const ID = document.getElementById('inp-7id').value.trim();
 
@@ -124,22 +126,30 @@
         await loadAssets(ID);
         startEngine();
 
+        if (typeof tmi === 'undefined') {
+            setStat('tmi', 'TMI.JS MISSING', 'err');
+            return;
+        }
+
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
+        
         client.on('message', (chan, tags, msg) => {
             let found = new Set();
+            
+            // 7TV & Global Detection
             msg.split(' ').forEach(w => {
-                const c = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
-                if (emoteMap[c]) found.add(c);
+                const cleanWord = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
+                if (emoteMap[cleanWord]) found.add(cleanWord);
             });
             
-            // Handle Twitch Native Emotes
+            // Twitch Native Detection
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
-                    tags.emotes[id].forEach(r => {
-                        const rr = r.split('-');
-                        const n = msg.substring(parseInt(rr[0]), parseInt(rr[1]) + 1);
-                        if(!emoteMap[n]) emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
-                        found.add(n);
+                    tags.emotes[id].forEach(range => {
+                        const r = range.split('-');
+                        const name = msg.substring(parseInt(r[0]), parseInt(r[1]) + 1);
+                        if(!emoteMap[name]) emoteMap[name] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
+                        found.add(name);
                     });
                 });
             }
@@ -150,7 +160,10 @@
             }
         });
         
-        client.connect().then(() => setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on')).catch(() => setStat('tmi', 'TWITCH: FAIL', 'err'));
+        client.connect()
+            .then(() => setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on'))
+            .catch(() => setStat('tmi', 'TWITCH: FAIL', 'err'));
+            
         document.getElementById('control').classList.remove('active');
     }
 
@@ -160,18 +173,22 @@
             const slot = document.getElementById(`slot-${i}`);
             const wrap = slot.querySelector('.img-wrap');
             const countEl = slot.querySelector('.count');
+            
             if(sorted[i]) {
                 const [n, c] = sorted[i];
                 const cur = Math.floor(c);
                 const last = parseInt(slot.getAttribute('data-lastcount') || 0);
+                
                 if (wrap.getAttribute('data-name') !== n) {
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
+                
                 if (isChat && cur > last) {
                     slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
                     setTimeout(() => slot.classList.remove('pop'), 100);
                 }
+                
                 countEl.innerText = cur;
                 slot.setAttribute('data-lastcount', cur);
                 slot.style.display = "flex";
@@ -180,7 +197,9 @@
             }
         }
     }
-    window.onload = () => { setTimeout(reboot, 500); };
+    
+    // Auto-boot on load
+    window.onload = () => { setTimeout(reboot, 800); };
 </script>
 </body>
 </html>
