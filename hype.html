@@ -2,20 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Sanitized Render v5.5</title>
+    <title>Mugi Co. | Secure Core v5.7</title>
     <script src="tmi.min.js"></script>
     <style>
-        :root { --p: #9146ff; --g: #ffd700; --bg: rgba(13, 13, 18, 0.98); --success: #00ffcc; }
+        :root { --p: #9146ff; --g: #ffd700; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; }
         body { margin: 0; background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
         #control { position: absolute; top: 0; right: 0; width: 320px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 25px; z-index: 100; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
         .stat { background: #111; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #222; margin-bottom: 5px; }
         .stat.on { border-color: var(--success); color: var(--success); }
         #chat { position: absolute; bottom: 40px; left: 30px; width: 650px; }
-        .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; line-height: 1.4; }
-        .user { color: var(--p); margin-right: 10px; }
+        .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; }
         .emote { height: 1.35em; vertical-align: middle; margin: -4px 2px; }
-        #m-toggle { position: absolute; top: 20px; right: 20px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; }
+        #m-toggle { position: absolute; top: 20px; right: 20px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; }
     </style>
 </head>
 <body>
@@ -23,46 +22,77 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="color:var(--p)">MUGI_SANITIZER_v5.5</h3>
-    <input type="text" id="ch-name" value="CrazyJapanese">
-    <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
-    <div id="st-tw" class="stat">TWITCH: OFF</div>
-    <div id="st-7v" class="stat">7TV: OFF</div>
+    <h3 style="color:var(--p)">MUGI_SECURE_v5.7</h3>
+    <input type="text" id="ch-name" value="CrazyJapanese" style="width:100%; background:#000; color:white; border:1px solid #444; padding:10px; margin-bottom:15px;">
+    <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ" style="width:100%; background:#000; color:white; border:1px solid #444; padding:10px; margin-bottom:15px;">
+    
+    <div id="st-tw" class="stat">TWITCH: DISCONNECTED</div>
+    <div id="st-7v" class="stat">7TV: STANDBY</div>
+    
     <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; border-radius:6px; font-weight:900;" onclick="boot()">BOOT ENGINE</button>
+    <div id="log" style="font-size:11px; color:var(--g); margin-top:15px; font-family: monospace;">Awaiting Initialization...</div>
 </div>
 
 <div id="chat"></div>
 
 <script>
     let tmiClient = null;
-    let stvMap = new Map(); // Using a Map for faster, cleaner lookups
+    let stvMap = new Map();
 
     async function boot() {
-        const id = document.getElementById('ch-id').value.trim();
+        const log = document.getElementById('log');
         const ch = document.getElementById('ch-name').value.trim().toLowerCase();
-        
+        const id = document.getElementById('ch-id').value.trim();
+
+        log.innerText = "Syncing Emote Database...";
+
+        // 1. Fetch 7TV with Error Handling
         try {
-            const [u, g] = await Promise.all([
-                fetch(`https://7tv.io/v3/users/${id}`).then(r => r.json()),
-                fetch(`https://7tv.io/v3/emote-sets/global`).then(r => r.json())
+            const [uRes, gRes] = await Promise.all([
+                fetch(`https://7tv.io/v3/users/${id}`).catch(() => null),
+                fetch(`https://7tv.io/v3/emote-sets/global`).catch(() => null)
             ]);
             
+            if (!uRes || !gRes) throw new Error("Network Blocked 7TV");
+
+            const uData = await uRes.json();
+            const gData = await gRes.json();
+
             stvMap.clear();
-            const emotes = [...(u.emote_set?.emotes || []), ...g.emotes];
-            emotes.forEach(e => {
-                // Store the link. Use 3x for clarity if needed, but 2x is standard.
-                stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`);
-            });
+            const emotes = [...(uData.emote_set?.emotes || []), ...gData.emotes];
+            emotes.forEach(e => stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`));
 
             document.getElementById('st-7v').className = 'stat on';
-            document.getElementById('st-7v').innerText = `7TV: ${stvMap.size} LOADED`;
-        } catch (e) { console.error("7TV Failed", e); }
+            document.getElementById('st-7v').innerText = `7TV: ${stvMap.size} ASSETS`;
+        } catch (e) {
+            log.innerText = "7TV Error: Assets failed to load.";
+        }
 
-        if(tmiClient) tmiClient.disconnect();
-        tmiClient = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [ch] });
+        // 2. Twitch WebSocket with Force-Secure
+        if(tmiClient) {
+            log.innerText = "Rebinding Sockets...";
+            await tmiClient.disconnect();
+        }
+
+        tmiClient = new tmi.Client({
+            options: { debug: false },
+            connection: {
+                type: "chat",
+                secure: true,
+                reconnect: true,
+                maxReconnectAttempts: 10,
+                reconnectInterval: 3000
+            },
+            channels: [ch]
+        });
+
         tmiClient.connect().then(() => {
             document.getElementById('st-tw').className = 'stat on';
-            document.getElementById('st-tw').innerText = "TWITCH: ONLINE";
+            document.getElementById('st-tw').innerText = "TWITCH: CONNECTED";
+            log.innerText = "SYSTEM OPERATIONAL.";
+        }).catch(err => {
+            console.error(err);
+            log.innerText = "WSS ERROR: Twitch blocked the connection.";
         });
 
         tmiClient.on('message', (chan, tags, msg) => {
@@ -70,33 +100,24 @@
             const div = document.createElement('div');
             div.className = 'msg';
 
-            // 1. Process 7TV First (Case-Sensitive Match)
             let words = msg.split(' ');
             let finalHtml = words.map(word => {
-                // Remove hidden characters/zero-width spaces that 7TV sometimes attaches
-                const cleanWord = word.replace(/[\u200B-\u200D\uFEFF]/g, "");
-                
-                if (stvMap.has(cleanWord)) {
-                    return `<img src="${stvMap.get(cleanWord)}" class="emote">`;
-                }
-                return word;
+                const clean = word.replace(/[\u200B-\u200D\uFEFF]/g, "");
+                return stvMap.has(clean) ? `<img src="${stvMap.get(clean)}" class="emote">` : word;
             }).join(' ');
 
-            // 2. Process Twitch Native Emotes (Kappa, etc.)
-            // We do this by replacing text based on the positions Twitch provides
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
                     const range = tags.emotes[id][0].split('-');
                     const name = msg.substring(parseInt(range[0]), parseInt(range[1]) + 1);
-                    const twitchImg = `<img src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0" class="emote">`;
-                    // Replace all instances of this native emote name
-                    finalHtml = finalHtml.split(name).join(twitchImg);
+                    const tImg = `<img src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0" class="emote">`;
+                    finalHtml = finalHtml.split(name).join(tImg);
                 });
             }
 
-            div.innerHTML = `<span class="user" style="color:${tags.color || '#9146ff'}">${tags['display-name']}:</span> ${finalHtml}`;
+            div.innerHTML = `<span style="color:${tags.color || '#9146ff'}"><strong>${tags['display-name']}:</strong></span> ${finalHtml}`;
             chat.appendChild(div);
-            if(chat.childNodes.length > 10) chat.removeChild(chat.firstChild);
+            if(chat.childNodes.length > 8) chat.removeChild(chat.firstChild);
         });
     }
 </script>
