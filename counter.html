@@ -1,65 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Counter - Mixed Styles</title>
+    <title>Sakura Counter - Precision Spacing</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
         body { 
             background: #00ff00; 
-            font-family: 'Luckiest Guy', sans-serif; 
             margin: 0; 
-            height: 100vh; 
-            width: 100vw;
             overflow: hidden; 
             display: flex;
-            flex-direction: column;
-            justify-content: center; 
-            align-items: flex-start; 
-            padding-left: 120px; 
-        }
-        
-        #counter-wrapper { 
-            display: flex;
             align-items: center;
-            user-select: none;
-            white-space: nowrap;
-            transform: skewX(-5deg); 
+            height: 100vh;
+            width: 100vw;
         }
 
-        /* 1. THE CLEAN EMOJI (No Filter) */
-        .emoji { 
-            font-size: 200px; 
-            margin-right: 30px; 
-            filter: drop-shadow(10px 10px 0px rgba(0,0,0,0.2)); /* Tiny clean shadow only */
-        }
-        
-        /* 2. THE CHONKY TEXT (With Filter) */
-        .chonk-text {
-            display: flex;
-            align-items: center;
-            font-size: 260px;
-            color: #FFFFFF;
-            filter: url(#megaChonk3D);
+        #renderCanvas {
+            image-rendering: auto;
+            transform: skewX(-5deg);
+            margin-left: 50px;
         }
 
-        .x-char { 
-            font-size: 0.6em; 
-            margin-top: 25px; 
-            margin-right: 20px; 
-        }
-
-        /* Nintendo "Impact Flash" */
-        @keyframes nintendoPop {
-            0% { transform: scale(1); filter: url(#megaChonk3D) brightness(1); }
-            20% { transform: scale(1.15); filter: url(#megaChonk3D) brightness(2.5); } 
-            100% { transform: scale(1); filter: url(#megaChonk3D) brightness(1); }
-        }
-
-        .pop-effect { animation: nintendoPop 0.25s ease-out forwards; }
-
-        /* --- REMOTE UI --- */
         #controls { 
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: white; border: 6px solid #000; border-radius: 35px; 
@@ -75,52 +37,10 @@
 </head>
 <body>
 
-    <div id="counter-wrapper">
-        <span class="emoji">🌸</span>
-        <div class="chonk-text" id="pop-target">
-            <span class="x-char">x</span>
-            <span id="counter">0</span>
-        </div>
-    </div>
-
-    <svg width="0" height="0" style="position: absolute;">
-        <defs>
-            <filter id="megaChonk3D" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
-                <feMorphology in="SourceGraphic" result="thickened" operator="dilate" radius="8"/>
-                <feOffset in="thickened" dx="1" dy="1" result="s1"/>
-                <feOffset in="thickened" dx="2" dy="2" result="s2"/>
-                <feOffset in="thickened" dx="3" dy="3" result="s3"/>
-                <feOffset in="thickened" dx="4" dy="4" result="s4"/>
-                <feOffset in="thickened" dx="5" dy="5" result="s5"/>
-                <feOffset in="thickened" dx="6" dy="6" result="s6"/>
-                <feOffset in="thickened" dx="7" dy="7" result="s7"/>
-                <feOffset in="thickened" dx="8" dy="8" result="s8"/>
-                <feMerge result="blockRaw">
-                    <feMergeNode in="s1"/><feMergeNode in="s2"/><feMergeNode in="s3"/>
-                    <feMergeNode in="s4"/><feMergeNode in="s5"/><feMergeNode in="s6"/>
-                    <feMergeNode in="s7"/><feMergeNode in="s8"/>
-                </feMerge>
-                <feFlood flood-color="#b0bac5" result="silverColor"/>
-                <feComposite in="silverColor" in2="blockRaw" operator="in" result="silverBlock"/>
-                <feMorphology in="silverBlock" result="outerBorderArea" operator="dilate" radius="15"/>
-                <feFlood flood-color="black" result="blackColor"/>
-                <feComposite in="blackColor" in2="outerBorderArea" operator="in" result="blackOutline"/>
-                <feOffset in="blackOutline" dx="20" dy="20" result="hardShadowArea"/>
-                <feFlood flood-color="black" flood-opacity="0.4" result="shadowAlpha"/>
-                <feComposite in="shadowAlpha" in2="hardShadowArea" operator="in" result="finalHardShadow"/>
-                <feMerge>
-                    <feMergeNode in="finalHardShadow"/> 
-                    <feMergeNode in="blackOutline"/>
-                    <feMergeNode in="silverBlock"/>
-                    <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-            </filter>
-        </defs>
-    </svg>
+    <canvas id="renderCanvas" width="2400" height="600"></canvas>
 
     <div id="controls">
         <div style="font-weight: bold; font-size: 22px; color: #000;">MANAGER REMOTE</div>
-        <div id="conn-status" style="font-size: 11px; color: #666; margin-bottom: 10px;">Connecting...</div>
         <div class="btn-group">
             <button class="minus" onclick="changeCount(-1)">-</button>
             <button class="plus" onclick="changeCount(1)">+</button>
@@ -129,64 +49,122 @@
     </div>
 
     <script>
+        const canvas = document.getElementById('renderCanvas');
+        const ctx = canvas.getContext('2d');
         const COUNTER_ID = 'mugi-sakura-counter-2026'; 
         const isController = window.location.hash.includes('control');
         if (isController) document.getElementById('controls').style.display = 'block';
 
         let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
-        let conn;
+        let scale = 1;
+        let flashColor = null;
 
-        document.getElementById('counter').innerText = count;
+        const fontMain = 'italic 260px "Luckiest Guy"';
+        const fontSmall = 'italic 160px "Luckiest Guy"'; // Smaller font for the 'x'
 
+        function drawText(text, x, y, isXChar) {
+            ctx.font = isXChar ? fontSmall : fontMain;
+            
+            // 1. Outline
+            ctx.lineJoin = "round";
+            ctx.lineWidth = 18;
+            ctx.strokeStyle = "black";
+            ctx.strokeText(text, x, y);
+            ctx.strokeText(text, x + 18, y + 18); // 3D shadow outline
+
+            // 2. Gradient
+            const grad = ctx.createLinearGradient(x, y - 130, x, y + 50);
+            grad.addColorStop(0.2, "#FFFFFF");
+            grad.addColorStop(0.85, "#A0A0A0");
+
+            // 3. Shadow Fill
+            ctx.fillStyle = "black";
+            ctx.fillText(text, x + 18, y + 18);
+
+            // 4. Main Fill
+            ctx.fillStyle = flashColor ? flashColor : grad;
+            ctx.fillText(text, x, y);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const startX = 100;
+            const baseY = 400;
+
+            // Draw Emoji
+            ctx.font = "180px serif";
+            ctx.textBaseline = "middle";
+            ctx.fillText("🌸", startX, baseY - 20);
+
+            ctx.save();
+            ctx.translate(startX + 220, baseY);
+            ctx.scale(scale, scale);
+            ctx.translate(-(startX + 220), -baseY);
+
+            // Draw smaller 'x'
+            drawText("x", startX + 220, baseY + 20, true);
+
+            // Draw numbers with extra spacing (offset by 110px from the x)
+            drawText(count.toString(), startX + 330, baseY + 20, false);
+
+            ctx.restore();
+        }
+
+        function triggerPop() {
+            let start = null;
+            const duration = 300;
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                let progress = timestamp - start;
+                let p = progress / duration;
+                if (p < 0.3) {
+                    scale = 1 + (p / 0.3) * 0.12;
+                    flashColor = "#ccff00";
+                } else if (p < 1) {
+                    scale = 1.12 - ((p - 0.3) / 0.7) * 0.12;
+                    flashColor = null;
+                } else {
+                    scale = 1;
+                    flashColor = null;
+                }
+                draw();
+                if (progress < duration) requestAnimationFrame(animate);
+            }
+            requestAnimationFrame(animate);
+        }
+
+        document.fonts.load(fontMain).then(draw);
+
+        // PeerJS setup...
         const peer = new Peer(isController ? null : COUNTER_ID);
-        peer.on('open', () => { if (isController) connectToOBS(); });
-        peer.on('connection', (c) => { conn = c; setupConnection(c); });
+        peer.on('open', () => { if (isController) connectToPeer(); });
+        peer.on('connection', (c) => setupConnection(c));
 
-        function connectToOBS() {
-            conn = peer.connect(COUNTER_ID);
+        function connectToPeer() {
+            const conn = peer.connect(COUNTER_ID);
             setupConnection(conn);
         }
 
         function setupConnection(c) {
-            conn = c;
-            conn.on('open', () => {
-                if (isController) {
-                    document.getElementById('conn-status').innerText = "Status: CONNECTED";
-                    document.getElementById('conn-status').style.color = "green";
-                    setTimeout(() => { if (conn.open) conn.send({ action: 'requestSync' }); }, 500);
-                }
+            c.on('data', (data) => {
+                if (data.action === 'update') { count = data.val; localStorage.setItem('sakura_count', count); triggerPop(); }
+                if (data.action === 'reset') { count = 0; localStorage.setItem('sakura_count', 0); draw(); }
             });
-            conn.on('data', (data) => {
-                if (data.action === 'requestSync' && !isController) conn.send({ action: 'syncResponse', val: count });
-                if (data.action === 'syncResponse') updateCount(data.val, false);
-                if (data.action === 'update') updateCount(data.val, true);
-                if (data.action === 'reset') updateCount(0, false);
-            });
-        }
-
-        function updateCount(newVal, animate) {
-            count = newVal;
-            localStorage.setItem('sakura_count', count);
-            document.getElementById('counter').innerText = count;
-            if (animate) {
-                const target = document.getElementById('pop-target');
-                target.classList.remove('pop-effect');
-                void target.offsetWidth; 
-                target.classList.add('pop-effect');
-            }
         }
 
         function changeCount(delta) {
-            const newVal = count + delta;
-            updateCount(newVal, true);
-            if (conn && conn.open) conn.send({ action: 'update', val: newVal });
+            count += delta;
+            localStorage.setItem('sakura_count', count);
+            triggerPop();
+            if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'update', val: count });
         }
 
         function resetCount() {
-            if(confirm("Reset counter?")) {
-                updateCount(0, false);
-                if (conn && conn.open) conn.send({ action: 'reset' });
-            }
+            count = 0;
+            localStorage.setItem('sakura_count', 0);
+            draw();
+            if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'reset' });
         }
     </script>
 </body>
