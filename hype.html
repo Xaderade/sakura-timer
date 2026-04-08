@@ -2,85 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Green Screen v9.4</title>
+    <title>Mugi Co. | Auto-ID v9.5</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
-        
-        /* CHROMA KEY BACKGROUND */
-        body { 
-            margin: 0; 
-            background-color: var(--chroma); 
-            color: white; 
-            font-family: sans-serif; 
-            overflow: hidden; 
-        }
+        body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
         
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
         .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.8); border-left: 3px solid #444; width: fit-content; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
 
-        /* CENTERED GRID - NO BARS */
-        #leaderboard { 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-end; 
-            gap: 60px; 
-            width: 100vw; 
-            height: 100vh; 
-            padding-bottom: 50px;
-            box-sizing: border-box;
-        }
+        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 60px; width: 100vw; height: 100vh; padding-bottom: 50px; box-sizing: border-box; }
+        .emote-slot { display: flex; flex-direction: column; align-items: center; transition: transform 0.1s; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); }
+        .rank-tag { font-size: 20px; font-weight: 900; background: var(--g); color: #000; padding: 4px 15px; border-radius: 6px; margin-bottom: 15px; }
+        .img-wrap { height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; }
+        .emote-img { max-height: 200px; max-width: 200px; object-fit: contain; }
+        .count { font-size: 64px; font-weight: 900; margin-top: 10px; text-shadow: 5px 5px 0 var(--p), -2px -2px 0 #000; }
 
-        .emote-slot { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            transition: transform 0.1s;
-            /* Heavy shadow to help the Chroma Key filter keep edges clean */
-            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); 
-        }
-
-        .rank-tag { 
-            font-size: 20px; 
-            font-weight: 900; 
-            background: var(--g); 
-            color: #000; 
-            padding: 4px 15px; 
-            border-radius: 6px; 
-            margin-bottom: 15px; 
-        }
-
-        /* MASSIVE EMOTE SIZE */
-        .img-wrap { 
-            height: 200px; 
-            width: 200px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-        }
-        .emote-img { 
-            max-height: 200px; 
-            max-width: 200px; 
-            object-fit: contain;
-        }
-
-        /* MASSIVE COUNT SIZE */
-        .count { 
-            font-size: 64px; 
-            font-weight: 900; 
-            margin-top: 10px; 
-            color: white;
-            text-shadow: 5px 5px 0 var(--p), -2px -2px 0 #000; 
-        }
-
-        /* CONTROL PANEL (Stays dark for readability) */
         #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 10px; margin: 5px 0 15px 0; border-radius: 4px; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px; }
-        
         .pop { transform: scale(1.2); }
     </style>
 </head>
@@ -95,25 +38,20 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_CHROMA_v9.4</h3>
-    <p style="font-size:10px; color:#aaa;">(OBS: Apply Chroma Key Filter)</p>
+    <h3 style="margin:0; color:var(--p);">MUGI_AUTO_v9.5</h3>
     <label style="font-size:10px; color:#777;">TWITCH CHANNEL</label>
-    <input type="text" id="inp-ch" value="forsen">
-    <label style="font-size:10px; color:#777;">7TV ID</label>
-    <input type="text" id="inp-7id" value="60a4f32c969317208d927d2c">
-    <label style="font-size:10px; color:#777;">NUMERIC ID</label>
-    <input type="text" id="inp-bid" value="22484632">
+    <input type="text" id="inp-ch" value="lirik">
     <label style="font-size:10px; color:#777;">DRAIN SEC</label>
     <input type="number" id="inp-decay" value="0.2" step="0.1">
     <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:5px;" onclick="reboot()">BOOT OVERLAY</button>
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot" data-lastcount="0"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-1" class="emote-slot" data-lastcount="0"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-2" class="emote-slot" data-lastcount="0"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-3" class="emote-slot" data-lastcount="0"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-4" class="emote-slot" data-lastcount="0"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-0" class="emote-slot" style="display:none;"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot" style="display:none;"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot" style="display:none;"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot" style="display:none;"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-4" class="emote-slot" style="display:none;"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <script>
@@ -127,28 +65,37 @@
         if(el) { el.innerText = text; el.className = `indicator ${state}`; }
     };
 
-    async function safeFetch(url, id, label) {
-        try {
-            const r = await fetch(url);
-            if(!r.ok) throw new Error();
-            const d = await r.json();
-            setStat(id, `${label}: ONLINE`, 'on');
-            return d;
-        } catch(e) {
-            setStat(id, `${label}: OFFLINE`, 'err');
-            return null;
-        }
-    }
-
-    async function loadAssets(sId, bId) {
+    async function loadAssets(channelName) {
         emoteMap = {};
-        const sData = await safeFetch(`https://7tv.io/v3/users/${sId}`, '7tv', '7TV');
-        if(sData) sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
-        const g7 = await safeFetch('https://7tv.io/v3/emote-sets/global', '7tv', '7TV');
-        if(g7) g7.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
+        setStat('7tv', '7TV: LOOKING UP...', '');
+        setStat('bttv', 'BTTV: LOOKING UP...', '');
 
-        const bData = await safeFetch(`https://api.betterttv.net/3/cached/users/twitch/${bId}`, 'bttv', 'BTTV');
-        if(bData) [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; });
+        try {
+            // 1. Get 7TV Emotes (using channel name directly)
+            const sRes = await fetch(`https://7tv.io/v3/users/twitch/${channelName}`);
+            if(sRes.ok) {
+                const sData = await sRes.json();
+                sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
+                setStat('7tv', '7TV: ONLINE', 'on');
+            } else { throw new Error(); }
+        } catch(e) { setStat('7tv', '7TV: NOT FOUND', 'err'); }
+
+        try {
+            // 2. Get BTTV Emotes (Need to find numeric ID first)
+            // Using a public proxy for ID lookup or simple fetch
+            const bLook = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${channelName}`, { method: 'GET' }); // Some channels support name directly here
+            const bData = await bLook.json();
+            if(bData && (bData.sharedEmotes || bData.channelEmotes)) {
+                [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => {
+                    emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
+                });
+                setStat('bttv', 'BTTV: ONLINE', 'on');
+            }
+        } catch(e) { setStat('bttv', 'BTTV: OFFLINE', 'err'); }
+
+        // Global 7TV
+        const g7 = await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).catch(()=>null);
+        if(g7) g7.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
     }
 
     function startEngine() {
@@ -165,15 +112,14 @@
 
     async function reboot() {
         if (typeof tmi === 'undefined') return;
-        const CH = document.getElementById('inp-ch').value.trim();
-        const S_ID = document.getElementById('inp-7id').value.trim();
-        const B_ID = document.getElementById('inp-bid').value.trim();
+        const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         if (client) { try { await client.disconnect(); } catch(e){} }
-        emoteCounts = {};
-        await loadAssets(S_ID, B_ID);
-        startEngine();
-        client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
         
+        emoteCounts = {};
+        await loadAssets(CH);
+        startEngine();
+
+        client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
         client.on('message', (chan, tags, msg) => {
             let found = new Set();
             msg.split(' ').forEach(w => {
