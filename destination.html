@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Travel - Smart Floating Countdown</title>
+    <title>Mugi Travel - Connected Countdown</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
@@ -16,9 +17,7 @@
             height: 100vh;
         }
 
-        .smooth-outline {
-            filter: url(#crispOutline);
-        }
+        .smooth-outline { filter: url(#crispOutline); }
 
         #travel-display {
             display: flex;
@@ -26,7 +25,6 @@
             align-items: center;
             transform: skewX(-5deg);
             text-align: center;
-            overflow: visible !important; 
         }
 
         .arriving-label {
@@ -42,7 +40,7 @@
             font-size: 130px;
             text-transform: uppercase;
             margin-bottom: 15px;
-            padding-right: 60px; /* Room for slant */
+            padding-right: 60px;
         }
 
         .timer-display {
@@ -55,24 +53,24 @@
             line-height: 1.1;
             display: block;
             white-space: nowrap;
-            /* MASSIVE padding to stop the number cutoff at the end */
             padding-right: 120px; 
             margin-right: -60px;
         }
 
-        /* CONTROL PANEL - Hidden by default, shown with #control */
+        /* CONTROL PANEL */
         #controls { 
-            position: fixed; top: 20px; right: 20px; background: white; 
-            border: 5px solid black; border-radius: 20px; padding: 20px; 
-            z-index: 100; font-family: sans-serif; width: 300px;
-            display: none; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #1a1a1a; color: white;
+            z-index: 1000; font-family: sans-serif;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
         }
-        input { width: 92%; padding: 10px; margin-bottom: 10px; border: 3px solid #000; border-radius: 10px; font-weight: bold; }
-        .time-inputs { display: flex; gap: 5px; margin-bottom: 10px; }
-        .time-inputs input { width: 30%; margin-bottom: 0; }
-        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; background: #43B047; color: white; border: 3px solid #000; border-radius: 12px; }
-        .reset-btn { background: #E52521; margin-top: 8px; }
+        .control-box { background: white; color: black; padding: 30px; border-radius: 30px; width: 350px; text-align: center; }
+        input { width: 90%; padding: 12px; margin-bottom: 10px; border: 3px solid #000; border-radius: 12px; font-weight: bold; font-size: 16px; }
+        .time-inputs { display: flex; gap: 10px; margin-bottom: 15px; justify-content: center; }
+        .time-inputs input { width: 60px; text-align: center; }
+        button { width: 100%; padding: 15px; cursor: pointer; font-weight: bold; background: #43B047; color: white; border: none; border-radius: 15px; font-size: 18px; text-transform: uppercase; }
+        .reset-btn { background: #E52521; margin-top: 10px; }
+        #status-indicator { margin-top: 15px; font-size: 12px; font-weight: bold; color: red; }
     </style>
 </head>
 <body>
@@ -85,11 +83,7 @@
           <feFlood flood-color="black" result="blackColor"/>
           <feComposite in="blackColor" in2="shadow" operator="in" result="shadowLayer"/>
           <feComposite in="blackColor" in2="dilated" operator="in" result="outlineLayer"/>
-          <feMerge>
-            <feMergeNode in="shadowLayer"/>
-            <feMergeNode in="outlineLayer"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
+          <feMerge><feMergeNode in="shadowLayer"/><feMergeNode in="outlineLayer"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
     </svg>
@@ -101,44 +95,84 @@
     </div>
 
     <div id="controls">
-        <h3 style="margin:0 0 10px 0; color: black;">TRAIN CONTROLS</h3>
-        <input type="text" id="input-dest" placeholder="DESTINATION (e.g. OSAKA)">
-        <div class="time-inputs">
-            <input type="number" id="input-hr" placeholder="HR" min="0" value="0">
-            <input type="number" id="input-min" placeholder="MIN" min="0" max="59" value="0">
-            <input type="number" id="input-sec" placeholder="SEC" min="0" max="59" value="0">
+        <div class="control-box">
+            <h2 style="margin-top:0">TRAIN CONTROLS</h2>
+            <input type="text" id="input-dest" placeholder="DESTINATION (e.g. OSAKA)">
+            <div class="time-inputs">
+                <div><small>HR</small><br><input type="number" id="input-hr" value="0" min="0"></div>
+                <div><small>MIN</small><br><input type="number" id="input-min" value="0" min="0" max="59"></div>
+                <div><small>SEC</small><br><input type="number" id="input-sec" value="0" min="0" max="59"></div>
+            </div>
+            <button onclick="sendStart()">▶ START JOURNEY</button>
+            <button class="reset-btn" onclick="sendReset()">✖ RESET</button>
+            <div id="status-indicator">LINK: DISCONNECTED</div>
         </div>
-        <button onclick="startTrip()">START JOURNEY</button>
-        <button class="reset-btn" onclick="resetTrip()">RESET</button>
     </div>
 
     <script>
-        // Check for #control in URL to show the remote
-        if (window.location.hash.includes('control')) {
-            document.getElementById('controls').style.display = 'block';
-        }
+        const TRAVEL_ID = 'mugi-travel-timer-2026';
+        const isController = window.location.hash.includes('control');
+        
+        if (isController) document.getElementById('controls').style.display = 'flex';
 
         let countdownInterval;
         let totalSeconds = 0;
 
-        function startTrip() {
-            clearInterval(countdownInterval);
-            
-            const dest = document.getElementById('input-dest').value || "Destination";
-            const hrs = parseInt(document.getElementById('input-hr').value) || 0;
-            const mins = parseInt(document.getElementById('input-min').value) || 0;
-            const secs = parseInt(document.getElementById('input-sec').value) || 0;
-            
-            totalSeconds = (hrs * 3600) + (mins * 60) + secs;
-            
-            if (totalSeconds <= 0) return;
+        // PEERJS CONNECTION LOGIC
+        const peer = new Peer(isController ? null : TRAVEL_ID);
+        let conn;
 
-            document.getElementById('dest-text').innerText = dest;
+        peer.on('open', () => {
+            if (isController) {
+                conn = peer.connect(TRAVEL_ID);
+                setupControllerEvents();
+            }
+        });
+
+        // Overlay Side: Handle incoming commands
+        peer.on('connection', (c) => {
+            conn = c;
+            conn.on('data', (data) => {
+                if (data.action === 'start') {
+                    document.getElementById('dest-text').innerText = data.dest;
+                    runCountdown(data.totalSecs);
+                }
+                if (data.action === 'reset') resetDisplay();
+            });
+        });
+
+        function setupControllerEvents() {
+            conn.on('open', () => {
+                document.getElementById('status-indicator').innerText = "LINK: CONNECTED";
+                document.getElementById('status-indicator').style.color = "green";
+            });
+        }
+
+        // Action Functions
+        function sendStart() {
+            const dest = document.getElementById('input-dest').value || "Destination";
+            const h = parseInt(document.getElementById('input-hr').value) || 0;
+            const m = parseInt(document.getElementById('input-min').value) || 0;
+            const s = parseInt(document.getElementById('input-sec').value) || 0;
+            const secs = (h * 3600) + (m * 60) + s;
+
+            if (conn && conn.open) {
+                conn.send({ action: 'start', dest: dest, totalSecs: secs });
+            }
+        }
+
+        function sendReset() {
+            if (conn && conn.open) conn.send({ action: 'reset' });
+        }
+
+        // Timer Logic
+        function runCountdown(secs) {
+            clearInterval(countdownInterval);
+            totalSeconds = secs;
             updateDisplay();
-            
+
             countdownInterval = setInterval(() => {
                 totalSeconds--;
-                
                 if (totalSeconds <= 0) {
                     totalSeconds = 0;
                     clearInterval(countdownInterval);
@@ -153,21 +187,13 @@
             const h = Math.floor(totalSeconds / 3600);
             const m = Math.floor((totalSeconds % 3600) / 60);
             const s = totalSeconds % 60;
-            
-            let displayTime = "";
-
-            if (h > 0) {
-                displayTime = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            } else if (m > 0) {
-                displayTime = `${m}:${s.toString().padStart(2, '0')}`;
-            } else {
-                displayTime = `${s}`;
-            }
-            
+            let displayTime = h > 0 ? 
+                `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : 
+                (m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}`);
             document.getElementById('timer-text').innerText = displayTime;
         }
 
-        function resetTrip() {
+        function resetDisplay() {
             clearInterval(countdownInterval);
             totalSeconds = 0;
             document.getElementById('dest-text').innerText = "---";
