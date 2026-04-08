@@ -1,58 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Rater - Bulletproof</title>
+    <title>Mugi Rater - Direct Link</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tmi.js/1.8.5/tmi.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
-
-        body { 
-            background: #00ff00; 
-            font-family: 'Luckiest Guy', sans-serif; 
-            margin: 0; padding: 0;
-            overflow: hidden; 
-            display: flex; justify-content: center; align-items: center; height: 100vh;
-        }
-
+        body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
         .smooth-outline { filter: url(#crispOutline); }
-
-        #rating-display {
-            text-align: center; transform: skewX(-5deg); padding: 100px; overflow: visible !important;
-        }
-
-        .status-label { color: white; font-size: 60px; text-transform: uppercase; letter-spacing: 4px; margin-bottom: -10px; }
-
+        #rating-display { text-align: center; transform: skewX(-5deg); padding: 100px; }
+        .status-label { color: white; font-size: 60px; text-transform: uppercase; margin-bottom: -10px; }
         .score-row { display: flex; align-items: baseline; justify-content: center; line-height: 1; }
-
         .score-prefix { color: white; font-size: 80px; margin-right: 20px; }
-
-        #average-score {
-            font-size: 200px; font-style: italic;
-            background: linear-gradient(to bottom, #FFD700 20%, #FFA500 85%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            padding-right: 80px; min-width: 300px;
-        }
-
+        #average-score { font-size: 200px; font-style: italic; background: linear-gradient(to bottom, #FFD700 20%, #FFA500 85%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding-right: 80px; min-width: 300px; }
         #timer-text { color: #FF4444; font-size: 110px; margin-top: 10px; }
-
-        /* CONTROL PANEL STYLING */
-        #controls { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; color: black; z-index: 999;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            font-family: sans-serif;
-        }
-        .control-box {
-            background: #f0f0f0; border: 5px solid black; padding: 30px; border-radius: 30px;
-            text-align: center; width: 450px;
-        }
-        input { width: 40%; padding: 10px; font-size: 20px; margin: 5px; border: 3px solid black; border-radius: 10px; text-align: center; }
+        #debug-log { position: fixed; bottom: 0; left: 0; background: rgba(0,0,0,0.7); color: lime; font-family: monospace; font-size: 10px; width: 100%; max-height: 50px; overflow: hidden; display: none; }
+        
+        /* CONTROL PANEL */
+        #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; color: black; z-index: 999; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
+        .control-box { background: #f0f0f0; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 450px; }
         button { width: 100%; padding: 15px; cursor: pointer; font-weight: bold; font-size: 20px; border: 4px solid #000; border-radius: 15px; margin-top: 10px; text-transform: uppercase; }
         .start-btn { background: #43B047; color: white; }
         .reset-btn { background: #E52521; color: white; }
-        .manual-btn { background: #2196F3; color: white; font-size: 14px; }
-        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -79,33 +48,28 @@
         <div id="timer-text" class="smooth-outline"></div>
     </div>
 
+    <div id="debug-log"></div>
+
     <div id="controls">
         <div class="control-box">
-            <h2 style="margin:0">MUGI RATER</h2>
-            <div style="font-size: 12px; margin-bottom: 15px;">
-                <span id="twitch-dot" class="status-dot" style="background: grey;"></span> Twitch: <span id="twitch-status">Connecting...</span> |
-                <span id="peer-dot" class="status-dot" style="background: grey;"></span> OBS: <span id="peer-status">Idle</span>
-            </div>
-
-            <label style="font-weight:bold;">VOTING SECONDS:</label><br>
-            <input type="number" id="timer-input" value="30">
-            
+            <h2>MUGI RATER</h2>
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
-            <button class="reset-btn" onclick="resetAll()">✖ RESET / CLEAR</button>
-            
-            <hr style="margin: 20px 0; border: 1px solid #ccc;">
-            
-            <label style="font-weight:bold;">ADD MANUAL SCORE:</label><br>
-            <input type="number" id="manual-input" step="0.1" placeholder="9.5">
-            <button class="manual-btn" onclick="addManual()">+ ADD VOTE</button>
+            <button class="reset-btn" onclick="resetAll()">✖ RESET</button>
+            <div id="status-info" style="font-size: 12px; margin-top: 10px;"></div>
         </div>
     </div>
 
     <script>
-        const RATER_ID = 'mugi-bulletproof-rater';
-        const TWITCH_CHANNEL = 'crazyjapanese';
+        const RATER_ID = 'mugi-direct-link-rater';
+        const TWITCH_CHANNEL = 'crazyjapanese'; // Lowercase is safer for IRC
         const isController = window.location.hash.includes('control');
         
+        function log(msg) {
+            const logEl = document.getElementById('debug-log');
+            logEl.style.display = 'block';
+            logEl.innerHTML += `> ${msg}<br>`;
+        }
+
         if (isController) document.getElementById('controls').style.display = 'flex';
 
         let votes = {};
@@ -113,42 +77,27 @@
         let timeLeft = 30;
         let timerInterval;
 
-        // PeerJS Logic
+        // PEERJS
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
 
-        peer.on('open', (id) => {
-            if (isController) { connectToOBS(); }
-            else { console.log('Overlay Ready'); }
-        });
-
-        function connectToOBS() {
-            conn = peer.connect(RATER_ID);
-            conn.on('open', () => {
-                document.getElementById('peer-status').innerText = "CONNECTED";
-                document.getElementById('peer-dot').style.background = "green";
-            });
-        }
-
+        peer.on('open', () => { if (isController) { conn = peer.connect(RATER_ID); } });
         peer.on('connection', (c) => {
             conn = c;
             conn.on('data', (data) => {
                 if (data.action === 'start') executeStart(data.time);
                 if (data.action === 'reset') executeReset();
-                if (data.action === 'manual') { votes[data.user] = data.val; updateDisplay(); }
             });
         });
 
-        // Twitch Logic (Always run it, but only OBS shows the UI)
-        const client = new tmi.Client({ channels: [TWITCH_CHANNEL] });
-        client.connect().then(() => {
-            if(isController) {
-                document.getElementById('twitch-status').innerText = "CONNECTED";
-                document.getElementById('twitch-dot').style.background = "green";
-            }
-        }).catch(err => {
-            if(isController) { document.getElementById('twitch-status').innerText = "ERROR"; }
+        // TWITCH (The Fix)
+        const client = new tmi.Client({
+            options: { debug: true },
+            connection: { secure: true, reconnect: true },
+            channels: [TWITCH_CHANNEL]
         });
+
+        client.connect().then(() => log("Twitch Connected")).catch(e => log("Twitch Err: " + e));
 
         client.on('message', (channel, tags, message) => {
             if (!isVotingOpen) return;
@@ -156,14 +105,12 @@
             if (!isNaN(score) && score >= 0 && score <= 10) {
                 votes[tags.username] = score;
                 updateDisplay();
-                // If it's the OBS side, it updates display. If it's controller, it keeps quiet.
             }
         });
 
         function startVoting() {
-            const time = parseInt(document.getElementById('timer-input').value) || 30;
-            if (conn) conn.send({ action: 'start', time: time });
-            executeStart(time);
+            if (conn) conn.send({ action: 'start', time: 30 });
+            executeStart(30);
         }
 
         function executeStart(time) {
@@ -183,16 +130,6 @@
             }, 1000);
         }
 
-        function addManual() {
-            const val = parseFloat(document.getElementById('manual-input').value);
-            if (isNaN(val)) return;
-            const user = "Manual_" + Math.random();
-            if (conn) conn.send({ action: 'manual', user: user, val: val });
-            votes[user] = val;
-            updateDisplay();
-            document.getElementById('manual-input').value = "";
-        }
-
         function resetAll() {
             if (conn) conn.send({ action: 'reset' });
             executeReset();
@@ -204,7 +141,6 @@
             isVotingOpen = false;
             document.getElementById('average-score').innerText = "0.0";
             document.getElementById('status-msg').innerText = "READY";
-            document.getElementById('timer-text').innerText = "";
         }
 
         function updateDisplay() {
