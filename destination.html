@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Travel - Connected Countdown</title>
+    <title>Mugi Travel - Animated Remote</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
@@ -19,63 +19,56 @@
 
         .smooth-outline { filter: url(#crispOutline); }
 
+        /* THE ANIMATION WRAPPER */
         #travel-display {
             display: flex;
             flex-direction: column;
             align-items: center;
             transform: skewX(-5deg);
             text-align: center;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s;
+            opacity: 0; /* Hidden by default */
         }
 
-        .arriving-label {
-            color: white;
-            font-size: 60px;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            margin-bottom: 5px;
-        }
+        /* Direction States */
+        .hidden-left { transform: translateX(-150vw) skewX(-5deg) !important; opacity: 0; }
+        .hidden-right { transform: translateX(150vw) skewX(-5deg) !important; opacity: 0; }
+        .hidden-top { transform: translateY(-150vh) skewX(-5deg) !important; opacity: 0; }
+        .hidden-bottom { transform: translateY(150vh) skewX(-5deg) !important; opacity: 0; }
+        .visible { transform: translateX(0) translateY(0) skewX(-5deg) !important; opacity: 1 !important; }
 
-        .destination-name {
-            color: #FFD700; 
-            font-size: 130px;
-            text-transform: uppercase;
-            margin-bottom: 15px;
-            padding-right: 60px;
-        }
-
+        .arriving-label { color: white; font-size: 60px; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 5px; }
+        .destination-name { color: #FFD700; font-size: 130px; text-transform: uppercase; margin-bottom: 15px; padding-right: 60px; }
         .timer-display {
-            color: white;
-            font-size: 200px;
-            font-style: italic;
+            color: white; font-size: 200px; font-style: italic;
             background: linear-gradient(to bottom, #FFFFFF 20%, #A0A0A0 85%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            line-height: 1.1;
-            display: block;
-            white-space: nowrap;
-            padding-right: 120px; 
-            margin-right: -60px;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            line-height: 1.1; display: block; white-space: nowrap;
+            padding-right: 120px; margin-right: -60px;
         }
 
         /* CONTROL PANEL */
         #controls { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #1a1a1a; color: white;
-            z-index: 1000; font-family: sans-serif;
+            background: #1a1a1a; color: white; z-index: 1000; font-family: sans-serif;
             display: none; flex-direction: column; align-items: center; justify-content: center;
         }
-        .control-box { background: white; color: black; padding: 30px; border-radius: 30px; width: 350px; text-align: center; }
-        input { width: 90%; padding: 12px; margin-bottom: 10px; border: 3px solid #000; border-radius: 12px; font-weight: bold; font-size: 16px; }
-        .time-inputs { display: flex; gap: 10px; margin-bottom: 15px; justify-content: center; }
-        .time-inputs input { width: 60px; text-align: center; }
-        button { width: 100%; padding: 15px; cursor: pointer; font-weight: bold; background: #43B047; color: white; border: none; border-radius: 15px; font-size: 18px; text-transform: uppercase; }
-        .reset-btn { background: #E52521; margin-top: 10px; }
-        #status-indicator { margin-top: 15px; font-size: 12px; font-weight: bold; color: red; }
+        .control-box { background: white; color: black; padding: 25px; border-radius: 30px; width: 360px; text-align: center; border: 5px solid #000; }
+        
+        .section { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid #eee; }
+        input, select { width: 90%; padding: 10px; margin-top: 5px; border: 3px solid #000; border-radius: 12px; font-weight: bold; }
+        
+        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+        button { flex: 1; padding: 15px; cursor: pointer; font-weight: bold; border-radius: 15px; border: 3px solid #000; text-transform: uppercase; }
+        
+        .show-btn { background: #43B047; color: white; }
+        .hide-btn { background: #555; color: white; }
+        .start-btn { background: #2196F3; color: white; width: 100%; }
+        .reset-btn { background: #E52521; color: white; width: 100%; margin-top: 10px; }
+        #status-indicator { font-size: 11px; margin-top: 15px; font-weight: bold; color: red; }
     </style>
 </head>
-<body>
-
-    <svg width="0" height="0" style="position: absolute;">
+<body class="hidden-top"> <svg width="0" height="0" style="position: absolute;">
       <defs>
         <filter id="crispOutline" x="-50%" y="-50%" width="200%" height="200%">
           <feMorphology in="SourceAlpha" result="dilated" operator="dilate" radius="5"/>
@@ -88,7 +81,7 @@
       </defs>
     </svg>
 
-    <div id="travel-display">
+    <div id="travel-display" class="hidden-top">
         <div class="arriving-label smooth-outline">Arriving</div>
         <div id="dest-text" class="destination-name smooth-outline">---</div>
         <div id="timer-text" class="timer-display smooth-outline">0:00</div>
@@ -96,43 +89,62 @@
 
     <div id="controls">
         <div class="control-box">
-            <h2 style="margin-top:0">TRAIN CONTROLS</h2>
-            <input type="text" id="input-dest" placeholder="DESTINATION (e.g. OSAKA)">
-            <div class="time-inputs">
-                <div><small>HR</small><br><input type="number" id="input-hr" value="0" min="0"></div>
-                <div><small>MIN</small><br><input type="number" id="input-min" value="0" min="0" max="59"></div>
-                <div><small>SEC</small><br><input type="number" id="input-sec" value="0" min="0" max="59"></div>
+            <h3 style="margin-top:0">VISIBILITY & DIRECTION</h3>
+            <div class="section">
+                <select id="input-dir">
+                    <option value="top">SLIDE FROM TOP</option>
+                    <option value="bottom">SLIDE FROM BOTTOM</option>
+                    <option value="left">SLIDE FROM LEFT</option>
+                    <option value="right">SLIDE FROM RIGHT</option>
+                </select>
+                <div class="btn-row">
+                    <button class="show-btn" onclick="sendVisibility(true)">👁 SHOW</button>
+                    <button class="hide-btn" onclick="sendVisibility(false)">🙈 HIDE</button>
+                </div>
             </div>
-            <button onclick="sendStart()">▶ START JOURNEY</button>
+
+            <h3>TRIP DATA</h3>
+            <input type="text" id="input-dest" placeholder="DESTINATION">
+            <div style="display:flex; gap:5px; margin: 10px 0;">
+                <input type="number" id="input-hr" value="0" placeholder="HR">
+                <input type="number" id="input-min" value="0" placeholder="MIN">
+                <input type="number" id="input-sec" value="0" placeholder="SEC">
+            </div>
+            <button class="start-btn" onclick="sendStart()">▶ START TIMER</button>
             <button class="reset-btn" onclick="sendReset()">✖ RESET</button>
             <div id="status-indicator">LINK: DISCONNECTED</div>
         </div>
     </div>
 
     <script>
-        const TRAVEL_ID = 'mugi-travel-timer-2026';
+        const TRAVEL_ID = 'mugi-travel-v2-2026';
         const isController = window.location.hash.includes('control');
-        
         if (isController) document.getElementById('controls').style.display = 'flex';
 
         let countdownInterval;
         let totalSeconds = 0;
 
-        // PEERJS CONNECTION LOGIC
         const peer = new Peer(isController ? null : TRAVEL_ID);
         let conn;
 
-        peer.on('open', () => {
-            if (isController) {
-                conn = peer.connect(TRAVEL_ID);
-                setupControllerEvents();
-            }
-        });
+        peer.on('open', () => { if (isController) connect(); });
 
-        // Overlay Side: Handle incoming commands
+        function connect() {
+            conn = peer.connect(TRAVEL_ID);
+            conn.on('open', () => {
+                document.getElementById('status-indicator').innerText = "LINK: CONNECTED";
+                document.getElementById('status-indicator').style.color = "green";
+            });
+        }
+
+        // Overlay Side
         peer.on('connection', (c) => {
             conn = c;
             conn.on('data', (data) => {
+                const el = document.getElementById('travel-display');
+                if (data.action === 'visibility') {
+                    el.className = data.visible ? 'visible' : 'hidden-' + data.dir;
+                }
                 if (data.action === 'start') {
                     document.getElementById('dest-text').innerText = data.dest;
                     runCountdown(data.totalSecs);
@@ -141,45 +153,34 @@
             });
         });
 
-        function setupControllerEvents() {
-            conn.on('open', () => {
-                document.getElementById('status-indicator').innerText = "LINK: CONNECTED";
-                document.getElementById('status-indicator').style.color = "green";
-            });
+        // Controller Actions
+        function sendVisibility(isVisible) {
+            const direction = document.getElementById('input-dir').value;
+            if (conn && conn.open) conn.send({ action: 'visibility', visible: isVisible, dir: direction });
         }
 
-        // Action Functions
         function sendStart() {
             const dest = document.getElementById('input-dest').value || "Destination";
             const h = parseInt(document.getElementById('input-hr').value) || 0;
             const m = parseInt(document.getElementById('input-min').value) || 0;
             const s = parseInt(document.getElementById('input-sec').value) || 0;
             const secs = (h * 3600) + (m * 60) + s;
-
-            if (conn && conn.open) {
-                conn.send({ action: 'start', dest: dest, totalSecs: secs });
-            }
+            if (conn && conn.open) conn.send({ action: 'start', dest: dest, totalSecs: secs });
         }
 
-        function sendReset() {
-            if (conn && conn.open) conn.send({ action: 'reset' });
-        }
+        function sendReset() { if (conn && conn.open) conn.send({ action: 'reset' }); }
 
-        // Timer Logic
+        // Logic
         function runCountdown(secs) {
             clearInterval(countdownInterval);
             totalSeconds = secs;
             updateDisplay();
-
             countdownInterval = setInterval(() => {
                 totalSeconds--;
                 if (totalSeconds <= 0) {
-                    totalSeconds = 0;
                     clearInterval(countdownInterval);
                     document.getElementById('timer-text').innerText = "SOON";
-                } else {
-                    updateDisplay();
-                }
+                } else updateDisplay();
             }, 1000);
         }
 
@@ -187,15 +188,13 @@
             const h = Math.floor(totalSeconds / 3600);
             const m = Math.floor((totalSeconds % 3600) / 60);
             const s = totalSeconds % 60;
-            let displayTime = h > 0 ? 
+            document.getElementById('timer-text').innerText = h > 0 ? 
                 `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : 
                 (m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}`);
-            document.getElementById('timer-text').innerText = displayTime;
         }
 
         function resetDisplay() {
             clearInterval(countdownInterval);
-            totalSeconds = 0;
             document.getElementById('dest-text').innerText = "---";
             document.getElementById('timer-text').innerText = "0:00";
         }
