@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mugi Travel - Smart Floating Countdown</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
+
+        body { 
+            background: #00ff00; 
+            font-family: 'Luckiest Guy', sans-serif; 
+            margin: 0; padding: 0;
+            overflow: hidden; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .smooth-outline {
+            filter: url(#crispOutline);
+        }
+
+        #travel-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: skewX(-5deg);
+            text-align: center;
+            overflow: visible !important; 
+        }
+
+        .arriving-label {
+            color: white;
+            font-size: 60px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 5px;
+        }
+
+        .destination-name {
+            color: #FFD700; 
+            font-size: 130px;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            padding-right: 60px; /* Room for slant */
+        }
+
+        .timer-display {
+            color: white;
+            font-size: 200px;
+            font-style: italic;
+            background: linear-gradient(to bottom, #FFFFFF 20%, #A0A0A0 85%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.1;
+            display: block;
+            white-space: nowrap;
+            /* MASSIVE padding to stop the number cutoff at the end */
+            padding-right: 120px; 
+            margin-right: -60px;
+        }
+
+        /* CONTROL PANEL - Hidden by default, shown with #control */
+        #controls { 
+            position: fixed; top: 20px; right: 20px; background: white; 
+            border: 5px solid black; border-radius: 20px; padding: 20px; 
+            z-index: 100; font-family: sans-serif; width: 300px;
+            display: none; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        input { width: 92%; padding: 10px; margin-bottom: 10px; border: 3px solid #000; border-radius: 10px; font-weight: bold; }
+        .time-inputs { display: flex; gap: 5px; margin-bottom: 10px; }
+        .time-inputs input { width: 30%; margin-bottom: 0; }
+        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; background: #43B047; color: white; border: 3px solid #000; border-radius: 12px; }
+        .reset-btn { background: #E52521; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+    <svg width="0" height="0" style="position: absolute;">
+      <defs>
+        <filter id="crispOutline" x="-50%" y="-50%" width="200%" height="200%">
+          <feMorphology in="SourceAlpha" result="dilated" operator="dilate" radius="5"/>
+          <feOffset in="dilated" dx="12" dy="12" result="shadow"/>
+          <feFlood flood-color="black" result="blackColor"/>
+          <feComposite in="blackColor" in2="shadow" operator="in" result="shadowLayer"/>
+          <feComposite in="blackColor" in2="dilated" operator="in" result="outlineLayer"/>
+          <feMerge>
+            <feMergeNode in="shadowLayer"/>
+            <feMergeNode in="outlineLayer"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
+
+    <div id="travel-display">
+        <div class="arriving-label smooth-outline">Arriving</div>
+        <div id="dest-text" class="destination-name smooth-outline">---</div>
+        <div id="timer-text" class="timer-display smooth-outline">0:00</div>
+    </div>
+
+    <div id="controls">
+        <h3 style="margin:0 0 10px 0; color: black;">TRAIN CONTROLS</h3>
+        <input type="text" id="input-dest" placeholder="DESTINATION (e.g. OSAKA)">
+        <div class="time-inputs">
+            <input type="number" id="input-hr" placeholder="HR" min="0" value="0">
+            <input type="number" id="input-min" placeholder="MIN" min="0" max="59" value="0">
+            <input type="number" id="input-sec" placeholder="SEC" min="0" max="59" value="0">
+        </div>
+        <button onclick="startTrip()">START JOURNEY</button>
+        <button class="reset-btn" onclick="resetTrip()">RESET</button>
+    </div>
+
+    <script>
+        // Check for #control in URL to show the remote
+        if (window.location.hash.includes('control')) {
+            document.getElementById('controls').style.display = 'block';
+        }
+
+        let countdownInterval;
+        let totalSeconds = 0;
+
+        function startTrip() {
+            clearInterval(countdownInterval);
+            
+            const dest = document.getElementById('input-dest').value || "Destination";
+            const hrs = parseInt(document.getElementById('input-hr').value) || 0;
+            const mins = parseInt(document.getElementById('input-min').value) || 0;
+            const secs = parseInt(document.getElementById('input-sec').value) || 0;
+            
+            totalSeconds = (hrs * 3600) + (mins * 60) + secs;
+            
+            if (totalSeconds <= 0) return;
+
+            document.getElementById('dest-text').innerText = dest;
+            updateDisplay();
+            
+            countdownInterval = setInterval(() => {
+                totalSeconds--;
+                
+                if (totalSeconds <= 0) {
+                    totalSeconds = 0;
+                    clearInterval(countdownInterval);
+                    document.getElementById('timer-text').innerText = "SOON";
+                } else {
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        function updateDisplay() {
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            
+            let displayTime = "";
+
+            if (h > 0) {
+                displayTime = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            } else if (m > 0) {
+                displayTime = `${m}:${s.toString().padStart(2, '0')}`;
+            } else {
+                displayTime = `${s}`;
+            }
+            
+            document.getElementById('timer-text').innerText = displayTime;
+        }
+
+        function resetTrip() {
+            clearInterval(countdownInterval);
+            totalSeconds = 0;
+            document.getElementById('dest-text').innerText = "---";
+            document.getElementById('timer-text').innerText = "0:00";
+        }
+    </script>
+</body>
+</html>
