@@ -2,38 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Emote Engine v5.2</title>
+    <title>Mugi Co. | Deep Scan v5.3</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --bg: rgba(13, 13, 18, 0.98); --success: #00ffcc; }
         body { margin: 0; background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
-
-        /* --- CONTROL PANEL --- */
-        #control {
-            position: absolute; top: 0; right: 0; width: 320px; height: 100vh;
-            background: var(--bg); border-left: 2px solid var(--p);
-            padding: 25px; z-index: 100; transform: translateX(100%);
-            transition: 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-        }
+        #control { position: absolute; top: 0; right: 0; width: 320px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 25px; z-index: 100; transform: translateX(100%); transition: 0.4s; }
         #control.active { transform: translateX(0); }
-        .header { font-size: 18px; font-weight: 900; color: var(--p); margin-bottom: 20px; border-bottom: 1px solid #333; }
-        label { font-size: 10px; color: var(--p); font-weight: bold; text-transform: uppercase; }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; margin: 8px 0 18px 0; border-radius: 6px; font-family: monospace; }
-        
-        .status-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .stat { background: #111; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #222; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; margin: 8px 0 18px 0; border-radius: 6px; }
+        .stat { background: #111; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #222; margin-bottom: 5px; }
         .stat.on { border-color: var(--success); color: var(--success); }
-
-        /* --- CHAT HUD --- */
-        #chat { position: absolute; bottom: 40px; left: 30px; width: 600px; display: flex; flex-direction: column; justify-content: flex-end; }
-        .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; line-height: 1.4; animation: fadeIn 0.3s ease-out; }
+        #chat { position: absolute; bottom: 40px; left: 30px; width: 600px; }
+        .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; }
         .user { color: var(--p); margin-right: 10px; }
-        .emote { height: 1.3em; vertical-align: middle; margin: -4px 2px 0 2px; }
-
+        .emote { height: 1.35em; vertical-align: middle; margin: -4px 2px; }
         .btn-boot { width: 100%; background: var(--p); color: white; border: none; padding: 15px; font-weight: 900; cursor: pointer; border-radius: 6px; }
-        #m-toggle { position: absolute; top: 20px; right: 20px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        #m-toggle { position: absolute; top: 20px; right: 20px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -41,21 +25,13 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <div class="header">MUGI_ENGINE_v5.2</div>
-    
-    <label>Twitch Channel</label>
-    <input type="text" id="ch-name" value="CrazyJapanese">
-
-    <label>7TV User ID</label>
-    <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
-
-    <div class="status-box">
-        <div id="st-tw" class="stat">TWITCH: OFF</div>
-        <div id="st-7v" class="stat">7TV: OFF</div>
-    </div>
-
-    <button class="btn-boot" onclick="boot()">INITIALIZE SYSTEM</button>
-    <div id="log" style="margin-top: 20px; font-size: 11px; color: var(--g); font-family: monospace;">Standing by for uplink...</div>
+    <div style="font-weight: 900; color: var(--p); margin-bottom: 20px;">MUGI_SCANNER_v5.3</div>
+    <label style="font-size:10px;">CHANNEL</label><input type="text" id="ch-name" value="CrazyJapanese">
+    <label style="font-size:10px;">7TV USER ID</label><input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
+    <div id="st-tw" class="stat">TWITCH: OFF</div>
+    <div id="st-7v" class="stat">7TV: OFF</div>
+    <button class="btn-boot" onclick="boot()">BOOT SYSTEM</button>
+    <div id="log" style="margin-top: 20px; font-size: 11px; color: var(--g);">Waiting...</div>
 </div>
 
 <div id="chat"></div>
@@ -69,15 +45,10 @@
         const ch = document.getElementById('ch-name').value.trim().toLowerCase();
         const id = document.getElementById('ch-id').value.trim();
 
-        if (typeof tmi === 'undefined') {
-            log.innerText = "FATAL: tmi.min.js missing from GitHub repo.";
-            return;
-        }
-
-        log.innerText = "Fetching 7TV Assets...";
-
-        // 1. Fetch 7TV Emotes (Global + User)
+        log.innerText = "Scanning 7TV API...";
+        
         try {
+            // Using a slightly broader 7TV search
             const [uRes, gRes] = await Promise.all([
                 fetch(`https://7tv.io/v3/users/${id}`),
                 fetch(`https://7tv.io/v3/emote-sets/global`)
@@ -86,66 +57,54 @@
             const uData = await uRes.json();
             const gData = await gRes.json();
 
+            // DEBUG: Check console to see if emotes are actually arriving
+            console.log("7TV Data Received:", uData);
+
             emoteMap = {};
-            // Combine channel emotes and global emotes
-            const allEmotes = [...(uData.emote_set?.emotes || []), ...gData.emotes];
+            // The path can sometimes vary; we check both 'emotes' and 'emote_set.emotes'
+            const channelEmotes = uData.emote_set?.emotes || uData.emotes || [];
+            const allEmotes = [...channelEmotes, ...gData.emotes];
             
             allEmotes.forEach(e => {
-                // We use 2x size for better clarity in OBS
+                // Store image URL for the word
                 emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
             });
 
             document.getElementById('st-7v').className = 'stat on';
-            document.getElementById('st-7v').innerText = `7TV: ${Object.keys(emoteMap).length} EMOTES`;
+            document.getElementById('st-7v').innerText = `7TV: ${Object.keys(emoteMap).length} ASSETS`;
+            log.innerText = "7TV Ready. Handshaking Twitch...";
         } catch (e) {
-            log.innerText = "7TV Sync Failed. Check User ID.";
-            console.error(e);
+            log.innerText = "7TV Error. Check Console (F12).";
+            console.error("7TV Fetch Error:", e);
         }
 
-        // 2. Connect to Twitch
         if(tmiClient) tmiClient.disconnect();
-        
-        tmiClient = new tmi.Client({
-            connection: { secure: true, reconnect: true },
-            channels: [ch]
-        });
+        tmiClient = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [ch] });
 
         tmiClient.connect().then(() => {
             document.getElementById('st-tw').className = 'stat on';
             document.getElementById('st-tw').innerText = "TWITCH: ONLINE";
-            log.innerText = "Uplink Complete. Engine Live.";
-            // Auto-hide panel on success
-            setTimeout(() => document.getElementById('control').classList.remove('active'), 2000);
-        }).catch(() => {
-            log.innerText = "Twitch Connection Failed.";
+            log.innerText = "System Live. Close menu and test.";
         });
 
-        // 3. Chat Logic with Emote Parsing
         tmiClient.on('message', (chan, tags, msg, self) => {
             const chatContainer = document.getElementById('chat');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'msg';
 
-            // Split message into words and check against emoteMap
-            const words = msg.split(' ');
-            const parsedContent = words.map(word => {
-                if (emoteMap[word]) {
-                    return `<img src="${emoteMap[word]}" class="emote" title="${word}">`;
+            // New Regex Parsing: Handles emotes even with punctuation (e.g., "LUL!")
+            let parsedContent = msg.split(' ').map(word => {
+                // Strip punctuation for the check
+                const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+                if (emoteMap[cleanWord]) {
+                    return `<img src="${emoteMap[cleanWord]}" class="emote">`;
                 }
                 return word;
             }).join(' ');
 
-            const displayName = tags['display-name'] || tags.username;
-            const userColor = tags.color || '#9146ff';
-
-            messageDiv.innerHTML = `<span class="user" style="color:${userColor}">${displayName}:</span> ${parsedContent}`;
-            
+            messageDiv.innerHTML = `<span class="user" style="color:${tags.color || '#9146ff'}">${tags['display-name']}:</span> ${parsedContent}`;
             chatContainer.appendChild(messageDiv);
-
-            // Keep only last 10 messages for performance
-            if (chatContainer.childNodes.length > 10) {
-                chatContainer.removeChild(chatContainer.firstChild);
-            }
+            if (chatContainer.childNodes.length > 10) chatContainer.removeChild(chatContainer.firstChild);
         });
     }
 </script>
