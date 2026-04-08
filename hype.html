@@ -2,29 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Path-Finder Leaderboard v7.8</title>
+    <title>Mugi Co. | Triple-Threat v8.0</title>
     <script src="tmi.min.js"></script>
     <style>
-        :root { --p: #9146ff; --g: #ffd700; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; }
+        :root { --p: #9146ff; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; --g: #ffd700; --bttv: #d2222d; }
         body { margin: 0; background: transparent; color: white; font-family: sans-serif; overflow: hidden; }
-
-        /* --- STATUS LIGHT (RESTORED) --- */
-        #status { position: absolute; top: 10px; left: 10px; font-size: 14px; font-weight: bold; color: #555; z-index: 10; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; }
-
-        /* --- LEADERBOARD --- */
-        #leaderboard { display: flex; gap: 20px; padding: 20px; background: rgba(0,0,0,0.85); width: fit-content; border-bottom: 4px solid var(--p); border-radius: 0 0 20px 0; margin-top: 50px; }
-        .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 85px; }
-        .rank-tag { font-size: 11px; font-weight: 900; background: var(--g); color: #000; padding: 2px 10px; border-radius: 4px; margin-bottom: 8px; }
-        .img-wrap { height: 80px; width: 80px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.03); border-radius: 12px; }
-        .emote-img { max-height: 65px; max-width: 65px; }
-        .count { font-size: 26px; font-weight: 900; margin-top: 8px; text-shadow: 2px 2px 0 var(--p); }
         
-        /* --- CONTROL PANEL --- */
-        #control { position: absolute; top: 0; right: 0; width: 320px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 25px; z-index: 100; transform: translateX(100%); transition: 0.3s; }
+        #status { position: absolute; top: 10px; left: 10px; font-size: 12px; color: #555; font-weight: bold; z-index: 100; }
+
+        #leaderboard { display: flex; gap: 15px; padding: 15px; background: rgba(0,0,0,0.8); width: fit-content; border-bottom: 3px solid var(--p); border-radius: 0 0 15px 0; margin-top: 40px; }
+        .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 75px; }
+        .rank-tag { font-size: 10px; font-weight: 900; background: var(--g); color: #000; padding: 1px 6px; border-radius: 3px; margin-bottom: 5px; text-transform: uppercase; }
+        .img-wrap { height: 60px; width: 60px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px; }
+        .emote-img { max-height: 50px; max-width: 50px; }
+        .count { font-size: 22px; font-weight: 900; margin-top: 5px; text-shadow: 2px 2px 0 var(--p); }
+
+        #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; margin: 5px 0 15px 0; border-radius: 4px; box-sizing: border-box; }
-        #m-toggle { position: absolute; top: 15px; right: 15px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; }
-        .pop { transform: scale(1.15); transition: 0.2s; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 8px; margin: 5px 0 10px 0; border-radius: 4px; }
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; z-index: 201; cursor: pointer; font-weight: bold; }
+        .pop { transform: scale(1.1); transition: 0.1s; }
     </style>
 </head>
 <body>
@@ -33,69 +30,92 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="color:var(--p); margin-top:0;">MUGI_LEADERBOARD_v7.8</h3>
-    <label style="font-size:11px; color:#888;">CHANNEL NAME</label>
+    <h4 style="margin:0 0 10px 0; color:var(--p);">MUGI_TRIPLE_v8.0</h4>
+    <label style="font-size:10px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" value="CrazyJapanese">
-    <label style="font-size:11px; color:#888;">7TV USER ID</label>
+    <label style="font-size:10px;">7TV USER ID</label>
     <input type="text" id="inp-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
-    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; border-radius:6px; font-weight:900; cursor:pointer;" onclick="boot()">BOOT SYSTEM</button>
-    <button style="width:100%; padding:10px; background:#222; color:#888; border:none; border-radius:6px; margin-top:15px; font-size:11px; cursor:pointer;" onclick="resetCounts()">RESET ALL COUNTS</button>
+    <button style="width:100%; padding:10px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold;" onclick="reboot()">RE-BOOT ALL APIS</button>
+    <button style="width:100%; padding:5px; background:#222; color:#777; border:none; margin-top:10px; cursor:pointer; font-size:10px;" onclick="resetCounts()">RESET DATA</button>
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="rank-tag">RANK 1</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="rank-tag">RANK 2</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="rank-tag">RANK 3</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="rank-tag">RANK 4</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-4" class="emote-slot"><div class="rank-tag">RANK 5</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-0" class="emote-slot"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-4" class="emote-slot"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <script>
-    let tmiClient = null;
     let emoteMap = {};
     let emoteCounts = {};
+    let client = null;
 
-    // --- STEP 1: YOUR EXACT WORKING v6.2 FETCH ---
-    async function loadEmotes(SEVENTV_ID) {
+    async function loadEmotes(SEVENTV_ID, CHANNEL_NAME) {
         const status = document.getElementById('status');
+        emoteMap = {}; // Reset Map
+        
         try {
+            // 1. YOUR WORKING 7TV FETCH (v6.2)
             const response = await fetch(`https://7tv.io/v3/users/${SEVENTV_ID}`);
             const data = await response.json();
-            const channelEmotes = data.emote_set.emotes;
-
-            emoteMap = {}; // Reset Map
-            channelEmotes.forEach(emote => {
-                emoteMap[emote.name] = `https://cdn.7tv.app/emote/${emote.id}/2x.webp`;
+            data.emote_set.emotes.forEach(e => {
+                emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
             });
 
+            // 2. Global 7TV
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
 
-            status.innerText = `ONLINE: ${Object.keys(emoteMap).length} EMOTES LOADED`;
+            // 3. NEW: BetterTTV (BTTV) Fetch
+            // First get the Twitch ID via 7TV data (it's usually in their user object)
+            const twitchID = data.user.connections.find(c => c.platform === 'TWITCH').id;
+            
+            const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchID}`);
+            const bttvData = await bttvRes.json();
+            
+            // Map Channel BTTV Emotes
+            if(bttvData.sharedEmotes) {
+                bttvData.sharedEmotes.forEach(e => {
+                    emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`;
+                });
+            }
+            if(bttvData.channelEmotes) {
+                bttvData.channelEmotes.forEach(e => {
+                    emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`;
+                });
+            }
+
+            // Map Global BTTV
+            const bttvGRes = await fetch('https://api.betterttv.net/3/cached/emotes/global');
+            const bttvGData = await bttvGRes.json();
+            bttvGData.forEach(e => {
+                emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`;
+            });
+
+            status.innerText = `ONLINE: ${Object.keys(emoteMap).length} TOTAL ASSETS`;
             status.style.color = 'var(--success)';
         } catch (err) {
-            console.error(err);
-            status.innerText = "7TV FETCH FAILED";
+            console.error("Fetch Error:", err);
+            status.innerText = "API SYNC PARTIAL/FAILED";
         }
     }
 
-    // --- STEP 2: DYNAMIC BOOT ---
-    async function boot() {
-        const ch = document.getElementById('inp-ch').value.trim();
-        const id = document.getElementById('inp-id').value.trim();
-        
-        if (tmiClient) tmiClient.disconnect();
-        
-        // Run the working fetch logic first
-        await loadEmotes(id);
+    async function reboot() {
+        const CH = document.getElementById('inp-ch').value.trim();
+        const ID = document.getElementById('inp-id').value.trim();
+        if (client) { client.disconnect(); }
 
-        tmiClient = new tmi.Client({
+        await loadEmotes(ID, CH);
+
+        client = new tmi.Client({
             connection: { secure: true, reconnect: true },
-            channels: [ch]
+            channels: [CH]
         });
 
-        tmiClient.on('message', (chan, tags, msg) => {
+        client.on('message', (chan, tags, msg) => {
             let found = new Set();
             msg.split(' ').forEach(word => {
                 const clean = word.replace(/[\u200B-\u200D\uFEFF]/g, "");
@@ -109,14 +129,11 @@
                     });
                 }
             });
-
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
             if (found.size > 0) updateLeaderboard();
         });
 
-        tmiClient.connect().then(() => {
-            document.getElementById('control').classList.remove('active');
-        });
+        client.connect().then(() => { document.getElementById('control').classList.remove('active'); });
     }
 
     function updateLeaderboard() {
@@ -129,7 +146,7 @@
                 wrap.innerHTML = `<img src="${emoteMap[name]}" class="emote-img">`;
                 wrap.setAttribute('data-name', name);
                 slot.classList.add('pop');
-                setTimeout(() => slot.classList.remove('pop'), 300);
+                setTimeout(() => slot.classList.remove('pop'), 200);
             }
             slot.querySelector('.count').innerText = count;
         });
@@ -145,8 +162,7 @@
         }
     }
 
-    // Auto-run on load with default values
-    boot();
+    reboot();
 </script>
 </body>
 </html>
