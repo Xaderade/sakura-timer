@@ -1,184 +1,223 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Master Scoreboard</title>
+    <title>Mugi Party - Ordinal Top 5 (Smooth Fix)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
         body { 
             background: #00ff00; 
-            margin: 0; 
+            font-family: 'Luckiest Guy', sans-serif; 
+            margin: 0; padding: 40px;
             overflow: hidden; 
+        }
+
+        /* --- THE SMOOTHING FILTER --- */
+        .smooth-outline {
+            filter: url(#crispOutline);
+            paint-order: stroke fill;
+        }
+
+        #leaderboard-container {
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
-            height: 100vh;
-            width: 100vw;
+            gap: 15px;
+            width: 980px;
         }
 
-        #renderCanvas {
-            width: 100%;
-            height: auto;
+        @keyframes slideInLeft {
+            0% { transform: translateX(-1200px) skewX(-5deg); opacity: 0; }
+            70% { transform: translateX(30px) skewX(-5deg); opacity: 1; }
+            100% { transform: translateX(0) skewX(-5deg); opacity: 1; }
+        }
+
+        .leader-row {
+            display: flex;
+            align-items: center;
+            padding: 15px 40px;
+            background: rgba(0, 0, 0, 0.75); 
+            border-radius: 70px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 52px;
+            font-style: italic;
             transform: skewX(-5deg);
-            image-rendering: auto;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            animation: slideInLeft 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        /* Remote UI */
-        #controls { 
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: white; border: 6px solid #000; border-radius: 35px; 
-            padding: 20px; text-align: center; box-shadow: 0 12px 0 #333; 
-            z-index: 9999; font-family: sans-serif; display: none; 
+        .rank {
+            width: 160px;
+            font-size: 65px;
+            text-align: center;
+            margin-right: 25px;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
         }
-        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
-        button { padding: 10px 25px; font-size: 20px; cursor: pointer; font-weight: bold; border-radius: 15px; border: 3px solid #000; transition: 0.1s; }
-        .plus { background: #43B047; color: white; }
-        .minus { background: #FBD000; color: black; }
+
+        .rank-suffix {
+            font-size: 0.5em;
+            margin-left: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Rank Colors - Stroke is now handled by the SVG filter */
+        .rank-standard .rank { color: white; --stroke-color: black; }
+        .rank-1 .rank { color: #FFD700; --stroke-color: #986C00; }
+        .rank-2 .rank { color: #C0C0C0; --stroke-color: #555555; }
+        .rank-3 .rank { color: #CD7F32; --stroke-color: #603000; }
+
+        .name {
+            flex-grow: 1;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            --stroke-color: black;
+        }
+
+        .score {
+            font-size: 75px;
+            min-width: 160px;
+            text-align: right;
+            color: #FFF;
+            --stroke-color: #986C00;
+        }
+
+        #controls { 
+            position: fixed; top: 20px; right: 20px; background: white; 
+            border: 5px solid black; border-radius: 20px; padding: 20px; 
+            z-index: 100; font-family: sans-serif; width: 300px; display: none;
+        }
+        input { width: 92%; padding: 12px; margin-bottom: 12px; border: 3px solid #000; border-radius: 10px; font-weight: bold; }
+        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; background: #43B047; color: white; border: 3px solid #000; border-radius: 12px; }
     </style>
 </head>
 <body>
 
-    <canvas id="renderCanvas"></canvas>
+    <svg width="0" height="0" style="position: absolute;">
+      <defs>
+        <filter id="crispOutline" x="-50%" y="-50%" width="200%" height="200%">
+          <feMorphology in="SourceAlpha" result="dilated" operator="dilate" radius="4"/>
+          <feOffset in="dilated" dx="6" dy="6" result="offsetShadow"/>
+          <feFlood flood-color="black" result="blackColor"/>
+          <feComposite in="blackColor" in2="offsetShadow" operator="in" result="shadowLayer"/>
+          <feComposite in="blackColor" in2="dilated" operator="in" result="outlineLayer"/>
+          <feMerge>
+            <feMergeNode in="shadowLayer"/>
+            <feMergeNode in="outlineLayer"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
+
+    <div id="leaderboard-container"></div>
 
     <div id="controls">
-        <div style="font-weight: bold;">SAKURA REMOTE</div>
-        <div class="btn-group">
-            <button class="minus" onclick="changeCount(-1)">-</button>
-            <button class="plus" onclick="changeCount(1)">+</button>
-        </div>
-        <button onclick="resetCount()" style="margin-top:10px; font-size:12px; width:100%;">RESET SAKURA</button>
+        <h3 style="margin-top:0">ORDINAL REMOTE</h3>
+        <input type="text" id="new-name" placeholder="PLAYER NAME">
+        <input type="number" id="new-score" placeholder="SCORE" step="0.1">
+        <button onclick="sendEntry()">UPDATE RANKINGS</button>
+        <button onclick="clearBoard()" style="background:#E52521; margin-top:10px;">RESET ALL</button>
+        <div id="conn-status" style="font-size:12px; margin-top:10px;">Connecting...</div>
     </div>
 
     <script>
-        const canvas = document.getElementById('renderCanvas');
-        const ctx = canvas.getContext('2d');
-        const COUNTER_ID = 'mugi-sakura-counter-2026'; 
+        const PARTY_ID = 'mugi-ordinal-top5-2026';
         const isController = window.location.hash.includes('control');
         if (isController) document.getElementById('controls').style.display = 'block';
 
-        let sakuraCount = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
-        let scoreValue = "160218"; // Change this to your actual high score
-        
-        let sakuraScale = 1;
-        let sakuraFlash = null;
+        let leaderboardData = JSON.parse(localStorage.getItem('mugi_ordinal_data')) || [];
+        let currentDisplayedTop5 = []; 
+        let conn;
 
-        const fontBig = 'italic 260px "Luckiest Guy"';
-        const fontSmall = 'italic 160px "Luckiest Guy"';
-
-        function resize() {
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = window.innerWidth * dpr;
-            canvas.height = window.innerHeight * dpr;
-            ctx.scale(dpr, dpr);
-            draw();
-        }
-        window.addEventListener('resize', resize);
-
-        function drawChonkText(text, x, y, sizeType, flash) {
-            ctx.font = sizeType === 'big' ? fontBig : fontSmall;
-            ctx.lineJoin = "round";
-            ctx.lineWidth = 18;
-            
-            // 1. Black Outline + 3D Shadow
-            ctx.strokeStyle = "black";
-            ctx.strokeText(text, x + 18, y + 18);
-            ctx.strokeText(text, x, y);
-
-            // 2. Gradient Fill
-            const grad = ctx.createLinearGradient(x, y - 130, x, y + 50);
-            grad.addColorStop(0.2, "#FFFFFF");
-            grad.addColorStop(0.85, "#A0A0A0");
-
-            ctx.fillStyle = "black";
-            ctx.fillText(text, x + 18, y + 18); // Shadow fill
-            
-            ctx.fillStyle = flash ? flash : grad;
-            ctx.fillText(text, x, y);
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            const marginX = 80;
-            
-            // --- DRAW TOP SCOREBOARD ---
-            // Positioned at the top
-            drawChonkText(scoreValue, marginX, 220, 'big', null);
-
-            // --- DRAW SAKURA COUNTER ---
-            // Positioned below the scoreboard
-            const sakuraY = 500;
-            
-            // Emoji (No shadow/jagged edges)
-            ctx.font = "160px serif";
-            ctx.textBaseline = "middle";
-            ctx.fillText("🌸", marginX, sakuraY - 15);
-
-            ctx.save();
-            ctx.translate(marginX + 200, sakuraY);
-            ctx.scale(sakuraScale, sakuraScale);
-            ctx.translate(-(marginX + 200), -sakuraY);
-
-            drawChonkText("x", marginX + 180, sakuraY + 15, 'small', sakuraFlash);
-            drawChonkText(sakuraCount.toString(), marginX + 290, sakuraY + 15, 'big', sakuraFlash);
-
-            ctx.restore();
-        }
-
-        function triggerPop() {
-            let start = null;
-            const duration = 250;
-            function animate(timestamp) {
-                if (!start) start = timestamp;
-                let progress = timestamp - start;
-                let p = progress / duration;
-                if (p < 0.3) {
-                    sakuraScale = 1 + (p / 0.3) * 0.12;
-                    sakuraFlash = "#ccff00"; 
-                } else if (p < 1) {
-                    sakuraScale = 1.12 - ((p - 0.3) / 0.7) * 0.12;
-                    sakuraFlash = null;
-                } else {
-                    sakuraScale = 1;
-                    sakuraFlash = null;
+        const peer = new Peer(isController ? null : PARTY_ID);
+        peer.on('open', () => { if (isController) connect(); });
+        peer.on('connection', (c) => { 
+            conn = c; 
+            conn.on('data', (data) => {
+                if(data.action === 'update') {
+                    leaderboardData = data.data;
+                    renderBoard();
                 }
-                draw();
-                if (progress < duration) requestAnimationFrame(animate);
-            }
-            requestAnimationFrame(animate);
-        }
-
-        document.fonts.load(fontBig).then(resize);
-
-        // PeerJS Logic
-        const peer = new Peer(isController ? null : COUNTER_ID);
-        peer.on('open', () => { if (isController) connectToPeer(); });
-        peer.on('connection', (c) => {
-            c.on('data', (data) => {
-                if (data.action === 'update') { sakuraCount = data.val; triggerPop(); }
-                if (data.action === 'reset') { sakuraCount = 0; draw(); }
             });
         });
 
-        function connectToPeer() {
-            const conn = peer.connect(COUNTER_ID);
-            conn.on('open', () => { /* connection ready */ });
+        function connect() {
+            conn = peer.connect(PARTY_ID);
+            conn.on('open', () => { document.getElementById('conn-status').innerText = "STATUS: CONNECTED"; });
         }
 
-        function changeCount(delta) {
-            sakuraCount += delta;
-            localStorage.setItem('sakura_count', sakuraCount);
-            triggerPop();
-            if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'update', val: sakuraCount });
+        function getOrdinal(n) {
+            let s = ["th", "st", "nd", "rd"],
+                v = n % 100;
+            return s[(v - 20) % 10] || s[v] || s[0];
         }
 
-        function resetCount() {
-            sakuraCount = 0;
-            localStorage.setItem('sakura_count', 0);
-            draw();
-            if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'reset' });
+        function renderBoard() {
+            localStorage.setItem('mugi_ordinal_data', JSON.stringify(leaderboardData));
+            
+            const sortedData = [...leaderboardData].sort((a, b) => b.score - a.score);
+            const newTop5 = sortedData.slice(0, 5);
+
+            const newTop5Key = JSON.stringify(newTop5);
+            const currentTop5Key = JSON.stringify(currentDisplayedTop5);
+
+            if (newTop5Key !== currentTop5Key) {
+                const container = document.getElementById('leaderboard-container');
+                container.innerHTML = '';
+                
+                newTop5.forEach((entry, index) => {
+                    const rankNum = index + 1;
+                    const suffix = getOrdinal(rankNum);
+                    let rankClass = (rankNum <= 3) ? `rank-${rankNum}` : 'rank-standard';
+
+                    const row = document.createElement('div');
+                    row.className = `leader-row ${rankClass}`;
+                    row.style.animationDelay = `${index * 0.08}s`;
+                    row.innerHTML = `
+                        <span class="rank smooth-outline">${rankNum}<span class="rank-suffix">${suffix}</span></span>
+                        <span class="name smooth-outline">${entry.name}</span>
+                        <span class="score smooth-outline">${parseFloat(entry.score).toFixed(1)}</span>
+                    `;
+                    container.appendChild(row);
+                });
+                
+                currentDisplayedTop5 = newTop5; 
+            }
         }
+
+        function sendEntry() {
+            const name = document.getElementById('new-name').value.trim();
+            const score = parseFloat(document.getElementById('new-score').value);
+            if (!name || isNaN(score)) return;
+
+            const existing = leaderboardData.find(e => e.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+                existing.score = score;
+            } else {
+                leaderboardData.push({ name, score });
+            }
+
+            renderBoard();
+            if (conn && conn.open) conn.send({ action: 'update', data: leaderboardData });
+        }
+
+        function clearBoard() {
+            if(confirm("Reset everything?")) {
+                leaderboardData = [];
+                currentDisplayedTop5 = [];
+                document.getElementById('leaderboard-container').innerHTML = '';
+                localStorage.setItem('mugi_ordinal_data', "[]");
+                if (conn && conn.open) conn.send({ action: 'update', data: [] });
+            }
+        }
+
+        renderBoard();
     </script>
 </body>
 </html>
