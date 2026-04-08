@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Universal Render v5.4</title>
+    <title>Mugi Co. | Sanitized Render v5.5</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --bg: rgba(13, 13, 18, 0.98); --success: #00ffcc; }
         body { margin: 0; background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
-        #control { position: absolute; top: 0; right: 0; width: 320px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 25px; z-index: 100; transform: translateX(100%); transition: 0.4s; }
+        #control { position: absolute; top: 0; right: 0; width: 320px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 25px; z-index: 100; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
         .stat { background: #111; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #222; margin-bottom: 5px; }
         .stat.on { border-color: var(--success); color: var(--success); }
@@ -23,9 +23,9 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="color:var(--p)">MUGI_UNIVERSE_v5.4</h3>
-    <input type="text" id="ch-name" value="CrazyJapanese" placeholder="Channel">
-    <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ" placeholder="7TV ID">
+    <h3 style="color:var(--p)">MUGI_SANITIZER_v5.5</h3>
+    <input type="text" id="ch-name" value="CrazyJapanese">
+    <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
     <div id="st-tw" class="stat">TWITCH: OFF</div>
     <div id="st-7v" class="stat">7TV: OFF</div>
     <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; border-radius:6px; font-weight:900;" onclick="boot()">BOOT ENGINE</button>
@@ -35,27 +35,29 @@
 
 <script>
     let tmiClient = null;
-    let stvEmotes = {};
+    let stvMap = new Map(); // Using a Map for faster, cleaner lookups
 
     async function boot() {
         const id = document.getElementById('ch-id').value.trim();
         const ch = document.getElementById('ch-name').value.trim().toLowerCase();
         
-        // 1. Fetch 7TV
         try {
             const [u, g] = await Promise.all([
                 fetch(`https://7tv.io/v3/users/${id}`).then(r => r.json()),
                 fetch(`https://7tv.io/v3/emote-sets/global`).then(r => r.json())
             ]);
-            stvEmotes = {};
-            [...(u.emote_set?.emotes || []), ...g.emotes].forEach(e => {
-                stvEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+            
+            stvMap.clear();
+            const emotes = [...(u.emote_set?.emotes || []), ...g.emotes];
+            emotes.forEach(e => {
+                // Store the link. Use 3x for clarity if needed, but 2x is standard.
+                stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`);
             });
+
             document.getElementById('st-7v').className = 'stat on';
-            document.getElementById('st-7v').innerText = `7TV: ${Object.keys(stvEmotes).length} LOADED`;
+            document.getElementById('st-7v').innerText = `7TV: ${stvMap.size} LOADED`;
         } catch (e) { console.error("7TV Failed", e); }
 
-        // 2. Twitch Handshake
         if(tmiClient) tmiClient.disconnect();
         tmiClient = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [ch] });
         tmiClient.connect().then(() => {
@@ -68,47 +70,31 @@
             const div = document.createElement('div');
             div.className = 'msg';
 
-            // --- THE MASTER PARSER ---
-            let messageText = msg;
-            let emotePositions = [];
-
-            // A. Handle Twitch Native Emotes (Kappa, etc.)
-            if (tags.emotes) {
-                for (const id in tags.emotes) {
-                    tags.emotes[id].forEach(range => {
-                        const [start, end] = range.split('-').map(Number);
-                        const name = msg.substring(start, end + 1);
-                        emotePositions.push({
-                            start, end,
-                            html: `<img src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0" class="emote">`
-                        });
-                    });
+            // 1. Process 7TV First (Case-Sensitive Match)
+            let words = msg.split(' ');
+            let finalHtml = words.map(word => {
+                // Remove hidden characters/zero-width spaces that 7TV sometimes attaches
+                const cleanWord = word.replace(/[\u200B-\u200D\uFEFF]/g, "");
+                
+                if (stvMap.has(cleanWord)) {
+                    return `<img src="${stvMap.get(cleanWord)}" class="emote">`;
                 }
+                return word;
+            }).join(' ');
+
+            // 2. Process Twitch Native Emotes (Kappa, etc.)
+            // We do this by replacing text based on the positions Twitch provides
+            if (tags.emotes) {
+                Object.keys(tags.emotes).forEach(id => {
+                    const range = tags.emotes[id][0].split('-');
+                    const name = msg.substring(parseInt(range[0]), parseInt(range[1]) + 1);
+                    const twitchImg = `<img src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0" class="emote">`;
+                    // Replace all instances of this native emote name
+                    finalHtml = finalHtml.split(name).join(twitchImg);
+                });
             }
 
-            // B. Handle 7TV Emotes
-            const words = msg.split(' ');
-            let currentPos = 0;
-            words.forEach(word => {
-                if (stvEmotes[word]) {
-                    const start = msg.indexOf(word, currentPos);
-                    const end = start + word.length - 1;
-                    emotePositions.push({
-                        start, end,
-                        html: `<img src="${stvEmotes[word]}" class="emote">`
-                    });
-                }
-                currentPos += word.length + 1;
-            });
-
-            // C. Sort and Assemble
-            emotePositions.sort((a, b) => b.start - a.start);
-            let htmlContent = msg;
-            emotePositions.forEach(e => {
-                htmlContent = htmlContent.substring(0, e.start) + e.html + htmlContent.substring(e.end + 1);
-            });
-
-            div.innerHTML = `<span class="user" style="color:${tags.color || '#9146ff'}">${tags['display-name']}:</span> ${htmlContent}`;
+            div.innerHTML = `<span class="user" style="color:${tags.color || '#9146ff'}">${tags['display-name']}:</span> ${finalHtml}`;
             chat.appendChild(div);
             if(chat.childNodes.length > 10) chat.removeChild(chat.firstChild);
         });
