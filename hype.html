@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Counter v9.6</title>
+    <title>Mugi Co. | Manual v9.7</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -23,7 +23,7 @@
 
         #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 10px; margin: 5px 0 15px 0; border-radius: 4px; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 8px; margin: 4px 0 10px 0; border-radius: 4px; font-size: 12px; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px; }
         .pop { transform: scale(1.2); }
     </style>
@@ -40,12 +40,16 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_SCAN_v9.6</h3>
-    <label style="font-size:10px; color:#777;">TWITCH CHANNEL</label>
-    <input type="text" id="inp-ch" value="lirik">
+    <h3 style="margin:0; color:var(--p);">MUGI_RESTORE_v9.7</h3>
+    <label style="font-size:10px; color:#777;">CHANNEL NAME</label>
+    <input type="text" id="inp-ch" value="forsen">
+    <label style="font-size:10px; color:#777;">7TV USER ID</label>
+    <input type="text" id="inp-7id" value="60a4f32c969317208d927d2c">
+    <label style="font-size:10px; color:#777;">BTTV TWITCH ID (Numeric)</label>
+    <input type="text" id="inp-bid" value="22484632">
     <label style="font-size:10px; color:#777;">DRAIN SEC</label>
     <input type="number" id="inp-decay" value="0.2" step="0.1">
-    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:5px;" onclick="reboot()">BOOT ENGINE</button>
+    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:5px;" onclick="reboot()">BOOT OVERLAY</button>
 </div>
 
 <div id="leaderboard">
@@ -67,18 +71,22 @@
         if(el) { el.innerText = text; if(state) el.className = `indicator ${state}`; }
     };
 
-    async function loadAssets(channelName) {
+    async function loadAssets(sId, bId) {
         emoteMap = {};
         let count7tv = 0;
         let countBttv = 0;
 
-        // 7TV Channel + Global
+        // 7TV Channel
         try {
-            const sRes = await fetch(`https://7tv.io/v3/users/twitch/${channelName}`);
+            const sRes = await fetch(`https://7tv.io/v3/users/${sId}`);
             if(sRes.ok) {
                 const sData = await sRes.json();
                 sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; count7tv++; });
             }
+        } catch(e) {}
+
+        // 7TV Global
+        try {
             const g7 = await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json());
             g7.emotes.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; count7tv++; } });
             setStat('7tv', `7TV: ${count7tv} LOADED`, 'on');
@@ -86,15 +94,15 @@
 
         // BTTV Channel
         try {
-            const bLook = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${channelName}`);
-            const bData = await bLook.json();
-            if(bData && (bData.sharedEmotes || bData.channelEmotes)) {
+            const bLook = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${bId}`);
+            if(bLook.ok) {
+                const bData = await bLook.json();
                 [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => {
                     emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
                     countBttv++;
                 });
+                setStat('bttv', `BTTV: ${countBttv} LOADED`, 'on');
             }
-            setStat('bttv', `BTTV: ${countBttv} LOADED`, 'on');
         } catch(e) { setStat('bttv', 'BTTV: FAILED', 'err'); }
 
         setStat('total', `TOTAL: ${Object.keys(emoteMap).length} EMOTES`, 'total');
@@ -115,10 +123,13 @@
     async function reboot() {
         if (typeof tmi === 'undefined') return;
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
+        const S_ID = document.getElementById('inp-7id').value.trim();
+        const B_ID = document.getElementById('inp-bid').value.trim();
+
         if (client) { try { await client.disconnect(); } catch(e){} }
         
         emoteCounts = {};
-        await loadAssets(CH);
+        await loadAssets(S_ID, B_ID);
         startEngine();
 
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
