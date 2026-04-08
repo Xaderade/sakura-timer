@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Deep Dive v5.9</title>
+    <title>Mugi Co. | Engine v6.0</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; }
@@ -12,7 +12,7 @@
         .stat { background: #111; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #222; margin-bottom: 5px; }
         .stat.on { border-color: var(--success); color: var(--success); }
         #chat { position: absolute; bottom: 40px; left: 30px; width: 650px; }
-        .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; }
+        .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; line-height: 1.4; }
         .emote { height: 1.45em; vertical-align: middle; margin: -4px 2px; }
         #m-toggle { position: absolute; top: 20px; right: 20px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; }
     </style>
@@ -22,15 +22,15 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="color:var(--p)">MUGI_DEEP_DIVE_v5.9</h3>
+    <h3 style="color:var(--p)">MUGI_CORE_v6.0</h3>
     <input type="text" id="ch-name" value="CrazyJapanese" style="width:100%; background:#000; color:white; border:1px solid #444; padding:10px; margin-bottom:15px;">
     <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ" style="width:100%; background:#000; color:white; border:1px solid #444; padding:10px; margin-bottom:15px;">
     
     <div id="st-tw" class="stat">TWITCH: OFF</div>
-    <div id="st-7v" class="stat">7TV ASSETS: 0</div>
+    <div id="st-7v" class="stat">7TV TOTAL: 0</div>
     
-    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; border-radius:6px; font-weight:900;" onclick="boot()">BOOT ENGINE</button>
-    <div id="log" style="font-size:11px; color:var(--g); margin-top:15px; font-family: monospace;">Standing by...</div>
+    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; border-radius:6px; font-weight:900;" onclick="boot()">SYNC & BOOT</button>
+    <div id="log" style="font-size:11px; color:var(--g); margin-top:15px; font-family: monospace;">Awaiting Uplink...</div>
 </div>
 
 <div id="chat"></div>
@@ -44,21 +44,26 @@
         const ch = document.getElementById('ch-name').value.trim().toLowerCase();
         const id = document.getElementById('ch-id').value.trim();
 
-        log.innerText = "Querying 7TV Set ID...";
+        log.innerText = "Deep-Crawling 7TV Profile...";
 
         try {
-            // 1. Get User Data
+            // 1. Get the User Profile
             const uRes = await fetch(`https://7tv.io/v3/users/${id}`);
             const uData = await uRes.json();
             
-            // 2. Identify the SPECIFIC active emote set ID
-            // This is the key change: we find the ID first, then fetch THAT set's emotes.
-            const setId = uData.emote_set?.id || uData.active_emote_set?.id;
-            
-            if (!setId) throw new Error("No active set found");
+            // 2. SEARCH FOR THE TWITCH-SPECIFIC EMOTE SET
+            // This loop finds the emote set specifically linked to Twitch
+            let activeSetId = uData.emote_set?.id; 
+            if (uData.connections) {
+                const twitchConn = uData.connections.find(c => c.platform === 'TWITCH');
+                if (twitchConn && twitchConn.emote_set_id) {
+                    activeSetId = twitchConn.emote_set_id;
+                    log.innerText = "Found Twitch-Linked Set...";
+                }
+            }
 
-            // 3. Fetch the full contents of that specific set
-            const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+            // 3. Fetch the full list from that Set ID
+            const setRes = await fetch(`https://7tv.io/v3/emote-sets/${activeSetId}`);
             const setData = await setRes.json();
 
             // 4. Fetch Global as well
@@ -67,26 +72,26 @@
 
             stvMap.clear();
             
-            // Map Channel Emotes
+            // Channel Emotes
             if (setData.emotes) {
                 setData.emotes.forEach(e => stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`));
             }
 
-            // Map Global Emotes
+            // Global Emotes
             if (gData.emotes) {
                 gData.emotes.forEach(e => stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`));
             }
 
             document.getElementById('st-7v').className = 'stat on';
-            document.getElementById('st-7v').innerText = `7TV ASSETS: ${stvMap.size}`;
-            log.innerText = `Successfully mapped ${stvMap.size} total emotes.`;
+            document.getElementById('st-7v').innerText = `7TV TOTAL: ${stvMap.size}`;
+            log.innerText = `Mapped ${stvMap.size} emotes!`;
 
         } catch (e) {
-            log.innerText = "Error fetching 7TV sets.";
+            log.innerText = "Sync Failed. Check 7TV ID.";
             console.error(e);
         }
 
-        // Connection
+        // Connection logic
         if(tmiClient) await tmiClient.disconnect();
         tmiClient = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [ch] });
         tmiClient.connect().then(() => {
