@@ -1,206 +1,184 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Party - Ordinal Top 5</title>
+    <title>Sakura Counter - Sharp Resizing</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
         body { 
             background: #00ff00; 
-            font-family: 'Luckiest Guy', sans-serif; 
-            margin: 0; padding: 40px;
+            margin: 0; 
             overflow: hidden; 
-        }
-
-        #leaderboard-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 980px; /* Widened slightly for suffixes */
-        }
-
-        @keyframes slideInLeft {
-            0% { transform: translateX(-1200px) skewX(-5deg); opacity: 0; }
-            70% { transform: translateX(30px) skewX(-5deg); opacity: 1; }
-            100% { transform: translateX(0) skewX(-5deg); opacity: 1; }
-        }
-
-        .leader-row {
             display: flex;
             align-items: center;
-            padding: 15px 40px;
-            background: rgba(0, 0, 0, 0.75); 
-            border-radius: 70px;
-            border: 4px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            font-size: 52px;
-            font-style: italic;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #renderCanvas {
+            /* We remove fixed pixel sizes and use CSS to fill the space */
+            width: 100%;
+            height: auto;
+            image-rendering: auto;
             transform: skewX(-5deg);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
-            animation: slideInLeft 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-
-        .rank {
-            width: 160px; /* More space for "1st", "2nd" */
-            font-size: 65px;
-            text-align: center;
-            margin-right: 25px;
-            paint-order: stroke fill;
-            filter: drop-shadow(6px 6px 0px rgba(0,0,0,0.8));
-            display: flex;
-            align-items: baseline;
-            justify-content: center;
-        }
-
-        /* Smaller styling for the suffix (st, nd, rd) */
-        .rank-suffix {
-            font-size: 0.5em;
-            margin-left: 2px;
-            text-transform: uppercase;
-        }
-
-        .rank-standard .rank { -webkit-text-stroke: 5px black; }
-        .rank-1 .rank { color: #FFD700; -webkit-text-stroke: 5px #986C00; }
-        .rank-2 .rank { color: #C0C0C0; -webkit-text-stroke: 5px #555555; }
-        .rank-3 .rank { color: #CD7F32; -webkit-text-stroke: 5px #603000; }
-
-        .name {
-            flex-grow: 1;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            -webkit-text-stroke: 4px black;
-            paint-order: stroke fill;
-            filter: drop-shadow(5px 5px 0px rgba(0,0,0,0.8));
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .score {
-            font-size: 75px;
-            min-width: 160px;
-            text-align: right;
-            color: #FFF;
-            -webkit-text-stroke: 10px #986C00;
-            paint-order: stroke fill;
         }
 
         #controls { 
-            position: fixed; top: 20px; right: 20px; background: white; 
-            border: 5px solid black; border-radius: 20px; padding: 20px; 
-            z-index: 100; font-family: sans-serif; width: 300px; display: none;
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: white; border: 6px solid #000; border-radius: 35px; 
+            padding: 20px; text-align: center; box-shadow: 0 12px 0 #333; 
+            z-index: 9999; font-family: sans-serif; display: none; 
         }
-        input { width: 92%; padding: 12px; margin-bottom: 12px; border: 3px solid #000; border-radius: 10px; font-weight: bold; }
-        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; background: #43B047; color: white; border: 3px solid #000; border-radius: 12px; }
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
+        button { padding: 15px 40px; font-size: 35px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 4px solid #000; box-shadow: 0 6px 0 #000; transition: 0.1s; }
+        button:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
+        .plus { background: #43B047; color: white; }
+        .minus { background: #FBD000; color: black; }
     </style>
 </head>
 <body>
 
-    <div id="leaderboard-container"></div>
+    <canvas id="renderCanvas"></canvas>
 
     <div id="controls">
-        <h3 style="margin-top:0">ORDINAL REMOTE</h3>
-        <input type="text" id="new-name" placeholder="PLAYER NAME">
-        <input type="number" id="new-score" placeholder="SCORE" step="0.1">
-        <button onclick="sendEntry()">UPDATE RANKINGS</button>
-        <button onclick="clearBoard()" style="background:#E52521; margin-top:10px;">RESET ALL</button>
-        <div id="conn-status" style="font-size:12px; margin-top:10px;">Connecting...</div>
+        <div style="font-weight: bold; font-size: 22px; color: #000;">MANAGER REMOTE</div>
+        <div class="btn-group">
+            <button class="minus" onclick="changeCount(-1)">-</button>
+            <button class="plus" onclick="changeCount(1)">+</button>
+        </div>
+        <button onclick="resetCount()" style="margin-top:20px; font-size:14px; background:#f0f0f0; border: 3px solid #000; width:100%; border-radius:10px;">RESET TO 0</button>
     </div>
 
     <script>
-        const PARTY_ID = 'mugi-ordinal-top5-2026';
+        const canvas = document.getElementById('renderCanvas');
+        const ctx = canvas.getContext('2d');
+        const COUNTER_ID = 'mugi-sakura-counter-2026'; 
         const isController = window.location.hash.includes('control');
         if (isController) document.getElementById('controls').style.display = 'block';
 
-        let leaderboardData = JSON.parse(localStorage.getItem('mugi_ordinal_data')) || [];
-        let currentDisplayedTop5 = []; 
-        let conn;
+        let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
+        let scaleEffect = 1;
+        let flashColor = null;
 
-        const peer = new Peer(isController ? null : PARTY_ID);
-        peer.on('open', () => { if (isController) connect(); });
-        peer.on('connection', (c) => { 
-            conn = c; 
-            conn.on('data', (data) => {
-                if(data.action === 'update') {
-                    leaderboardData = data.data;
-                    renderBoard();
+        const fontMain = 'italic 260px "Luckiest Guy"';
+        const fontSmall = 'italic 160px "Luckiest Guy"';
+
+        // --- HIGH-DPI RESIZING LOGIC ---
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function drawText(text, x, y, isXChar) {
+            ctx.font = isXChar ? fontSmall : fontMain;
+            
+            ctx.lineJoin = "round";
+            ctx.lineWidth = 18;
+            ctx.strokeStyle = "black";
+            
+            // Draw Outline Shadow (The 3D part)
+            ctx.strokeText(text, x + 18, y + 18);
+            // Draw Main Outline
+            ctx.strokeText(text, x, y);
+
+            const grad = ctx.createLinearGradient(x, y - 130, x, y + 50);
+            grad.addColorStop(0.2, "#FFFFFF");
+            grad.addColorStop(0.85, "#A0A0A0");
+
+            // Shadow Fill
+            ctx.fillStyle = "black";
+            ctx.fillText(text, x + 18, y + 18);
+
+            // Main Fill
+            ctx.fillStyle = flashColor ? flashColor : grad;
+            ctx.fillText(text, x, y);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const startX = 100;
+            const baseY = 300; // Centered vertically
+
+            ctx.font = "180px serif";
+            ctx.textBaseline = "middle";
+            ctx.fillText("🌸", startX, baseY - 20);
+
+            ctx.save();
+            ctx.translate(startX + 220, baseY);
+            ctx.scale(scaleEffect, scaleEffect);
+            ctx.translate(-(startX + 220), -baseY);
+
+            // Precision spacing
+            drawText("x", startX + 220, baseY + 20, true);
+            drawText(count.toString(), startX + 340, baseY + 20, false);
+
+            ctx.restore();
+        }
+
+        function triggerPop() {
+            let start = null;
+            const duration = 250;
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                let progress = timestamp - start;
+                let p = progress / duration;
+                if (p < 0.3) {
+                    scaleEffect = 1 + (p / 0.3) * 0.12;
+                    flashColor = "#ccff00"; 
+                } else if (p < 1) {
+                    scaleEffect = 1.12 - ((p - 0.3) / 0.7) * 0.12;
+                    flashColor = null;
+                } else {
+                    scaleEffect = 1;
+                    flashColor = null;
                 }
-            });
+                draw();
+                if (progress < duration) requestAnimationFrame(animate);
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // Initialize
+        document.fonts.load(fontMain).then(() => {
+            resize();
         });
 
-        function connect() {
-            conn = peer.connect(PARTY_ID);
-            conn.on('open', () => { document.getElementById('conn-status').innerText = "STATUS: CONNECTED"; });
+        // PeerJS setup...
+        const peer = new Peer(isController ? null : COUNTER_ID);
+        peer.on('open', () => { if (isController) connectToPeer(); });
+        peer.on('connection', (c) => setupConnection(c));
+
+        function connectToPeer() {
+            const conn = peer.connect(COUNTER_ID);
+            setupConnection(conn);
         }
 
-        // Helper function for 1st, 2nd, 3rd, etc.
-        function getOrdinal(n) {
-            let s = ["th", "st", "nd", "rd"],
-                v = n % 100;
-            return s[(v - 20) % 10] || s[v] || s[0];
+        function setupConnection(c) {
+            c.on('data', (data) => {
+                if (data.action === 'update') { count = data.val; localStorage.setItem('sakura_count', count); triggerPop(); }
+                if (data.action === 'reset') { count = 0; localStorage.setItem('sakura_count', 0); draw(); }
+            });
         }
 
-        function renderBoard() {
-            localStorage.setItem('mugi_ordinal_data', JSON.stringify(leaderboardData));
-            
-            const sortedData = [...leaderboardData].sort((a, b) => b.score - a.score);
-            const newTop5 = sortedData.slice(0, 5);
-
-            const newTop5Key = JSON.stringify(newTop5);
-            const currentTop5Key = JSON.stringify(currentDisplayedTop5);
-
-            if (newTop5Key !== currentTop5Key) {
-                const container = document.getElementById('leaderboard-container');
-                container.innerHTML = '';
-                
-                newTop5.forEach((entry, index) => {
-                    const rankNum = index + 1;
-                    const suffix = getOrdinal(rankNum);
-                    let rankClass = (rankNum <= 3) ? `rank-${rankNum}` : 'rank-standard';
-
-                    const row = document.createElement('div');
-                    row.className = `leader-row ${rankClass}`;
-                    row.style.animationDelay = `${index * 0.08}s`;
-                    row.innerHTML = `
-                        <span class="rank">${rankNum}<span class="rank-suffix">${suffix}</span></span>
-                        <span class="name">${entry.name}</span>
-                        <span class="score">${parseFloat(entry.score).toFixed(1)}</span>
-                    `;
-                    container.appendChild(row);
-                });
-                
-                currentDisplayedTop5 = newTop5; 
-            }
+        function changeCount(delta) {
+            count += delta;
+            localStorage.setItem('sakura_count', count);
+            triggerPop();
+            if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'update', val: count });
         }
 
-        function sendEntry() {
-            const name = document.getElementById('new-name').value.trim();
-            const score = parseFloat(document.getElementById('new-score').value);
-            if (!name || isNaN(score)) return;
-
-            const existing = leaderboardData.find(e => e.name.toLowerCase() === name.toLowerCase());
-            if (existing) {
-                existing.score = score;
-            } else {
-                leaderboardData.push({ name, score });
-            }
-
-            renderBoard();
-            if (conn && conn.open) conn.send({ action: 'update', data: leaderboardData });
+        function resetCount() {
+            count = 0;
+            localStorage.setItem('sakura_count', 0);
+            draw();
+            if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'reset' });
         }
-
-        function clearBoard() {
-            if(confirm("Reset everything?")) {
-                leaderboardData = [];
-                currentDisplayedTop5 = [];
-                document.getElementById('leaderboard-container').innerHTML = '';
-                localStorage.setItem('mugi_ordinal_data', "[]");
-                if (conn && conn.open) conn.send({ action: 'update', data: [] });
-            }
-        }
-
-        renderBoard();
     </script>
 </body>
 </html>
