@@ -2,16 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Auto-ID v9.5</title>
+    <title>Mugi Co. | Counter v9.6</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
         
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
-        .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.8); border-left: 3px solid #444; width: fit-content; }
+        .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.8); border-left: 3px solid #444; width: fit-content; min-width: 100px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
+        .indicator.total { border-left-color: var(--p); color: #fff; }
 
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 60px; width: 100vw; height: 100vh; padding-bottom: 50px; box-sizing: border-box; }
         .emote-slot { display: flex; flex-direction: column; align-items: center; transition: transform 0.1s; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); }
@@ -30,20 +31,21 @@
 <body>
 
 <div id="hud">
-    <div id="stat-7tv" class="indicator">7TV: STANDBY</div>
-    <div id="stat-bttv" class="indicator">BTTV: STANDBY</div>
+    <div id="stat-7tv" class="indicator">7TV: 0</div>
+    <div id="stat-bttv" class="indicator">BTTV: 0</div>
+    <div id="stat-total" class="indicator total">TOTAL: 0</div>
     <div id="stat-tmi" class="indicator">TWITCH: STANDBY</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_AUTO_v9.5</h3>
+    <h3 style="margin:0; color:var(--p);">MUGI_SCAN_v9.6</h3>
     <label style="font-size:10px; color:#777;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" value="lirik">
     <label style="font-size:10px; color:#777;">DRAIN SEC</label>
     <input type="number" id="inp-decay" value="0.2" step="0.1">
-    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:5px;" onclick="reboot()">BOOT OVERLAY</button>
+    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:5px;" onclick="reboot()">BOOT ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -62,40 +64,40 @@
 
     const setStat = (id, text, state) => {
         const el = document.getElementById(`stat-${id}`);
-        if(el) { el.innerText = text; el.className = `indicator ${state}`; }
+        if(el) { el.innerText = text; if(state) el.className = `indicator ${state}`; }
     };
 
     async function loadAssets(channelName) {
         emoteMap = {};
-        setStat('7tv', '7TV: LOOKING UP...', '');
-        setStat('bttv', 'BTTV: LOOKING UP...', '');
+        let count7tv = 0;
+        let countBttv = 0;
 
+        // 7TV Channel + Global
         try {
-            // 1. Get 7TV Emotes (using channel name directly)
             const sRes = await fetch(`https://7tv.io/v3/users/twitch/${channelName}`);
             if(sRes.ok) {
                 const sData = await sRes.json();
-                sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
-                setStat('7tv', '7TV: ONLINE', 'on');
-            } else { throw new Error(); }
-        } catch(e) { setStat('7tv', '7TV: NOT FOUND', 'err'); }
+                sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; count7tv++; });
+            }
+            const g7 = await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json());
+            g7.emotes.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; count7tv++; } });
+            setStat('7tv', `7TV: ${count7tv} LOADED`, 'on');
+        } catch(e) { setStat('7tv', '7TV: FAILED', 'err'); }
 
+        // BTTV Channel
         try {
-            // 2. Get BTTV Emotes (Need to find numeric ID first)
-            // Using a public proxy for ID lookup or simple fetch
-            const bLook = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${channelName}`, { method: 'GET' }); // Some channels support name directly here
+            const bLook = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${channelName}`);
             const bData = await bLook.json();
             if(bData && (bData.sharedEmotes || bData.channelEmotes)) {
                 [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => {
                     emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
+                    countBttv++;
                 });
-                setStat('bttv', 'BTTV: ONLINE', 'on');
             }
-        } catch(e) { setStat('bttv', 'BTTV: OFFLINE', 'err'); }
+            setStat('bttv', `BTTV: ${countBttv} LOADED`, 'on');
+        } catch(e) { setStat('bttv', 'BTTV: FAILED', 'err'); }
 
-        // Global 7TV
-        const g7 = await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).catch(()=>null);
-        if(g7) g7.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
+        setStat('total', `TOTAL: ${Object.keys(emoteMap).length} EMOTES`, 'total');
     }
 
     function startEngine() {
