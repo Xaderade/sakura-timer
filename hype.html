@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Living Leaderboard v8.4</title>
+    <title>Mugi Co. | High-Response v8.5</title>
     <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; --fail: #ff4d4d; --g: #ffd700; }
@@ -15,9 +15,9 @@
 
         /* --- LEADERBOARD --- */
         #leaderboard { display: flex; gap: 15px; padding: 15px; background: rgba(0,0,0,0.8); width: fit-content; border-bottom: 3px solid var(--p); border-radius: 0 0 15px 0; margin-top: 80px; }
-        .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 75px; }
+        .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 75px; transition: transform 0.1s ease-out; }
         .rank-tag { font-size: 10px; font-weight: 900; background: var(--g); color: #000; padding: 1px 6px; border-radius: 3px; margin-bottom: 5px; }
-        .img-wrap { height: 60px; width: 60px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px; }
+        .img-wrap { height: 60px; width: 60px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden; }
         .emote-img { max-height: 50px; max-width: 50px; }
         .count { font-size: 22px; font-weight: 900; margin-top: 5px; text-shadow: 2px 2px 0 var(--p); }
 
@@ -27,7 +27,9 @@
         input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 8px; margin: 4px 0 12px 0; border-radius: 4px; font-size: 12px; }
         label { font-size: 10px; color: #777; font-weight: bold; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; z-index: 201; cursor: pointer; font-weight: bold; }
-        .pop { transform: scale(1.1); transition: 0.1s; }
+        
+        /* --- FEEDBACK ANIMATION --- */
+        .pop { transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -36,13 +38,12 @@
     <div id="stat-7tv" class="indicator">7TV: STANDBY</div>
     <div id="stat-bttv" class="indicator">BTTV: STANDBY</div>
     <div id="stat-tmi" class="indicator">TWITCH: STANDBY</div>
-    <div id="stat-decay" class="indicator">DECAY: ACTIVE (30s)</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_ENGINE_v8.4</h4>
+    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_ENGINE_v8.5</h4>
     <label>Twitch Channel</label>
     <input type="text" id="inp-ch" value="forsen">
     <label>7TV User ID</label>
@@ -57,11 +58,11 @@
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-4" class="emote-slot"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-0" class="emote-slot" data-lastcount="0"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot" data-lastcount="0"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot" data-lastcount="0"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot" data-lastcount="0"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-4" class="emote-slot" data-lastcount="0"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <script>
@@ -75,23 +76,16 @@
         if(el) { el.innerText = text; el.className = `indicator ${state}`; }
     };
 
-    // --- DECAY LOGIC: The "Score Washer" ---
     function startDecay() {
         if(decayTimer) clearInterval(decayTimer);
         decayTimer = setInterval(() => {
             const strength = parseFloat(document.getElementById('inp-decay').value) || 0.1;
-            
             Object.keys(emoteCounts).forEach(key => {
-                // Reduce score by the strength percentage
                 emoteCounts[key] = emoteCounts[key] * (1 - strength);
-                
-                // If the score is basically zero, remove it to keep memory clean
-                if(emoteCounts[key] < 1) delete emoteCounts[key];
+                if(emoteCounts[key] < 0.5) delete emoteCounts[key];
             });
-            
             updateLeaderboard();
-            console.log("Decay applied. Current scores cleaned.");
-        }, 30000); // Runs every 30 seconds
+        }, 30000);
     }
 
     async function loadAssets(sevenId, bttvId) {
@@ -122,15 +116,11 @@
         const CH = document.getElementById('inp-ch').value.trim();
         const S_ID = document.getElementById('inp-7id').value.trim();
         const B_ID = document.getElementById('inp-bid').value.trim();
-        
         if (client) client.disconnect();
-        emoteCounts = {}; // Fresh start on reboot
-        
+        emoteCounts = {};
         await loadAssets(S_ID, B_ID);
         startDecay();
-
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
-
         client.on('message', (chan, tags, msg) => {
             let found = [];
             msg.split(' ').forEach(word => {
@@ -150,7 +140,6 @@
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
             if (found.length > 0) updateLeaderboard();
         });
-
         client.connect().then(() => { 
             setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on');
             document.getElementById('control').classList.remove('active');
@@ -161,16 +150,29 @@
         const sorted = Object.entries(emoteCounts).sort((a,b) => b[1] - a[1]).slice(0,5);
         sorted.forEach((item, i) => {
             const [name, count] = item;
+            const currentCount = Math.floor(count);
             const slot = document.getElementById(`slot-${i}`);
             const wrap = slot.querySelector('.img-wrap');
+            const countEl = slot.querySelector('.count');
+            
+            const lastCount = parseInt(slot.getAttribute('data-lastcount') || 0);
+
+            // 1. Update Image if emote changed
             if (wrap.getAttribute('data-name') !== name) {
                 wrap.innerHTML = `<img src="${emoteMap[name]}" class="emote-img">`;
                 wrap.setAttribute('data-name', name);
-                slot.classList.add('pop');
-                setTimeout(() => slot.classList.remove('pop'), 200);
             }
-            // Use Math.floor so viewers don't see ugly decimals from the decay
-            slot.querySelector('.count').innerText = Math.floor(count);
+
+            // 2. Pop animation if count increased
+            if (currentCount > lastCount) {
+                slot.classList.remove('pop');
+                void slot.offsetWidth; // Trigger reflow to restart animation
+                slot.classList.add('pop');
+                setTimeout(() => slot.classList.remove('pop'), 100);
+            }
+
+            countEl.innerText = currentCount;
+            slot.setAttribute('data-lastcount', currentCount);
         });
     }
 
