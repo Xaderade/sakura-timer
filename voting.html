@@ -1,27 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Rater - Final Bridge</title>
-    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
+    <title>Mugi Rater - Official Version</title>
+    <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
         body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
         .smooth-outline { filter: url(#crispOutline); }
-        #rating-display { text-align: center; transform: skewX(-5deg); padding: 100px; }
+        
+        #rating-display { text-align: center; transform: skewX(-5deg); padding: 100px; position: relative; }
         .status-label { color: white; font-size: 60px; text-transform: uppercase; margin-bottom: -10px; }
         .score-row { display: flex; align-items: baseline; justify-content: center; line-height: 1; }
         .score-prefix { color: white; font-size: 80px; margin-right: 20px; }
-        #average-score { font-size: 200px; font-style: italic; background: linear-gradient(to bottom, #FFD700 20%, #FFA500 85%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; padding-right: 80px; min-width: 300px; }
+        
+        #average-score { 
+            font-size: 240px; font-style: italic; 
+            background: linear-gradient(to bottom, #FFD700 20%, #FFA500 85%); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+            padding-right: 80px; min-width: 350px; 
+        }
+        
         #timer-text { color: #FF4444; font-size: 110px; margin-top: 10px; }
-        #debug-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: black; color: #0f0; font-family: monospace; font-size: 14px; padding: 10px; border-top: 2px solid #0f0; }
+        #vote-count-box { position: absolute; top: 0px; right: 0px; color: #FFD700; font-size: 50px; }
 
         /* CONTROL PANEL */
-        #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; color: black; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
-        .control-box { background: #f0f0f0; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 450px; }
-        button { width: 100%; padding: 15px; cursor: pointer; font-weight: bold; font-size: 20px; border: 4px solid #000; border-radius: 15px; margin-top: 10px; text-transform: uppercase; }
+        #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; color: white; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
+        .control-box { background: white; color: black; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 450px; }
+        .input-group { margin: 20px 0; }
+        input { width: 80px; padding: 10px; font-size: 20px; border: 3px solid black; border-radius: 10px; text-align: center; font-weight: bold; }
+        button { width: 100%; padding: 18px; cursor: pointer; font-weight: bold; font-size: 18px; border: 4px solid #000; border-radius: 15px; margin-top: 12px; text-transform: uppercase; }
         .start-btn { background: #43B047; color: white; }
         .reset-btn { background: #E52521; color: white; }
+        .status-tray { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #ccc; display: flex; justify-content: space-around; font-size: 12px; font-weight: bold; }
+        .stat-item { display: flex; align-items: center; gap: 5px; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; background: red; }
+        .online { background: #43B047; box-shadow: 0 0 5px #43B047; }
     </style>
 </head>
 <body>
@@ -40,6 +54,7 @@
     </svg>
 
     <div id="rating-display">
+        <div id="vote-count-box" class="smooth-outline">VOTES: 0</div>
         <div id="status-msg" class="status-label smooth-outline">READY</div>
         <div class="score-row">
             <span class="score-prefix smooth-outline">SCORE:</span>
@@ -48,47 +63,40 @@
         <div id="timer-text" class="smooth-outline"></div>
     </div>
 
-    <div id="debug-bar">STATUS: BOOTING...</div>
-
     <div id="controls">
         <div class="control-box">
-            <h2>MUGI RATER</h2>
-            <div id="stat-obs">OBS: OFFLINE</div>
-            <div id="stat-tw">TWITCH: OFFLINE</div>
+            <h2 style="margin:0;">MUGI RATER</h2>
+            <div class="input-group">
+                <label style="display:block; font-weight:bold; margin-bottom: 8px;">VOTE DURATION (SEC):</label>
+                <input type="number" id="timer-input" value="30">
+            </div>
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
-            <button class="reset-btn" onclick="resetAll()">✖ RESET</button>
+            <button class="reset-btn" onclick="resetAll()">✖ RESET & CLEAR</button>
+            <div class="status-tray">
+                <div class="stat-item"><div id="dot-obs" class="dot"></div> OBS LINK</div>
+                <div class="stat-item"><div id="dot-twitch" class="dot"></div> TWITCH CHAT</div>
+            </div>
         </div>
     </div>
 
     <script>
-        const RATER_ID = 'mugi-rater-v3-final';
-        const TWITCH_CHANNEL = 'crazyjapanese';
+        const RATER_ID = 'mugi-official-2026';
+        const CHANNEL = 'crazyjapanese';
         const isController = window.location.hash.includes('control');
         
-        function setStatus(msg) { document.getElementById('debug-bar').innerText = "STATUS: " + msg; }
-
         if (isController) document.getElementById('controls').style.display = 'flex';
 
-        let votes = {};
+        let votes = {}; // Changed back to an Object { user: score } for 1-vote limit
         let isVotingOpen = false;
-        let timeLeft = 30;
         let timerInterval;
 
-        // PeerJS
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
 
-        peer.on('open', (id) => { 
-            setStatus("Peer Open - Waiting for Twitch..."); 
-            if (isController) connectToOBS();
-        });
-
+        peer.on('open', () => { if (isController) connectToOBS(); });
         function connectToOBS() {
             conn = peer.connect(RATER_ID);
-            conn.on('open', () => { 
-                document.getElementById('stat-obs').innerText = "OBS: ONLINE";
-                document.getElementById('stat-obs').style.color = "green";
-            });
+            conn.on('open', () => { if(isController) document.getElementById('dot-obs').classList.add('online'); });
         }
 
         peer.on('connection', (c) => {
@@ -99,41 +107,31 @@
             });
         });
 
-        // The "Hardened" Twitch Connection
-        const client = new tmi.Client({
-            connection: { secure: true, reconnect: true, timeout: 10000 },
-            channels: [ TWITCH_CHANNEL ]
-        });
-
-        client.connect()
-            .then(() => {
-                setStatus("TWITCH CONNECTED (Ready for votes)");
-                if (isController) {
-                    document.getElementById('stat-tw').innerText = "TWITCH: ONLINE";
-                    document.getElementById('stat-tw').style.color = "green";
-                }
-            })
-            .catch(err => setStatus("TWITCH ERROR: " + err));
-
-        client.on('message', (channel, tags, message) => {
+        ComfyJS.onChat = (user, message, flags, self, extra) => {
             if (!isVotingOpen) return;
-            const score = parseFloat(message.trim());
-            if (!isNaN(score) && score >= 0 && score <= 10) {
-                votes[tags.username] = score;
-                updateDisplay();
-                setStatus(`VOTE: ${tags.username} cast ${score}`);
+            const msg = message.trim();
+            if (/^\d+(\.\d+)?$/.test(msg)) {
+                const score = parseFloat(msg);
+                if (score >= 0 && score <= 10) {
+                    votes[user] = score; // This overwrite logic enforces 1 vote per person
+                    updateDisplay();
+                }
             }
-        });
+        };
+
+        ComfyJS.Init(CHANNEL);
+        setTimeout(() => { if(isController) document.getElementById('dot-twitch').classList.add('online'); }, 1500);
 
         function startVoting() {
-            if (conn) conn.send({ action: 'start', time: 30 });
-            executeStart(30);
+            const duration = parseInt(document.getElementById('timer-input').value) || 30;
+            if (conn) conn.send({ action: 'start', time: duration });
+            executeStart(duration);
         }
 
         function executeStart(time) {
             executeReset();
             isVotingOpen = true;
-            timeLeft = time;
+            let timeLeft = time;
             document.getElementById('status-msg').innerText = "VOTING OPEN!";
             timerInterval = setInterval(() => {
                 timeLeft--;
@@ -154,17 +152,23 @@
 
         function executeReset() {
             clearInterval(timerInterval);
-            votes = {};
+            votes = {}; // Clear the unique user votes
             isVotingOpen = false;
             document.getElementById('average-score').innerText = "0.0";
             document.getElementById('status-msg').innerText = "READY";
-            setStatus("Ready for new round");
+            document.getElementById('vote-count-box').innerText = "VOTES: 0";
+            document.getElementById('timer-text').innerText = "";
         }
 
         function updateDisplay() {
-            const scores = Object.values(votes);
-            const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : "0.0";
-            document.getElementById('average-score').innerText = avg;
+            const scoreList = Object.values(votes);
+            const count = scoreList.length;
+            if (count > 0) {
+                const sum = scoreList.reduce((a, b) => a + b, 0);
+                const avg = (sum / count).toFixed(1);
+                document.getElementById('average-score').innerText = avg;
+                document.getElementById('vote-count-box').innerText = `VOTES: ${count}`;
+            }
         }
     </script>
 </body>
