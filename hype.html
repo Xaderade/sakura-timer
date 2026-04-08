@@ -2,32 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Production v5.1</title>
-    
+    <title>Mugi Co. | Emote Engine v5.2</title>
     <script src="tmi.min.js"></script>
-
     <style>
-        :root { --p: #9146ff; --g: #ffd700; --bg: rgba(13, 13, 18, 0.98); }
+        :root { --p: #9146ff; --g: #ffd700; --bg: rgba(13, 13, 18, 0.98); --success: #00ffcc; }
         body { margin: 0; background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
 
         /* --- CONTROL PANEL --- */
         #control {
-            position: absolute; top: 0; right: 0; width: 300px; height: 100vh;
+            position: absolute; top: 0; right: 0; width: 320px; height: 100vh;
             background: var(--bg); border-left: 2px solid var(--p);
             padding: 25px; z-index: 100; transform: translateX(100%);
             transition: 0.4s cubic-bezier(0.19, 1, 0.22, 1);
         }
         #control.active { transform: translateX(0); }
         .header { font-size: 18px; font-weight: 900; color: var(--p); margin-bottom: 20px; border-bottom: 1px solid #333; }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; margin: 10px 0; border-radius: 6px; }
+        label { font-size: 10px; color: var(--p); font-weight: bold; text-transform: uppercase; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; margin: 8px 0 18px 0; border-radius: 6px; font-family: monospace; }
         
-        /* --- CHAT DISPLAY --- */
-        #chat { position: absolute; bottom: 40px; left: 30px; width: 500px; }
-        .msg { font-size: 26px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 12px; }
-        .user { color: var(--p); margin-right: 8px; }
+        .status-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat { background: #111; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #222; }
+        .stat.on { border-color: var(--success); color: var(--success); }
+
+        /* --- CHAT HUD --- */
+        #chat { position: absolute; bottom: 40px; left: 30px; width: 600px; display: flex; flex-direction: column; justify-content: flex-end; }
+        .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; line-height: 1.4; animation: fadeIn 0.3s ease-out; }
+        .user { color: var(--p); margin-right: 10px; }
+        .emote { height: 1.3em; vertical-align: middle; margin: -4px 2px 0 2px; }
 
         .btn-boot { width: 100%; background: var(--p); color: white; border: none; padding: 15px; font-weight: 900; cursor: pointer; border-radius: 6px; }
         #m-toggle { position: absolute; top: 20px; right: 20px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -35,55 +41,111 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <div class="header">MUGI_CORE_v5.1</div>
-    <label style="font-size: 10px; color: var(--p);">TWITCH CHANNEL</label>
+    <div class="header">MUGI_ENGINE_v5.2</div>
+    
+    <label>Twitch Channel</label>
     <input type="text" id="ch-name" value="CrazyJapanese">
-    <button class="btn-boot" onclick="boot()">INITIALIZE ENGINE</button>
-    <div id="log" style="margin-top: 20px; font-size: 11px; color: var(--g); font-family: monospace;">Standing by...</div>
+
+    <label>7TV User ID</label>
+    <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
+
+    <div class="status-box">
+        <div id="st-tw" class="stat">TWITCH: OFF</div>
+        <div id="st-7v" class="stat">7TV: OFF</div>
+    </div>
+
+    <button class="btn-boot" onclick="boot()">INITIALIZE SYSTEM</button>
+    <div id="log" style="margin-top: 20px; font-size: 11px; color: var(--g); font-family: monospace;">Standing by for uplink...</div>
 </div>
 
 <div id="chat"></div>
 
 <script>
     let tmiClient = null;
+    let emoteMap = {};
 
-    function boot() {
+    async function boot() {
         const log = document.getElementById('log');
-        
-        // Final check for the local file
+        const ch = document.getElementById('ch-name').value.trim().toLowerCase();
+        const id = document.getElementById('ch-id').value.trim();
+
         if (typeof tmi === 'undefined') {
-            log.innerText = "FATAL: tmi.min.js not found in your GitHub folder. Upload it now!";
+            log.innerText = "FATAL: tmi.min.js missing from GitHub repo.";
             return;
         }
 
-        const channel = document.getElementById('ch-name').value.trim().toLowerCase();
-        if(tmiClient) tmiClient.disconnect();
+        log.innerText = "Fetching 7TV Assets...";
 
-        log.innerText = "Connecting to Twitch IRC...";
+        // 1. Fetch 7TV Emotes (Global + User)
+        try {
+            const [uRes, gRes] = await Promise.all([
+                fetch(`https://7tv.io/v3/users/${id}`),
+                fetch(`https://7tv.io/v3/emote-sets/global`)
+            ]);
+            
+            const uData = await uRes.json();
+            const gData = await gRes.json();
+
+            emoteMap = {};
+            // Combine channel emotes and global emotes
+            const allEmotes = [...(uData.emote_set?.emotes || []), ...gData.emotes];
+            
+            allEmotes.forEach(e => {
+                // We use 2x size for better clarity in OBS
+                emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+            });
+
+            document.getElementById('st-7v').className = 'stat on';
+            document.getElementById('st-7v').innerText = `7TV: ${Object.keys(emoteMap).length} EMOTES`;
+        } catch (e) {
+            log.innerText = "7TV Sync Failed. Check User ID.";
+            console.error(e);
+        }
+
+        // 2. Connect to Twitch
+        if(tmiClient) tmiClient.disconnect();
         
         tmiClient = new tmi.Client({
             connection: { secure: true, reconnect: true },
-            channels: [channel]
+            channels: [ch]
         });
 
-        tmiClient.connect()
-            .then(() => {
-                log.innerText = "SYSTEM ONLINE - Connected to " + channel;
-                document.getElementById('control').classList.remove('active');
-            })
-            .catch(err => {
-                log.innerText = "Connection Failed. Check spelling.";
-            });
+        tmiClient.connect().then(() => {
+            document.getElementById('st-tw').className = 'stat on';
+            document.getElementById('st-tw').innerText = "TWITCH: ONLINE";
+            log.innerText = "Uplink Complete. Engine Live.";
+            // Auto-hide panel on success
+            setTimeout(() => document.getElementById('control').classList.remove('active'), 2000);
+        }).catch(() => {
+            log.innerText = "Twitch Connection Failed.";
+        });
 
-        tmiClient.on('message', (chan, tags, msg) => {
-            const chat = document.getElementById('chat');
-            const div = document.createElement('div');
-            div.className = 'msg';
-            div.innerHTML = `<span class="user">${tags['display-name']}:</span> ${msg}`;
-            chat.appendChild(div);
+        // 3. Chat Logic with Emote Parsing
+        tmiClient.on('message', (chan, tags, msg, self) => {
+            const chatContainer = document.getElementById('chat');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'msg';
+
+            // Split message into words and check against emoteMap
+            const words = msg.split(' ');
+            const parsedContent = words.map(word => {
+                if (emoteMap[word]) {
+                    return `<img src="${emoteMap[word]}" class="emote" title="${word}">`;
+                }
+                return word;
+            }).join(' ');
+
+            const displayName = tags['display-name'] || tags.username;
+            const userColor = tags.color || '#9146ff';
+
+            messageDiv.innerHTML = `<span class="user" style="color:${userColor}">${displayName}:</span> ${parsedContent}`;
             
-            // Auto-clean old messages
-            if(chat.childNodes.length > 8) chat.removeChild(chat.firstChild);
+            chatContainer.appendChild(messageDiv);
+
+            // Keep only last 10 messages for performance
+            if (chatContainer.childNodes.length > 10) {
+                chatContainer.removeChild(chatContainer.firstChild);
+            }
         });
     }
 </script>
