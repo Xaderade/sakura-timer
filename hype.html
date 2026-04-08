@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Stable Animation v8.9</title>
+    <title>Mugi Co. | Constant Drain v9.0</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; --fail: #ff4d4d; --g: #ffd700; }
@@ -18,7 +18,7 @@
         .rank-tag { font-size: 10px; font-weight: 900; background: var(--g); color: #000; padding: 1px 6px; border-radius: 3px; margin-bottom: 5px; }
         .img-wrap { height: 60px; width: 60px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px; }
         .emote-img { max-height: 50px; max-width: 50px; }
-        .count { font-size: 22px; font-weight: 900; margin-top: 5px; text-shadow: 2px 2px 0 var(--p); }
+        .count { font-size: 22px; font-weight: 900; margin-top: 5px; text-shadow: 2px 2px 0 var(--p); font-variant-numeric: tabular-nums; }
 
         #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
@@ -40,16 +40,20 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_STABLE_v8.9</h4>
+    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_DRAIN_v9.0</h4>
     <label>Twitch Channel Name</label>
     <input type="text" id="inp-ch" value="forsen">
     <label>7TV User ID</label>
     <input type="text" id="inp-7id" value="60a4f32c969317208d927d2c">
     <label>Twitch Numeric ID (for BTTV)</label>
     <input type="text" id="inp-bid" value="22484632">
-    <label>Decay Strength (0.1 = 10%)</label>
-    <input type="number" id="inp-decay" value="0.1" step="0.05">
-    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:4px;" onclick="reboot()">BOOT ENGINE</button>
+    
+    <label>Drain Amount (Per Second)</label>
+    <input type="number" id="inp-decay" value="0.2" step="0.1" min="0">
+    
+    <p style="font-size: 10px; color: #555;">Note: Every second, the count drops by this amount. If 0.2, it takes 5 seconds to lose 1 point.</p>
+
+    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:4px;" onclick="reboot()">START DRAIN ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -64,23 +68,30 @@
     let emoteMap = {};
     let emoteCounts = {};
     let client = null;
-    let decayTimer = null;
+    let mainLoop = null;
 
     const setStat = (id, text, state) => {
         const el = document.getElementById(`stat-${id}`);
         if(el) { el.innerText = text; el.className = `indicator ${state}`; }
     };
 
-    function startDecay() {
-        if(decayTimer) clearInterval(decayTimer);
-        decayTimer = setInterval(() => {
-            const strength = parseFloat(document.getElementById('inp-decay').value) || 0.1;
+    // THE ENGINE LOOP: Runs every 1 second
+    function startEngine() {
+        if(mainLoop) clearInterval(mainLoop);
+        mainLoop = setInterval(() => {
+            const drain = parseFloat(document.getElementById('inp-decay').value) || 0.2;
+            
             Object.keys(emoteCounts).forEach(key => {
-                emoteCounts[key] = emoteCounts[key] * (1 - strength);
-                if(emoteCounts[key] < 0.5) delete emoteCounts[key];
+                // Constant subtraction
+                emoteCounts[key] -= drain;
+                
+                // Cleanup
+                if(emoteCounts[key] <= 0) delete emoteCounts[key];
             });
+            
+            // Force visual update even if no one is chatting
             updateLeaderboard();
-        }, 30000);
+        }, 1000); 
     }
 
     async function loadAssets(sevenId, bttvId) {
@@ -91,7 +102,7 @@
                 const data = await res.json();
                 data.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
                 setStat('7tv', '7TV: ONLINE', 'on');
-            } else { setStat('7tv', '7TV: 404', 'err'); }
+            }
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
@@ -105,15 +116,12 @@
                     emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`;
                 });
                 setStat('bttv', 'BTTV: ONLINE', 'on');
-            } else { setStat('bttv', 'BTTV: 404', 'err'); }
-            const bgRes = await fetch('https://api.betterttv.net/3/cached/emotes/global');
-            const bgData = await bgRes.json();
-            bgData.forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`; });
+            }
         } catch(e) { setStat('bttv', 'BTTV: FAIL', 'err'); }
     }
 
     async function reboot() {
-        if (typeof tmi === 'undefined') { return; }
+        if (typeof tmi === 'undefined') return;
         const CH = document.getElementById('inp-ch').value.trim();
         const S_ID = document.getElementById('inp-7id').value.trim();
         const B_ID = document.getElementById('inp-bid').value.trim();
@@ -121,7 +129,7 @@
         if (client) { try { await client.disconnect(); } catch(e){} }
         emoteCounts = {};
         await loadAssets(S_ID, B_ID);
-        startDecay();
+        startEngine(); // Start the 1-second interval
 
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
         client.on('message', (chan, tags, msg) => {
@@ -141,4 +149,56 @@
                 });
             }
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
-            if (found.length > 0) updateLeader
+            if (found.length > 0) updateLeaderboard(true); // "true" means a user triggered this
+        });
+
+        client.connect().then(() => { 
+            setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on');
+            document.getElementById('control').classList.remove('active');
+        }).catch(() => setStat('tmi', 'TWITCH: FAIL', 'err'));
+    }
+
+    function updateLeaderboard(fromChat = false) {
+        const sorted = Object.entries(emoteCounts).sort((a,b) => b[1] - a[1]).slice(0,5);
+        
+        // Loop through slots
+        for(let i = 0; i < 5; i++) {
+            const slot = document.getElementById(`slot-${i}`);
+            const wrap = slot.querySelector('.img-wrap');
+            const countEl = slot.querySelector('.count');
+            
+            if(sorted[i]) {
+                const [name, count] = sorted[i];
+                const currentDisplayCount = Math.max(0, Math.floor(count));
+                const lastCount = parseInt(slot.getAttribute('data-lastcount') || 0);
+
+                // Update Image
+                if (wrap.getAttribute('data-name') !== name) {
+                    wrap.innerHTML = `<img src="${emoteMap[name]}" class="emote-img">`;
+                    wrap.setAttribute('data-name', name);
+                }
+
+                // Only POP if the number actually went UP (from chat)
+                if (fromChat && currentDisplayCount > lastCount) {
+                    slot.classList.remove('pop');
+                    void slot.offsetWidth; 
+                    slot.classList.add('pop');
+                    setTimeout(() => slot.classList.remove('pop'), 100);
+                }
+
+                countEl.innerText = currentDisplayCount;
+                slot.setAttribute('data-lastcount', currentDisplayCount);
+            } else {
+                // Clear slot if no emote is there
+                wrap.innerHTML = "";
+                wrap.removeAttribute('data-name');
+                countEl.innerText = "0";
+                slot.setAttribute('data-lastcount', "0");
+            }
+        }
+    }
+
+    window.onload = () => { setTimeout(reboot, 300); };
+</script>
+</body>
+</html>
