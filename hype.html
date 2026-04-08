@@ -2,56 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Production Suite</title>
+    <title>Mugi Co. | Production v5.1</title>
+    
     <script src="tmi.min.js"></script>
+
     <style>
-        :root { --p: #9146ff; --g: #ffd700; --bg: rgba(10,10,15,0.98); }
-        body { margin: 0; background: transparent; color: white; font-family: sans-serif; overflow: hidden; }
-        #control { position: absolute; top: 0; right: 0; width: 300px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 20px; z-index: 100; transform: translateX(100%); transition: 0.3s; }
+        :root { --p: #9146ff; --g: #ffd700; --bg: rgba(13, 13, 18, 0.98); }
+        body { margin: 0; background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
+
+        /* --- CONTROL PANEL --- */
+        #control {
+            position: absolute; top: 0; right: 0; width: 300px; height: 100vh;
+            background: var(--bg); border-left: 2px solid var(--p);
+            padding: 25px; z-index: 100; transform: translateX(100%);
+            transition: 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        }
         #control.active { transform: translateX(0); }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 10px; margin: 10px 0; border-radius: 4px; }
-        #chat { position: absolute; bottom: 20px; left: 20px; width: 500px; }
-        .msg { font-size: 24px; font-weight: bold; text-shadow: 2px 2px 2px #000; margin-top: 10px; }
-        .user { color: var(--p); }
-        .btn { width: 100%; background: var(--p); color: white; border: none; padding: 10px; cursor: pointer; font-weight: bold; }
-        #m-btn { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; z-index: 101; cursor: pointer; }
+        .header { font-size: 18px; font-weight: 900; color: var(--p); margin-bottom: 20px; border-bottom: 1px solid #333; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; margin: 10px 0; border-radius: 6px; }
+        
+        /* --- CHAT DISPLAY --- */
+        #chat { position: absolute; bottom: 40px; left: 30px; width: 500px; }
+        .msg { font-size: 26px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 12px; }
+        .user { color: var(--p); margin-right: 8px; }
+
+        .btn-boot { width: 100%; background: var(--p); color: white; border: none; padding: 15px; font-weight: 900; cursor: pointer; border-radius: 6px; }
+        #m-toggle { position: absolute; top: 20px; right: 20px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; }
     </style>
 </head>
 <body>
 
-<button id="m-btn" onclick="document.getElementById('control').classList.toggle('active')">M</button>
+<button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h2 style="color:var(--p)">MUGI_CORE</h2>
-    <label>Channel</label><input type="text" id="ch" value="CrazyJapanese">
-    <button class="btn" onclick="boot()">BOOT ENGINE</button>
-    <p id="log" style="font-size: 12px; color: var(--g); margin-top: 20px;">Ready...</p>
+    <div class="header">MUGI_CORE_v5.1</div>
+    <label style="font-size: 10px; color: var(--p);">TWITCH CHANNEL</label>
+    <input type="text" id="ch-name" value="CrazyJapanese">
+    <button class="btn-boot" onclick="boot()">INITIALIZE ENGINE</button>
+    <div id="log" style="margin-top: 20px; font-size: 11px; color: var(--g); font-family: monospace;">Standing by...</div>
 </div>
 
 <div id="chat"></div>
 
 <script>
-    let client = null;
+    let tmiClient = null;
 
     function boot() {
         const log = document.getElementById('log');
+        
+        // Final check for the local file
         if (typeof tmi === 'undefined') {
-            log.innerText = "ERROR: tmi.min.js not found in your GitHub folder.";
+            log.innerText = "FATAL: tmi.min.js not found in your GitHub folder. Upload it now!";
             return;
         }
 
-        const channel = document.getElementById('ch').value.toLowerCase();
-        if(client) client.disconnect();
+        const channel = document.getElementById('ch-name').value.trim().toLowerCase();
+        if(tmiClient) tmiClient.disconnect();
 
-        client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [channel] });
-        client.connect().then(() => log.innerText = "ONLINE").catch(() => log.innerText = "CONN ERROR");
+        log.innerText = "Connecting to Twitch IRC...";
+        
+        tmiClient = new tmi.Client({
+            connection: { secure: true, reconnect: true },
+            channels: [channel]
+        });
 
-        client.on('message', (chan, tags, msg) => {
+        tmiClient.connect()
+            .then(() => {
+                log.innerText = "SYSTEM ONLINE - Connected to " + channel;
+                document.getElementById('control').classList.remove('active');
+            })
+            .catch(err => {
+                log.innerText = "Connection Failed. Check spelling.";
+            });
+
+        tmiClient.on('message', (chan, tags, msg) => {
             const chat = document.getElementById('chat');
             const div = document.createElement('div');
             div.className = 'msg';
             div.innerHTML = `<span class="user">${tags['display-name']}:</span> ${msg}`;
             chat.appendChild(div);
+            
+            // Auto-clean old messages
             if(chat.childNodes.length > 8) chat.removeChild(chat.firstChild);
         });
     }
