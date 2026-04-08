@@ -2,143 +2,59 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mugi Co. | Live Overlay</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js" 
-            crossorigin="anonymous" 
-            referrerpolicy="no-referrer"></script>
-
+    <title>Mugi Co. | Production Suite</title>
+    <script src="tmi.min.js"></script>
     <style>
-        :root {
-            --mugi-purple: #9146ff;
-            --mugi-gold: #ffd700;
-            --bg-glass: rgba(13, 13, 18, 0.95);
-            --success: #00ffcc;
-        }
-
-        body { margin: 0; background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
-
-        /* --- THE CONTROL SYSTEM --- */
-        #control {
-            position: absolute; top: 0; right: 0; width: 320px;
-            height: 100vh; background: var(--bg-glass);
-            border-left: 2px solid var(--mugi-purple);
-            padding: 25px; box-sizing: border-box;
-            z-index: 9999; transform: translateX(100%);
-            transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
-            backdrop-filter: blur(10px);
-        }
+        :root { --p: #9146ff; --g: #ffd700; --bg: rgba(10,10,15,0.98); }
+        body { margin: 0; background: transparent; color: white; font-family: sans-serif; overflow: hidden; }
+        #control { position: absolute; top: 0; right: 0; width: 300px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 20px; z-index: 100; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
-
-        .control-header { font-size: 18px; font-weight: 900; color: var(--mugi-purple); margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 10px; display: flex; justify-content: space-between; }
-        .field-group { margin-bottom: 18px; }
-        label { display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 6px; color: var(--mugi-purple); font-weight: bold; letter-spacing: 1px; }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
-        
-        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
-        .stat-node { background: #1a1a1a; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #333; opacity: 0.5; }
-        .stat-node.on { border-color: var(--success); color: var(--success); opacity: 1; box-shadow: 0 0 10px rgba(0, 255, 204, 0.2); }
-
-        /* --- CHAT HUD --- */
-        #chat-render { position: absolute; bottom: 40px; left: 30px; width: 500px; height: 60vh; display: flex; flex-direction: column; justify-content: flex-end; }
-        .msg { font-size: 26px; font-weight: 600; text-shadow: 2px 2px 4px #000; margin-bottom: 12px; animation: slideIn 0.2s ease-out; }
-        .user { font-weight: 800; color: var(--mugi-purple); }
-        .emote { height: 1.35em; vertical-align: middle; }
-
-        .btn-init { width: 100%; background: var(--mugi-purple); color: white; border: none; padding: 14px; font-weight: bold; cursor: pointer; border-radius: 6px; }
-        #toggle-panel { position: absolute; top: 20px; right: 20px; background: var(--mugi-purple); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; z-index: 10000; font-weight: 900; }
-        
-        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        #chat { position: absolute; bottom: 20px; left: 20px; width: 500px; }
+        .msg { font-size: 24px; font-weight: bold; text-shadow: 2px 2px 2px #000; margin-top: 10px; }
+        .user { color: var(--p); }
+        .btn { width: 100%; background: var(--p); color: white; border: none; padding: 10px; cursor: pointer; font-weight: bold; }
+        #m-btn { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; z-index: 101; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <button id="toggle-panel" onclick="document.getElementById('control').classList.toggle('active')">M</button>
+<button id="m-btn" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
-    <div id="control">
-        <div class="control-header">MUGI_SYSTEM <span style="font-size: 10px; opacity: 0.5;">GITHUB_LIVE</span></div>
-        <div class="field-group"><label>Twitch Channel</label><input type="text" id="ch-name" placeholder="CrazyJapanese"></div>
-        <div class="field-group"><label>7TV User ID</label><input type="text" id="ch-id" placeholder="01FEBH4WVG0008A7S9XD2BPYFJ"></div>
-        <div class="status-grid">
-            <div id="status-twitch" class="stat-node">TWITCH: OFF</div>
-            <div id="status-7tv" class="stat-node">7TV: OFF</div>
-            <div id="status-obs" class="stat-node">OBS: OK</div>
-            <div id="status-sb" class="stat-node">SB: WAIT</div>
-        </div>
-        <button class="btn-init" onclick="initSystem()">INITIALIZE ENGINE</button>
-        <div id="log-out" style="margin-top: 25px; font-size: 11px; padding: 10px; background: rgba(0,0,0,0.3); color: var(--mugi-gold);">Ready...</div>
-    </div>
+<div id="control">
+    <h2 style="color:var(--p)">MUGI_CORE</h2>
+    <label>Channel</label><input type="text" id="ch" value="CrazyJapanese">
+    <button class="btn" onclick="boot()">BOOT ENGINE</button>
+    <p id="log" style="font-size: 12px; color: var(--g); margin-top: 20px;">Ready...</p>
+</div>
 
-    <div id="chat-render"></div>
+<div id="chat"></div>
 
-    <script>
-        let emoteMap = {};
-        let tmiClient = null;
+<script>
+    let client = null;
 
-        // Load Session
-        const storage = JSON.parse(localStorage.getItem('mugi_live_v4.8')) || { ch: '', id: '' };
-        document.getElementById('ch-name').value = storage.ch;
-        document.getElementById('ch-id').value = storage.id;
-
-        async function initSystem() {
-            const log = document.getElementById('log-out');
-            
-            // 1. Check if TMI exists, if not, try one more injection
-            if (typeof tmi === 'undefined') {
-                log.innerText = "TMI Missing. Retrying injection...";
-                const script = document.createElement('script');
-                script.src = "https://unpkg.com/tmi.js@1.8.5/dist/tmi.min.js";
-                document.head.appendChild(script);
-                
-                // Wait 2 seconds for injection
-                await new Promise(r => setTimeout(r, 2000));
-                if (typeof tmi === 'undefined') {
-                    log.innerText = "FATAL: CDN Blocked. Use a local tmi.js file.";
-                    return;
-                }
-            }
-
-            const ch = document.getElementById('ch-name').value.trim().toLowerCase();
-            const id = document.getElementById('ch-id').value.trim();
-            if(!ch || !id) return;
-            localStorage.setItem('mugi_live_v4.8', JSON.stringify({ ch, id }));
-
-            // 7TV Sync
-            try {
-                const [u, g] = await Promise.all([
-                    fetch(`https://7tv.io/v3/users/${id}`).then(r => r.json()),
-                    fetch(`https://7tv.io/v3/emote-sets/global`).then(r => r.json())
-                ]);
-                emoteMap = {};
-                [...(u.emote_set?.emotes || []), ...g.emotes].forEach(e => {
-                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
-                });
-                document.getElementById('status-7tv').className = 'stat-node on';
-                document.getElementById('status-7tv').innerText = '7TV: ' + Object.keys(emoteMap).length;
-            } catch (e) { log.innerText = "7TV Sync Failed."; }
-
-            // Twitch Sync
-            if(tmiClient) tmiClient.disconnect();
-            tmiClient = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [ch] });
-            tmiClient.connect().then(() => {
-                document.getElementById('status-twitch').className = 'stat-node on';
-                document.getElementById('status-twitch').innerText = 'TWITCH: ONLINE';
-                log.innerText = "Engine Operational.";
-            });
-
-            tmiClient.on('message', (chan, tags, msg, self) => {
-                const container = document.getElementById('chat-render');
-                const div = document.createElement('div');
-                div.className = 'msg';
-                let parsed = msg.split(' ').map(w => emoteMap[w] ? `<img src="${emoteMap[w]}" class="emote">` : w).join(' ');
-                div.innerHTML = `<span class="user" style="color:${tags.color || '#9146ff'}">${tags['display-name']}:</span> ${parsed}`;
-                container.appendChild(div);
-                if(container.childNodes.length > 8) container.removeChild(container.firstChild);
-            });
+    function boot() {
+        const log = document.getElementById('log');
+        if (typeof tmi === 'undefined') {
+            log.innerText = "ERROR: tmi.min.js not found in your GitHub folder.";
+            return;
         }
 
-        if(storage.ch && storage.id) initSystem();
-    </script>
+        const channel = document.getElementById('ch').value.toLowerCase();
+        if(client) client.disconnect();
+
+        client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [channel] });
+        client.connect().then(() => log.innerText = "ONLINE").catch(() => log.innerText = "CONN ERROR");
+
+        client.on('message', (chan, tags, msg) => {
+            const chat = document.getElementById('chat');
+            const div = document.createElement('div');
+            div.className = 'msg';
+            div.innerHTML = `<span class="user">${tags['display-name']}:</span> ${msg}`;
+            chat.appendChild(div);
+            if(chat.childNodes.length > 8) chat.removeChild(chat.firstChild);
+        });
+    }
+</script>
 </body>
 </html>
