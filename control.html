@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mugi Command Center</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: sans-serif; padding: 15px; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; }
+        .tab { padding: 12px; background: #333; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 13px; font-weight: bold; }
+        .tab.active { background: #2196F3; color: white; }
+        
+        .panel { background: white; color: black; padding: 20px; border-radius: 20px; border: 4px solid black; display: none; }
+        .panel.active { display: block; }
+        
+        .status { font-size: 11px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; font-family: monospace; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: red; }
+        .online { background: #43B047; box-shadow: 0 0 5px #43B047; }
+
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid black; border-radius: 10px; box-sizing: border-box; font-weight: bold; }
+        button { width: 100%; padding: 15px; margin-top: 8px; border-radius: 12px; border: 3px solid black; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .btn-blue { background: #2196F3; color: white; }
+        .btn-green { background: #43B047; color: white; }
+        .btn-red { background: #E52521; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="tabs">
+        <div class="tab active" onclick="show('dest')">DESTINATION</div>
+        <div class="tab" onclick="show('counter')">SAKURA COUNT</div>
+        <div class="tab" onclick="show('scores')">SCORES</div>
+    </div>
+
+    <div id="p-dest" class="panel active">
+        <div class="status"><div id="dot-dest" class="dot"></div> DESTINATION OVERLAY</div>
+        <input type="text" id="dest-val" placeholder="TOKYO / KYOTO">
+        <div style="display:flex; gap:5px;">
+            <input type="number" id="dest-m" placeholder="MINS">
+            <input type="number" id="dest-s" placeholder="SECS">
+        </div>
+        <button class="btn-blue" onclick="send('dest', {type:'start', d:v('dest-val'), s:(v('dest-m')*60)+v('dest-s')*1})">START TIMER</button>
+        <button class="btn-green" onclick="send('dest', {type:'vis', v:true})">SHOW</button>
+        <button class="btn-red" onclick="send('dest', {type:'vis', v:false})">HIDE</button>
+    </div>
+
+    <div id="p-counter" class="panel">
+        <div class="status"><div id="dot-counter" class="dot"></div> SAKURA OVERLAY</div>
+        <h2 style="margin:0">Total: <span id="cur-sakura">0</span></h2>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-green" onclick="updateSakura(1)">+1</button>
+            <button class="btn-red" onclick="updateSakura(-1)">-1</button>
+        </div>
+        <button class="btn-blue" onclick="send('counter', {type:'vis', v:true})">SHOW</button>
+        <button class="btn-red" onclick="send('counter', {type:'vis', v:false})">HIDE</button>
+    </div>
+
+    <div id="p-scores" class="panel">
+        <div class="status"><div id="dot-scores" class="dot"></div> SCORES OVERLAY</div>
+        <input type="number" id="sc-tanuki" placeholder="TANUKI SCORE">
+        <input type="number" id="sc-kimie" placeholder="KIMIE SCORE">
+        <button class="btn-blue" onclick="send('scores', {type:'update', t:v('sc-tanuki'), k:v('sc-kimie')})">UPDATE SCORES</button>
+    </div>
+
+    <script>
+        const peer = new Peer();
+        const conns = {};
+        const targets = ['dest', 'counter', 'scores'];
+        let sakuraCount = 0;
+
+        peer.on('open', () => setInterval(checkConns, 2000));
+
+        function checkConns() {
+            targets.forEach(t => {
+                if (!conns[t] || !conns[t].open) {
+                    const c = peer.connect('mugi-' + t);
+                    c.on('open', () => {
+                        conns[t] = c;
+                        document.getElementById('dot-' + t).classList.add('online');
+                    });
+                }
+            });
+        }
+
+        function show(id) {
+            document.querySelectorAll('.panel, .tab').forEach(el => el.classList.remove('active'));
+            document.getElementById('p-' + id).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function send(t, d) { if (conns[t]) conns[t].send(d); }
+        function v(id) { return document.getElementById(id).value; }
+
+        function updateSakura(amt) {
+            sakuraCount += amt;
+            document.getElementById('cur-sakura').innerText = sakuraCount;
+            send('counter', {type: 'count', val: sakuraCount});
+        }
+    </script>
+</body>
+</html>
