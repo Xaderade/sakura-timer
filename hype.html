@@ -2,31 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Constant Drain v9.0</title>
+    <title>Mugi Co. | Tank-Proof v9.1</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; --fail: #ff4d4d; --g: #ffd700; }
         body { margin: 0; background: transparent; color: white; font-family: sans-serif; overflow: hidden; }
-        
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
         .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.7); border-left: 3px solid #444; width: fit-content; }
         .indicator.on { border-left-color: var(--success); color: var(--success); }
         .indicator.err { border-left-color: var(--fail); color: var(--fail); }
-
         #leaderboard { display: flex; gap: 15px; padding: 15px; background: rgba(0,0,0,0.8); width: fit-content; border-bottom: 3px solid var(--p); border-radius: 0 0 15px 0; margin-top: 80px; }
-        .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 75px; transition: transform 0.1s ease-out; }
+        .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 75px; }
         .rank-tag { font-size: 10px; font-weight: 900; background: var(--g); color: #000; padding: 1px 6px; border-radius: 3px; margin-bottom: 5px; }
         .img-wrap { height: 60px; width: 60px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px; }
         .emote-img { max-height: 50px; max-width: 50px; }
-        .count { font-size: 22px; font-weight: 900; margin-top: 5px; text-shadow: 2px 2px 0 var(--p); font-variant-numeric: tabular-nums; }
-
+        .count { font-size: 22px; font-weight: 900; margin-top: 5px; text-shadow: 2px 2px 0 var(--p); }
         #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 8px; margin: 4px 0 12px 0; border-radius: 4px; font-size: 12px; }
-        label { font-size: 10px; color: #777; font-weight: bold; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; z-index: 201; cursor: pointer; font-weight: bold; }
-        
-        .pop { transform: scale(1.2); }
+        .pop { transform: scale(1.2); transition: 0.1s; }
     </style>
 </head>
 <body>
@@ -40,20 +35,16 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_DRAIN_v9.0</h4>
-    <label>Twitch Channel Name</label>
+    <h4 style="margin:0; color:var(--p);">MUGI_TANK_v9.1</h4>
+    <label style="font-size:10px; color:#777;">CHANNEL</label>
     <input type="text" id="inp-ch" value="forsen">
-    <label>7TV User ID</label>
+    <label style="font-size:10px; color:#777;">7TV ID</label>
     <input type="text" id="inp-7id" value="60a4f32c969317208d927d2c">
-    <label>Twitch Numeric ID (for BTTV)</label>
+    <label style="font-size:10px; color:#777;">TWITCH NUMERIC ID</label>
     <input type="text" id="inp-bid" value="22484632">
-    
-    <label>Drain Amount (Per Second)</label>
-    <input type="number" id="inp-decay" value="0.2" step="0.1" min="0">
-    
-    <p style="font-size: 10px; color: #555;">Note: Every second, the count drops by this amount. If 0.2, it takes 5 seconds to lose 1 point.</p>
-
-    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:4px;" onclick="reboot()">START DRAIN ENGINE</button>
+    <label style="font-size:10px; color:#777;">DRAIN (SEC)</label>
+    <input type="number" id="inp-decay" value="0.2" step="0.1">
+    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold;" onclick="reboot()">BOOT ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -75,130 +66,110 @@
         if(el) { el.innerText = text; el.className = `indicator ${state}`; }
     };
 
-    // THE ENGINE LOOP: Runs every 1 second
+    async function safeFetch(url, id, label) {
+        try {
+            const r = await fetch(url);
+            if(!r.ok) throw new Error();
+            const d = await r.json();
+            setStat(id, `${label}: ONLINE`, 'on');
+            return d;
+        } catch(e) {
+            setStat(id, `${label}: OFFLINE`, 'err');
+            return null;
+        }
+    }
+
+    async function loadAssets(sId, bId) {
+        emoteMap = {};
+        // 7TV
+        const sData = await safeFetch(`https://7tv.io/v3/users/${sId}`, '7tv', '7TV');
+        if(sData) sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
+        const g7 = await safeFetch('https://7tv.io/v3/emote-sets/global', '7tv', '7TV');
+        if(g7) g7.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
+
+        // BTTV
+        const bData = await safeFetch(`https://api.betterttv.net/3/cached/users/twitch/${bId}`, 'bttv', 'BTTV');
+        if(bData) [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`; });
+    }
+
     function startEngine() {
         if(mainLoop) clearInterval(mainLoop);
         mainLoop = setInterval(() => {
             const drain = parseFloat(document.getElementById('inp-decay').value) || 0.2;
-            
-            Object.keys(emoteCounts).forEach(key => {
-                // Constant subtraction
-                emoteCounts[key] -= drain;
-                
-                // Cleanup
-                if(emoteCounts[key] <= 0) delete emoteCounts[key];
+            Object.keys(emoteCounts).forEach(k => {
+                emoteCounts[k] -= drain;
+                if(emoteCounts[k] <= 0) delete emoteCounts[k];
             });
-            
-            // Force visual update even if no one is chatting
-            updateLeaderboard();
-        }, 1000); 
-    }
-
-    async function loadAssets(sevenId, bttvId) {
-        emoteMap = {};
-        try {
-            const res = await fetch(`https://7tv.io/v3/users/${sevenId}`);
-            if(res.ok) {
-                const data = await res.json();
-                data.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
-                setStat('7tv', '7TV: ONLINE', 'on');
-            }
-            const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
-            const gData = await gRes.json();
-            gData.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
-        } catch(e) { setStat('7tv', '7TV: FAIL', 'err'); }
-
-        try {
-            const bRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${bttvId}`);
-            if(bRes.ok) {
-                const bData = await bRes.json();
-                [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => {
-                    emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`;
-                });
-                setStat('bttv', 'BTTV: ONLINE', 'on');
-            }
-        } catch(e) { setStat('bttv', 'BTTV: FAIL', 'err'); }
+            updateLeaderboard(false);
+        }, 1000);
     }
 
     async function reboot() {
-        if (typeof tmi === 'undefined') return;
+        if (typeof tmi === 'undefined') { alert("TMI.js missing from folder!"); return; }
         const CH = document.getElementById('inp-ch').value.trim();
         const S_ID = document.getElementById('inp-7id').value.trim();
         const B_ID = document.getElementById('inp-bid').value.trim();
-        
+
         if (client) { try { await client.disconnect(); } catch(e){} }
         emoteCounts = {};
+        
         await loadAssets(S_ID, B_ID);
-        startEngine(); // Start the 1-second interval
+        startEngine();
 
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
         client.on('message', (chan, tags, msg) => {
             let found = [];
-            msg.split(' ').forEach(word => {
-                const clean = word.replace(/[\u200B-\u200D\uFEFF]/g, "");
-                if (emoteMap[clean]) found.push(clean);
+            msg.split(' ').forEach(w => {
+                const c = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
+                if (emoteMap[c]) found.push(c);
             });
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
-                    tags.emotes[id].forEach(rangeStr => {
-                        const range = rangeStr.split('-');
-                        const name = msg.substring(parseInt(range[0]), parseInt(range[1]) + 1);
-                        if(!emoteMap[name]) emoteMap[name] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0`;
-                        found.push(name);
+                    tags.emotes[id].forEach(r => {
+                        const rr = r.split('-');
+                        const n = msg.substring(parseInt(rr[0]), parseInt(rr[1]) + 1);
+                        if(!emoteMap[n]) emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0`;
+                        found.push(n);
                     });
                 });
             }
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
-            if (found.length > 0) updateLeaderboard(true); // "true" means a user triggered this
+            if (found.length > 0) updateLeaderboard(true);
         });
 
-        client.connect().then(() => { 
-            setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on');
-            document.getElementById('control').classList.remove('active');
-        }).catch(() => setStat('tmi', 'TWITCH: FAIL', 'err'));
+        client.connect().then(() => setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on'))
+                      .catch(() => setStat('tmi', 'TWITCH: FAIL', 'err'));
+        
+        document.getElementById('control').classList.remove('active');
     }
 
-    function updateLeaderboard(fromChat = false) {
+    function updateLeaderboard(isChat) {
         const sorted = Object.entries(emoteCounts).sort((a,b) => b[1] - a[1]).slice(0,5);
-        
-        // Loop through slots
-        for(let i = 0; i < 5; i++) {
+        for(let i=0; i<5; i++) {
             const slot = document.getElementById(`slot-${i}`);
             const wrap = slot.querySelector('.img-wrap');
             const countEl = slot.querySelector('.count');
-            
             if(sorted[i]) {
-                const [name, count] = sorted[i];
-                const currentDisplayCount = Math.max(0, Math.floor(count));
-                const lastCount = parseInt(slot.getAttribute('data-lastcount') || 0);
-
-                // Update Image
-                if (wrap.getAttribute('data-name') !== name) {
-                    wrap.innerHTML = `<img src="${emoteMap[name]}" class="emote-img">`;
-                    wrap.setAttribute('data-name', name);
+                const [n, c] = sorted[i];
+                const cur = Math.floor(c);
+                const last = parseInt(slot.getAttribute('data-lastcount') || 0);
+                if (wrap.getAttribute('data-name') !== n) {
+                    wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
+                    wrap.setAttribute('data-name', n);
                 }
-
-                // Only POP if the number actually went UP (from chat)
-                if (fromChat && currentDisplayCount > lastCount) {
-                    slot.classList.remove('pop');
-                    void slot.offsetWidth; 
-                    slot.classList.add('pop');
+                if (isChat && cur > last) {
+                    slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
                     setTimeout(() => slot.classList.remove('pop'), 100);
                 }
-
-                countEl.innerText = currentDisplayCount;
-                slot.setAttribute('data-lastcount', currentDisplayCount);
+                countEl.innerText = cur;
+                slot.setAttribute('data-lastcount', cur);
             } else {
-                // Clear slot if no emote is there
-                wrap.innerHTML = "";
-                wrap.removeAttribute('data-name');
-                countEl.innerText = "0";
-                slot.setAttribute('data-lastcount', "0");
+                wrap.innerHTML = ""; wrap.removeAttribute('data-name'); countEl.innerText = "0";
             }
         }
     }
 
-    window.onload = () => { setTimeout(reboot, 300); };
+    window.onload = () => { setTimeout(reboot, 500); };
 </script>
 </body>
 </html>
