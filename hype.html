@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Local v8.8</title>
+    <title>Mugi Co. | Stable Animation v8.9</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; --fail: #ff4d4d; --g: #ffd700; }
@@ -25,13 +25,13 @@
         input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 8px; margin: 4px 0 12px 0; border-radius: 4px; font-size: 12px; }
         label { font-size: 10px; color: #777; font-weight: bold; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; z-index: 201; cursor: pointer; font-weight: bold; }
+        
         .pop { transform: scale(1.2); }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div id="stat-lib" class="indicator">TMI.JS: CHECKING...</div>
     <div id="stat-7tv" class="indicator">7TV: STANDBY</div>
     <div id="stat-bttv" class="indicator">BTTV: STANDBY</div>
     <div id="stat-tmi" class="indicator">TWITCH: STANDBY</div>
@@ -40,7 +40,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_LOCAL_v8.8</h4>
+    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_STABLE_v8.9</h4>
     <label>Twitch Channel Name</label>
     <input type="text" id="inp-ch" value="forsen">
     <label>7TV User ID</label>
@@ -49,7 +49,7 @@
     <input type="text" id="inp-bid" value="22484632">
     <label>Decay Strength (0.1 = 10%)</label>
     <input type="number" id="inp-decay" value="0.1" step="0.05">
-    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:4px;" onclick="reboot()">RE-BOOT ENGINE</button>
+    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:4px;" onclick="reboot()">BOOT ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -71,7 +71,6 @@
         if(el) { el.innerText = text; el.className = `indicator ${state}`; }
     };
 
-    // DECAY SYSTEM
     function startDecay() {
         if(decayTimer) clearInterval(decayTimer);
         decayTimer = setInterval(() => {
@@ -86,21 +85,18 @@
 
     async function loadAssets(sevenId, bttvId) {
         emoteMap = {};
-        // 7TV (Safe Fetch)
         try {
             const res = await fetch(`https://7tv.io/v3/users/${sevenId}`);
             if(res.ok) {
                 const data = await res.json();
                 data.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
-                setStat('7tv', `7TV: ONLINE`, 'on');
-            } else { setStat('7tv', '7TV: 404 ERR', 'err'); }
-            
+                setStat('7tv', '7TV: ONLINE', 'on');
+            } else { setStat('7tv', '7TV: 404', 'err'); }
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
-        } catch (e) { setStat('7tv', '7TV: FAILED', 'err'); }
+        } catch(e) { setStat('7tv', '7TV: FAIL', 'err'); }
 
-        // BTTV (Safe Fetch)
         try {
             const bRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${bttvId}`);
             if(bRes.ok) {
@@ -108,36 +104,26 @@
                 [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => {
                     emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`;
                 });
-                setStat('bttv', `BTTV: ONLINE`, 'on');
-            } else { setStat('bttv', 'BTTV: 404 ERR', 'err'); }
-
+                setStat('bttv', 'BTTV: ONLINE', 'on');
+            } else { setStat('bttv', 'BTTV: 404', 'err'); }
             const bgRes = await fetch('https://api.betterttv.net/3/cached/emotes/global');
             const bgData = await bgRes.json();
             bgData.forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`; });
-        } catch (e) { setStat('bttv', 'BTTV: FAILED', 'err'); }
+        } catch(e) { setStat('bttv', 'BTTV: FAIL', 'err'); }
     }
 
     async function reboot() {
-        // 1. HARD CHECK FOR LOCAL TMI FILE
-        if (typeof tmi === 'undefined') {
-            setStat('lib', 'TMI.JS: MISSING FILE', 'err');
-            return;
-        } else {
-            setStat('lib', 'TMI.JS: LOADED', 'on');
-        }
-
+        if (typeof tmi === 'undefined') { return; }
         const CH = document.getElementById('inp-ch').value.trim();
         const S_ID = document.getElementById('inp-7id').value.trim();
         const B_ID = document.getElementById('inp-bid').value.trim();
         
         if (client) { try { await client.disconnect(); } catch(e){} }
-        
         emoteCounts = {};
         await loadAssets(S_ID, B_ID);
         startDecay();
 
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
-
         client.on('message', (chan, tags, msg) => {
             let found = [];
             msg.split(' ').forEach(word => {
@@ -155,43 +141,4 @@
                 });
             }
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
-            if (found.length > 0) updateLeaderboard();
-        });
-
-        client.connect()
-            .then(() => { setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on'); document.getElementById('control').classList.remove('active'); })
-            .catch(() => setStat('tmi', 'TWITCH: FAILED', 'err'));
-    }
-
-    function updateLeaderboard() {
-        const sorted = Object.entries(emoteCounts).sort((a,b) => b[1] - a[1]).slice(0,5);
-        sorted.forEach((item, i) => {
-            const [name, count] = item;
-            const currentCount = Math.floor(count);
-            const slot = document.getElementById(`slot-${i}`);
-            const wrap = slot.querySelector('.img-wrap');
-            const countEl = slot.querySelector('.count');
-            const lastCount = parseInt(slot.getAttribute('data-lastcount') || 0);
-
-            if (wrap.getAttribute('data-name') !== name) {
-                wrap.innerHTML = `<img src="${emoteMap[name]}" class="emote-img">`;
-                wrap.setAttribute('data-name', name);
-            }
-
-            if (currentCount > lastCount) {
-                slot.classList.remove('pop');
-                void slot.offsetWidth;
-                slot.classList.add('pop');
-                setTimeout(() => slot.classList.remove('pop'), 100);
-            }
-
-            countEl.innerText = currentCount;
-            slot.setAttribute('data-lastcount', currentCount);
-        });
-    }
-
-    // Auto-boot sequence
-    window.onload = () => { setTimeout(reboot, 500); };
-</script>
-</body>
-</html>
+            if (found.length > 0) updateLeader
