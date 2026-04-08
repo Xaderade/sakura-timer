@@ -2,39 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | High-Response v8.5</title>
-    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
+    <title>Mugi Co. | Local v8.8</title>
+    <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; --fail: #ff4d4d; --g: #ffd700; }
         body { margin: 0; background: transparent; color: white; font-family: sans-serif; overflow: hidden; }
         
-        /* --- DIAGNOSTIC HUD --- */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
         .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.7); border-left: 3px solid #444; width: fit-content; }
         .indicator.on { border-left-color: var(--success); color: var(--success); }
+        .indicator.err { border-left-color: var(--fail); color: var(--fail); }
 
-        /* --- LEADERBOARD --- */
         #leaderboard { display: flex; gap: 15px; padding: 15px; background: rgba(0,0,0,0.8); width: fit-content; border-bottom: 3px solid var(--p); border-radius: 0 0 15px 0; margin-top: 80px; }
         .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 75px; transition: transform 0.1s ease-out; }
         .rank-tag { font-size: 10px; font-weight: 900; background: var(--g); color: #000; padding: 1px 6px; border-radius: 3px; margin-bottom: 5px; }
-        .img-wrap { height: 60px; width: 60px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden; }
+        .img-wrap { height: 60px; width: 60px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px; }
         .emote-img { max-height: 50px; max-width: 50px; }
         .count { font-size: 22px; font-weight: 900; margin-top: 5px; text-shadow: 2px 2px 0 var(--p); }
 
-        /* --- CONTROL PANEL --- */
         #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 8px; margin: 4px 0 12px 0; border-radius: 4px; font-size: 12px; }
         label { font-size: 10px; color: #777; font-weight: bold; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; z-index: 201; cursor: pointer; font-weight: bold; }
-        
-        /* --- FEEDBACK ANIMATION --- */
         .pop { transform: scale(1.2); }
     </style>
 </head>
 <body>
 
 <div id="hud">
+    <div id="stat-lib" class="indicator">TMI.JS: CHECKING...</div>
     <div id="stat-7tv" class="indicator">7TV: STANDBY</div>
     <div id="stat-bttv" class="indicator">BTTV: STANDBY</div>
     <div id="stat-tmi" class="indicator">TWITCH: STANDBY</div>
@@ -43,18 +40,16 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_ENGINE_v8.5</h4>
-    <label>Twitch Channel</label>
+    <h4 style="margin:0 0 15px 0; color:var(--p);">MUGI_LOCAL_v8.8</h4>
+    <label>Twitch Channel Name</label>
     <input type="text" id="inp-ch" value="forsen">
     <label>7TV User ID</label>
     <input type="text" id="inp-7id" value="60a4f32c969317208d927d2c">
-    <label>BTTV / Twitch Numeric ID</label>
+    <label>Twitch Numeric ID (for BTTV)</label>
     <input type="text" id="inp-bid" value="22484632">
-    
     <label>Decay Strength (0.1 = 10%)</label>
-    <input type="number" id="inp-decay" value="0.1" step="0.05" min="0" max="1">
-
-    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:4px;" onclick="reboot()">BOOT SYSTEM</button>
+    <input type="number" id="inp-decay" value="0.1" step="0.05">
+    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:4px;" onclick="reboot()">RE-BOOT ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -76,6 +71,7 @@
         if(el) { el.innerText = text; el.className = `indicator ${state}`; }
     };
 
+    // DECAY SYSTEM
     function startDecay() {
         if(decayTimer) clearInterval(decayTimer);
         decayTimer = setInterval(() => {
@@ -90,37 +86,58 @@
 
     async function loadAssets(sevenId, bttvId) {
         emoteMap = {};
+        // 7TV (Safe Fetch)
         try {
             const res = await fetch(`https://7tv.io/v3/users/${sevenId}`);
-            const data = await res.json();
-            data.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
+            if(res.ok) {
+                const data = await res.json();
+                data.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
+                setStat('7tv', `7TV: ONLINE`, 'on');
+            } else { setStat('7tv', '7TV: 404 ERR', 'err'); }
+            
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
-            setStat('7tv', `7TV: ONLINE`, 'on');
         } catch (e) { setStat('7tv', '7TV: FAILED', 'err'); }
 
+        // BTTV (Safe Fetch)
         try {
             const bRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${bttvId}`);
-            const bData = await bRes.json();
-            const bList = [...(bData.sharedEmotes || []), ...(bData.channelEmotes || [])];
-            bList.forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`; });
+            if(bRes.ok) {
+                const bData = await bRes.json();
+                [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => {
+                    emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`;
+                });
+                setStat('bttv', `BTTV: ONLINE`, 'on');
+            } else { setStat('bttv', 'BTTV: 404 ERR', 'err'); }
+
             const bgRes = await fetch('https://api.betterttv.net/3/cached/emotes/global');
             const bgData = await bgRes.json();
             bgData.forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`; });
-            setStat('bttv', `BTTV: ONLINE`, 'on');
         } catch (e) { setStat('bttv', 'BTTV: FAILED', 'err'); }
     }
 
     async function reboot() {
+        // 1. HARD CHECK FOR LOCAL TMI FILE
+        if (typeof tmi === 'undefined') {
+            setStat('lib', 'TMI.JS: MISSING FILE', 'err');
+            return;
+        } else {
+            setStat('lib', 'TMI.JS: LOADED', 'on');
+        }
+
         const CH = document.getElementById('inp-ch').value.trim();
         const S_ID = document.getElementById('inp-7id').value.trim();
         const B_ID = document.getElementById('inp-bid').value.trim();
-        if (client) client.disconnect();
+        
+        if (client) { try { await client.disconnect(); } catch(e){} }
+        
         emoteCounts = {};
         await loadAssets(S_ID, B_ID);
         startDecay();
+
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
+
         client.on('message', (chan, tags, msg) => {
             let found = [];
             msg.split(' ').forEach(word => {
@@ -140,10 +157,10 @@
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
             if (found.length > 0) updateLeaderboard();
         });
-        client.connect().then(() => { 
-            setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on');
-            document.getElementById('control').classList.remove('active');
-        });
+
+        client.connect()
+            .then(() => { setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on'); document.getElementById('control').classList.remove('active'); })
+            .catch(() => setStat('tmi', 'TWITCH: FAILED', 'err'));
     }
 
     function updateLeaderboard() {
@@ -154,19 +171,16 @@
             const slot = document.getElementById(`slot-${i}`);
             const wrap = slot.querySelector('.img-wrap');
             const countEl = slot.querySelector('.count');
-            
             const lastCount = parseInt(slot.getAttribute('data-lastcount') || 0);
 
-            // 1. Update Image if emote changed
             if (wrap.getAttribute('data-name') !== name) {
                 wrap.innerHTML = `<img src="${emoteMap[name]}" class="emote-img">`;
                 wrap.setAttribute('data-name', name);
             }
 
-            // 2. Pop animation if count increased
             if (currentCount > lastCount) {
                 slot.classList.remove('pop');
-                void slot.offsetWidth; // Trigger reflow to restart animation
+                void slot.offsetWidth;
                 slot.classList.add('pop');
                 setTimeout(() => slot.classList.remove('pop'), 100);
             }
@@ -176,7 +190,8 @@
         });
     }
 
-    reboot();
+    // Auto-boot sequence
+    window.onload = () => { setTimeout(reboot, 500); };
 </script>
 </body>
 </html>
