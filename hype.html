@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mugi Co. Production Suite v4.5</title>
-    <script src="https://unpkg.com/tmi.js@1.8.5/dist/tmi.min.js"></script>
+    <title>Mugi Co. Production Suite v4.6</title>
+    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
     <style>
         :root {
             --mugi-purple: #9146ff;
@@ -59,14 +59,14 @@
     <button id="toggle-panel" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
     <div id="control">
-        <div class="control-header">MUGI_SYSTEM <span style="font-size: 10px; opacity: 0.5;">v4.5</span></div>
+        <div class="control-header">MUGI_SYSTEM <span style="font-size: 10px; opacity: 0.5;">v4.6</span></div>
         <div class="field-group">
             <label>Twitch Channel</label>
-            <input type="text" id="ch-name" placeholder="CrazyJapanese">
+            <input type="text" id="ch-name" value="CrazyJapanese">
         </div>
         <div class="field-group">
             <label>7TV ID</label>
-            <input type="text" id="ch-id" placeholder="01FEBH4WVG0008A7S9XD2BPYFJ">
+            <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
         </div>
         <div class="status-grid">
             <div id="status-twitch" class="stat-node">TWITCH: OFF</div>
@@ -92,13 +92,10 @@
         let counts = {};
         let tmiClient = null;
 
-        const storage = JSON.parse(localStorage.getItem('mugi_sys_v4.5')) || { ch: '', id: '' };
-        document.getElementById('ch-name').value = storage.ch;
-        document.getElementById('ch-id').value = storage.id;
-
         async function initSystem() {
+            // Check for TMI.js presence
             if (typeof tmi === 'undefined') {
-                document.getElementById('log-out').innerText = "FATAL: TMI.js not loaded.";
+                document.getElementById('log-out').innerText = "FATAL: TMI.js not loaded. Check internet/CORS.";
                 return;
             }
 
@@ -107,7 +104,6 @@
             const log = document.getElementById('log-out');
 
             if(!ch || !id) return;
-            localStorage.setItem('mugi_sys_v4.5', JSON.stringify({ ch, id }));
 
             // 1. Fetch 7TV
             try {
@@ -124,10 +120,11 @@
                 });
                 
                 document.getElementById('status-7tv').className = 'stat-node on';
-                document.getElementById('status-7tv').innerText = '7TV: ' + Object.keys(emoteMap).length;
-                log.innerText = "7TV Assets Synced.";
+                document.getElementById('status-7tv').innerText = '7TV: ' + Object.keys(emoteMap).length + ' LOADED';
+                log.innerText = "7TV Assets Ready.";
             } catch (e) { 
-                log.innerText = "7TV Fetch Failed.";
+                log.innerText = "7TV Fetch Failed. Check 7TV ID.";
+                console.error(e);
             }
 
             // 2. Twitch IRC
@@ -140,9 +137,10 @@
             tmiClient.connect().then(() => {
                 document.getElementById('status-twitch').className = 'stat-node on';
                 document.getElementById('status-twitch').innerText = 'TWITCH: ONLINE';
-                log.innerText = "Engine Fully Operational.";
+                log.innerText = "Engine Operational.";
             }).catch(err => {
-                log.innerText = "Twitch Connection Failed.";
+                log.innerText = "Twitch Conn Error.";
+                console.error(err);
             });
 
             tmiClient.on('message', (chan, tags, msg, self) => {
@@ -178,8 +176,6 @@
             for(let e in counts) { counts[e] = Math.max(0, counts[e] - 1); if(counts[e] === 0) delete counts[e]; }
             updateTrend();
         }, 30000);
-
-        if(storage.ch && storage.id) initSystem();
     </script>
 </body>
 </html>
