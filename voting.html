@@ -37,9 +37,7 @@
         }
 
         .score-prefix {
-            color: white;
-            font-size: 80px;
-            margin-right: 20px;
+            color: white; font-size: 80px; margin-right: 20px;
         }
 
         #average-score {
@@ -49,7 +47,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             padding-right: 80px; 
-            min-width: 300px; /* Prevents the "SCORE:" text from moving */
+            min-width: 300px;
         }
 
         #timer-text {
@@ -58,7 +56,7 @@
             margin-top: 10px;
         }
 
-        /* CONTROL PANEL (#control) */
+        /* CONTROL PANEL */
         #controls { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: white; color: black; z-index: 999;
@@ -108,20 +106,19 @@
 
     <div id="controls">
         <div class="control-box">
-            <h1 style="margin:0">MUGI RATER</h1>
-            <p>Channel: <b>@CrazyJapanese</b></p>
-            
-            <label style="display:block; margin-top:10px; font-weight:bold;">VOTING DURATION (SECONDS):</label>
+            <h1 style="margin:0">MUGI RATER CONTROL</h1>
+            <p>Target: <b>@CrazyJapanese</b></p>
+            <label style="display:block; margin-top:10px; font-weight:bold;">TIMER (SECONDS):</label>
             <input type="number" id="timer-input" value="30" min="5" max="300">
-            
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
-            <button class="reset-btn" onclick="resetAll()">✖ RESET / CLEAR</button>
-            <p id="conn-status" style="margin-top:20px; font-weight:bold; color: orange;">Connecting to OBS...</p>
+            <button class="reset-btn" onclick="resetAll()">✖ RESET</button>
+            <p id="conn-status" style="margin-top:20px; font-weight:bold; color: orange;">STATUS: INITIALIZING...</p>
         </div>
     </div>
 
     <script>
-        const RATER_ID = 'mugi-chat-rater-2026';
+        // Unique ID to avoid clashing with other Mugi overlays
+        const RATER_ID = 'mugi-rater-v2-active';
         const TWITCH_CHANNEL = 'CrazyJapanese';
         const isController = window.location.hash.includes('control');
         
@@ -132,10 +129,32 @@
         let timeLeft = 30;
         let timerInterval;
 
+        // PeerJS Connection Logic
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
 
-        peer.on('open', () => { if (isController) conn = peer.connect(RATER_ID); });
+        peer.on('open', (id) => {
+            if (isController) {
+                // Try to connect to the fixed OBS ID
+                connectToOBS();
+            } else {
+                console.log('OBS Overlay is ready with ID:', id);
+            }
+        });
+
+        function connectToOBS() {
+            conn = peer.connect(RATER_ID);
+            conn.on('open', () => {
+                document.getElementById('conn-status').innerText = "STATUS: CONNECTED TO OBS";
+                document.getElementById('conn-status').style.color = "green";
+            });
+            conn.on('close', () => {
+                document.getElementById('conn-status').innerText = "STATUS: DISCONNECTED - RETRYING...";
+                document.getElementById('conn-status').style.color = "red";
+                setTimeout(connectToOBS, 3000);
+            });
+        }
+
         peer.on('connection', (c) => {
             conn = c;
             conn.on('data', (data) => {
@@ -144,12 +163,12 @@
             });
         });
 
+        // Twitch Logic (Only on OBS side)
         if (!isController) {
             const client = new tmi.Client({ channels: [TWITCH_CHANNEL] });
-            client.connect();
+            client.connect().catch(console.error);
             client.on('message', (channel, tags, message) => {
                 if (!isVotingOpen) return;
-                // Parse float handles decimals like 9.2
                 const score = parseFloat(message.trim());
                 if (!isNaN(score) && score >= 0 && score <= 10) {
                     votes[tags.username] = score;
@@ -160,8 +179,12 @@
 
         function startVoting() {
             const time = parseInt(document.getElementById('timer-input').value) || 30;
-            executeStart(time);
-            if (conn) conn.send({ action: 'start', time: time });
+            if (conn && conn.open) {
+                conn.send({ action: 'start', time: time });
+                // We don't execute locally on the controller to ensure OBS is the source of truth
+            } else if (!isController) {
+                executeStart(time);
+            }
         }
 
         function executeStart(time) {
@@ -169,7 +192,6 @@
             isVotingOpen = true;
             timeLeft = time;
             document.getElementById('status-msg').innerText = "VOTING OPEN!";
-            
             timerInterval = setInterval(() => {
                 timeLeft--;
                 document.getElementById('timer-text').innerText = timeLeft;
@@ -183,8 +205,8 @@
         }
 
         function resetAll() {
+            if (conn && conn.open) conn.send({ action: 'reset' });
             executeReset();
-            if (conn) conn.send({ action: 'reset' });
         }
 
         function executeReset() {
@@ -198,7 +220,6 @@
 
         function updateDisplay() {
             const scores = Object.values(votes);
-            // .toFixed(1) forces it to show 1 decimal place (e.g. 9.2)
             const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : "0.0";
             document.getElementById('average-score').innerText = avg;
         }
