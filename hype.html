@@ -2,77 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Floating v9.3</title>
+    <title>Mugi Co. | Green Screen v9.4</title>
     <script src="tmi.min.js"></script>
     <style>
-        :root { --p: #9146ff; --success: #00ffcc; --fail: #ff4d4d; --g: #ffd700; }
-        body { margin: 0; background: transparent; color: white; font-family: sans-serif; overflow: hidden; }
+        :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         
-        /* HUD Indicators */
+        /* CHROMA KEY BACKGROUND */
+        body { 
+            margin: 0; 
+            background-color: var(--chroma); 
+            color: white; 
+            font-family: sans-serif; 
+            overflow: hidden; 
+        }
+        
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
-        .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.7); border-left: 3px solid #444; width: fit-content; }
-        .indicator.on { border-left-color: var(--success); color: var(--success); }
-        .indicator.err { border-left-color: var(--fail); color: var(--fail); }
+        .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.8); border-left: 3px solid #444; width: fit-content; }
+        .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
+        .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
 
-        /* CENTERED LAYOUT */
+        /* CENTERED GRID - NO BARS */
         #leaderboard { 
             display: flex; 
             justify-content: center; 
-            align-items: center; 
-            gap: 40px; 
+            align-items: flex-end; 
+            gap: 60px; 
             width: 100vw; 
-            height: 250px; 
-            margin-top: 50px;
+            height: 100vh; 
+            padding-bottom: 50px;
+            box-sizing: border-box;
         }
 
         .emote-slot { 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            min-width: 150px; 
-            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.8)); /* Visibility shadow */
+            transition: transform 0.1s;
+            /* Heavy shadow to help the Chroma Key filter keep edges clean */
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); 
         }
 
         .rank-tag { 
-            font-size: 14px; 
+            font-size: 20px; 
             font-weight: 900; 
             background: var(--g); 
             color: #000; 
-            padding: 2px 10px; 
-            border-radius: 4px; 
-            margin-bottom: 10px; 
+            padding: 4px 15px; 
+            border-radius: 6px; 
+            margin-bottom: 15px; 
         }
 
-        /* MAX SIZE IMAGES */
+        /* MASSIVE EMOTE SIZE */
         .img-wrap { 
-            height: 112px; 
-            width: 112px; 
+            height: 200px; 
+            width: 200px; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
         }
         .emote-img { 
-            max-height: 112px; 
-            max-width: 112px; 
+            max-height: 200px; 
+            max-width: 200px; 
             object-fit: contain;
         }
 
+        /* MASSIVE COUNT SIZE */
         .count { 
-            font-size: 36px; 
+            font-size: 64px; 
             font-weight: 900; 
             margin-top: 10px; 
             color: white;
-            text-shadow: 3px 3px 0 var(--p), -1px -1px 0 #000; 
+            text-shadow: 5px 5px 0 var(--p), -2px -2px 0 #000; 
         }
 
-        /* CONTROL PANEL */
-        #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: rgba(10,10,15,0.98); border-left: 2px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
+        /* CONTROL PANEL (Stays dark for readability) */
+        #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 8px; margin: 4px 0 12px 0; border-radius: 4px; font-size: 12px; }
-        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; z-index: 201; cursor: pointer; font-weight: bold; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 10px; margin: 5px 0 15px 0; border-radius: 4px; }
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px; }
         
-        /* POP ANIMATION */
-        .pop { transform: scale(1.3); transition: 0.05s ease-out; }
+        .pop { transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -86,16 +95,17 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h4 style="margin:0; color:var(--p);">MUGI_CENTER_v9.3</h4>
-    <label style="font-size:10px; color:#777;">CHANNEL</label>
+    <h3 style="margin:0; color:var(--p);">MUGI_CHROMA_v9.4</h3>
+    <p style="font-size:10px; color:#aaa;">(OBS: Apply Chroma Key Filter)</p>
+    <label style="font-size:10px; color:#777;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" value="forsen">
     <label style="font-size:10px; color:#777;">7TV ID</label>
     <input type="text" id="inp-7id" value="60a4f32c969317208d927d2c">
-    <label style="font-size:10px; color:#777;">TWITCH NUMERIC ID</label>
+    <label style="font-size:10px; color:#777;">NUMERIC ID</label>
     <input type="text" id="inp-bid" value="22484632">
-    <label style="font-size:10px; color:#777;">DRAIN (SEC)</label>
+    <label style="font-size:10px; color:#777;">DRAIN SEC</label>
     <input type="number" id="inp-decay" value="0.2" step="0.1">
-    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold;" onclick="reboot()">BOOT ENGINE</button>
+    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:5px;" onclick="reboot()">BOOT OVERLAY</button>
 </div>
 
 <div id="leaderboard">
@@ -132,7 +142,6 @@
 
     async function loadAssets(sId, bId) {
         emoteMap = {};
-        // Use 4x for high quality if available
         const sData = await safeFetch(`https://7tv.io/v3/users/${sId}`, '7tv', '7TV');
         if(sData) sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
         const g7 = await safeFetch('https://7tv.io/v3/emote-sets/global', '7tv', '7TV');
@@ -166,10 +175,10 @@
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
         
         client.on('message', (chan, tags, msg) => {
-            let foundInThisMessage = new Set();
+            let found = new Set();
             msg.split(' ').forEach(w => {
                 const c = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
-                if (emoteMap[c]) foundInThisMessage.add(c);
+                if (emoteMap[c]) found.add(c);
             });
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
@@ -177,12 +186,12 @@
                         const rr = r.split('-');
                         const n = msg.substring(parseInt(rr[0]), parseInt(rr[1]) + 1);
                         if(!emoteMap[n]) emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
-                        foundInThisMessage.add(n);
+                        found.add(n);
                     });
                 });
             }
-            if (foundInThisMessage.size > 0) {
-                foundInThisMessage.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
+            if (found.size > 0) {
+                found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
                 updateLeaderboard(true);
             }
         });
@@ -210,9 +219,9 @@
                 }
                 countEl.innerText = cur;
                 slot.setAttribute('data-lastcount', cur);
-                slot.style.visibility = "visible";
+                slot.style.display = "flex";
             } else {
-                slot.style.visibility = "hidden"; // Hide unused slots
+                slot.style.display = "none";
             }
         }
     }
