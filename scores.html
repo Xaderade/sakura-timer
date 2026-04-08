@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Counter - Sharp Resizing</title>
+    <title>Mugi Master Scoreboard</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
@@ -11,28 +11,28 @@
             margin: 0; 
             overflow: hidden; 
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            justify-content: flex-start;
             height: 100vh;
             width: 100vw;
         }
 
         #renderCanvas {
-            /* We remove fixed pixel sizes and use CSS to fill the space */
             width: 100%;
             height: auto;
-            image-rendering: auto;
             transform: skewX(-5deg);
+            image-rendering: auto;
         }
 
+        /* Remote UI */
         #controls { 
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: white; border: 6px solid #000; border-radius: 35px; 
             padding: 20px; text-align: center; box-shadow: 0 12px 0 #333; 
             z-index: 9999; font-family: sans-serif; display: none; 
         }
-        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
-        button { padding: 15px 40px; font-size: 35px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 4px solid #000; box-shadow: 0 6px 0 #000; transition: 0.1s; }
-        button:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
+        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+        button { padding: 10px 25px; font-size: 20px; cursor: pointer; font-weight: bold; border-radius: 15px; border: 3px solid #000; transition: 0.1s; }
         .plus { background: #43B047; color: white; }
         .minus { background: #FBD000; color: black; }
     </style>
@@ -42,12 +42,12 @@
     <canvas id="renderCanvas"></canvas>
 
     <div id="controls">
-        <div style="font-weight: bold; font-size: 22px; color: #000;">MANAGER REMOTE</div>
+        <div style="font-weight: bold;">SAKURA REMOTE</div>
         <div class="btn-group">
             <button class="minus" onclick="changeCount(-1)">-</button>
             <button class="plus" onclick="changeCount(1)">+</button>
         </div>
-        <button onclick="resetCount()" style="margin-top:20px; font-size:14px; background:#f0f0f0; border: 3px solid #000; width:100%; border-radius:10px;">RESET TO 0</button>
+        <button onclick="resetCount()" style="margin-top:10px; font-size:12px; width:100%;">RESET SAKURA</button>
     </div>
 
     <script>
@@ -57,14 +57,15 @@
         const isController = window.location.hash.includes('control');
         if (isController) document.getElementById('controls').style.display = 'block';
 
-        let count = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
-        let scaleEffect = 1;
-        let flashColor = null;
+        let sakuraCount = localStorage.getItem('sakura_count') ? parseInt(localStorage.getItem('sakura_count')) : 0;
+        let scoreValue = "160218"; // Change this to your actual high score
+        
+        let sakuraScale = 1;
+        let sakuraFlash = null;
 
-        const fontMain = 'italic 260px "Luckiest Guy"';
+        const fontBig = 'italic 260px "Luckiest Guy"';
         const fontSmall = 'italic 160px "Luckiest Guy"';
 
-        // --- HIGH-DPI RESIZING LOGIC ---
         function resize() {
             const dpr = window.devicePixelRatio || 1;
             canvas.width = window.innerWidth * dpr;
@@ -74,49 +75,53 @@
         }
         window.addEventListener('resize', resize);
 
-        function drawText(text, x, y, isXChar) {
-            ctx.font = isXChar ? fontSmall : fontMain;
-            
+        function drawChonkText(text, x, y, sizeType, flash) {
+            ctx.font = sizeType === 'big' ? fontBig : fontSmall;
             ctx.lineJoin = "round";
             ctx.lineWidth = 18;
-            ctx.strokeStyle = "black";
             
-            // Draw Outline Shadow (The 3D part)
+            // 1. Black Outline + 3D Shadow
+            ctx.strokeStyle = "black";
             ctx.strokeText(text, x + 18, y + 18);
-            // Draw Main Outline
             ctx.strokeText(text, x, y);
 
+            // 2. Gradient Fill
             const grad = ctx.createLinearGradient(x, y - 130, x, y + 50);
             grad.addColorStop(0.2, "#FFFFFF");
             grad.addColorStop(0.85, "#A0A0A0");
 
-            // Shadow Fill
             ctx.fillStyle = "black";
-            ctx.fillText(text, x + 18, y + 18);
-
-            // Main Fill
-            ctx.fillStyle = flashColor ? flashColor : grad;
+            ctx.fillText(text, x + 18, y + 18); // Shadow fill
+            
+            ctx.fillStyle = flash ? flash : grad;
             ctx.fillText(text, x, y);
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            const startX = 100;
-            const baseY = 300; // Centered vertically
+            const marginX = 80;
+            
+            // --- DRAW TOP SCOREBOARD ---
+            // Positioned at the top
+            drawChonkText(scoreValue, marginX, 220, 'big', null);
 
-            ctx.font = "180px serif";
+            // --- DRAW SAKURA COUNTER ---
+            // Positioned below the scoreboard
+            const sakuraY = 500;
+            
+            // Emoji (No shadow/jagged edges)
+            ctx.font = "160px serif";
             ctx.textBaseline = "middle";
-            ctx.fillText("🌸", startX, baseY - 20);
+            ctx.fillText("🌸", marginX, sakuraY - 15);
 
             ctx.save();
-            ctx.translate(startX + 220, baseY);
-            ctx.scale(scaleEffect, scaleEffect);
-            ctx.translate(-(startX + 220), -baseY);
+            ctx.translate(marginX + 200, sakuraY);
+            ctx.scale(sakuraScale, sakuraScale);
+            ctx.translate(-(marginX + 200), -sakuraY);
 
-            // Precision spacing
-            drawText("x", startX + 220, baseY + 20, true);
-            drawText(count.toString(), startX + 340, baseY + 20, false);
+            drawChonkText("x", marginX + 180, sakuraY + 15, 'small', sakuraFlash);
+            drawChonkText(sakuraCount.toString(), marginX + 290, sakuraY + 15, 'big', sakuraFlash);
 
             ctx.restore();
         }
@@ -129,14 +134,14 @@
                 let progress = timestamp - start;
                 let p = progress / duration;
                 if (p < 0.3) {
-                    scaleEffect = 1 + (p / 0.3) * 0.12;
-                    flashColor = "#ccff00"; 
+                    sakuraScale = 1 + (p / 0.3) * 0.12;
+                    sakuraFlash = "#ccff00"; 
                 } else if (p < 1) {
-                    scaleEffect = 1.12 - ((p - 0.3) / 0.7) * 0.12;
-                    flashColor = null;
+                    sakuraScale = 1.12 - ((p - 0.3) / 0.7) * 0.12;
+                    sakuraFlash = null;
                 } else {
-                    scaleEffect = 1;
-                    flashColor = null;
+                    sakuraScale = 1;
+                    sakuraFlash = null;
                 }
                 draw();
                 if (progress < duration) requestAnimationFrame(animate);
@@ -144,37 +149,32 @@
             requestAnimationFrame(animate);
         }
 
-        // Initialize
-        document.fonts.load(fontMain).then(() => {
-            resize();
-        });
+        document.fonts.load(fontBig).then(resize);
 
-        // PeerJS setup...
+        // PeerJS Logic
         const peer = new Peer(isController ? null : COUNTER_ID);
         peer.on('open', () => { if (isController) connectToPeer(); });
-        peer.on('connection', (c) => setupConnection(c));
+        peer.on('connection', (c) => {
+            c.on('data', (data) => {
+                if (data.action === 'update') { sakuraCount = data.val; triggerPop(); }
+                if (data.action === 'reset') { sakuraCount = 0; draw(); }
+            });
+        });
 
         function connectToPeer() {
             const conn = peer.connect(COUNTER_ID);
-            setupConnection(conn);
-        }
-
-        function setupConnection(c) {
-            c.on('data', (data) => {
-                if (data.action === 'update') { count = data.val; localStorage.setItem('sakura_count', count); triggerPop(); }
-                if (data.action === 'reset') { count = 0; localStorage.setItem('sakura_count', 0); draw(); }
-            });
+            conn.on('open', () => { /* connection ready */ });
         }
 
         function changeCount(delta) {
-            count += delta;
-            localStorage.setItem('sakura_count', count);
+            sakuraCount += delta;
+            localStorage.setItem('sakura_count', sakuraCount);
             triggerPop();
-            if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'update', val: count });
+            if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'update', val: sakuraCount });
         }
 
         function resetCount() {
-            count = 0;
+            sakuraCount = 0;
             localStorage.setItem('sakura_count', 0);
             draw();
             if (peer.connections[COUNTER_ID]) peer.connections[COUNTER_ID][0].send({ action: 'reset' });
