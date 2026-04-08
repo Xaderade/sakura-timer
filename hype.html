@@ -2,30 +2,32 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Manual v9.7</title>
+    <title>Mugi Co. | Full Load v9.8</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
         
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
-        .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.8); border-left: 3px solid #444; width: fit-content; min-width: 100px; }
+        .indicator { font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 3px; background: rgba(0,0,0,0.8); border-left: 3px solid #444; width: fit-content; min-width: 120px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
         .indicator.total { border-left-color: var(--p); color: #fff; }
 
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 60px; width: 100vw; height: 100vh; padding-bottom: 50px; box-sizing: border-box; }
-        .emote-slot { display: flex; flex-direction: column; align-items: center; transition: transform 0.1s; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); }
+        .emote-slot { display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); }
         .rank-tag { font-size: 20px; font-weight: 900; background: var(--g); color: #000; padding: 4px 15px; border-radius: 6px; margin-bottom: 15px; }
         .img-wrap { height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; }
         .emote-img { max-height: 200px; max-width: 200px; object-fit: contain; }
         .count { font-size: 64px; font-weight: 900; margin-top: 10px; text-shadow: 5px 5px 0 var(--p), -2px -2px 0 #000; }
 
-        #control { position: absolute; top: 0; right: 0; width: 280px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 20px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
+        #control { position: absolute; top: 0; right: 0; width: 300px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 25px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 8px; margin: 4px 0 10px 0; border-radius: 4px; font-size: 12px; }
-        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px; }
-        .pop { transform: scale(1.2); }
+        label { font-size: 11px; color: var(--p); font-weight: bold; text-transform: uppercase; display: block; margin-top: 15px; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+        input:focus { border-color: var(--p); outline: none; }
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 22px; font-weight: bold; }
+        .pop { transform: scale(1.2); transition: 0.1s; }
     </style>
 </head>
 <body>
@@ -40,16 +42,21 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_RESTORE_v9.7</h3>
-    <label style="font-size:10px; color:#777;">CHANNEL NAME</label>
-    <input type="text" id="inp-ch" value="forsen">
-    <label style="font-size:10px; color:#777;">7TV USER ID</label>
-    <input type="text" id="inp-7id" value="60a4f32c969317208d927d2c">
-    <label style="font-size:10px; color:#777;">BTTV TWITCH ID (Numeric)</label>
-    <input type="text" id="inp-bid" value="22484632">
-    <label style="font-size:10px; color:#777;">DRAIN SEC</label>
+    <h3 style="margin:0; color:var(--p); border-bottom: 1px solid #333; padding-bottom: 10px;">MUGI_ENGINE v9.8</h3>
+    
+    <label>Twitch Channel Name</label>
+    <input type="text" id="inp-ch" placeholder="crazyjapanese" value="crazyjapanese">
+    
+    <label>7TV User ID (The Long ID)</label>
+    <input type="text" id="inp-7id" placeholder="01FE..." value="01FEBH4WVG0008A7S9XD2BPYFJ">
+    
+    <label>BTTV Numeric ID</label>
+    <input type="text" id="inp-bid" placeholder="Twitch ID Number" value="">
+    
+    <label>Drain Rate (Points/Sec)</label>
     <input type="number" id="inp-decay" value="0.2" step="0.1">
-    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:5px;" onclick="reboot()">BOOT OVERLAY</button>
+    
+    <button style="width:100%; padding:18px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:6px; margin-top: 25px; font-size: 14px;" onclick="reboot()">BOOT OVERLAY</button>
 </div>
 
 <div id="leaderboard">
@@ -76,34 +83,47 @@
         let count7tv = 0;
         let countBttv = 0;
 
-        // 7TV Channel
+        // 7TV Channel Emotes
         try {
             const sRes = await fetch(`https://7tv.io/v3/users/${sId}`);
             if(sRes.ok) {
                 const sData = await sRes.json();
-                sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; count7tv++; });
+                // Drills down to find the specific emote set attached to the user
+                if(sData.emote_set && sData.emote_set.emotes) {
+                    sData.emote_set.emotes.forEach(e => {
+                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
+                        count7tv++;
+                    });
+                }
             }
-        } catch(e) {}
+        } catch(e) { console.error("7TV Channel Error:", e); }
 
-        // 7TV Global
+        // 7TV Global Emotes
         try {
             const g7 = await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json());
-            g7.emotes.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; count7tv++; } });
+            g7.emotes.forEach(e => {
+                if(!emoteMap[e.name]) {
+                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
+                    count7tv++;
+                }
+            });
             setStat('7tv', `7TV: ${count7tv} LOADED`, 'on');
         } catch(e) { setStat('7tv', '7TV: FAILED', 'err'); }
 
         // BTTV Channel
-        try {
-            const bLook = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${bId}`);
-            if(bLook.ok) {
-                const bData = await bLook.json();
-                [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => {
-                    emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
-                    countBttv++;
-                });
-                setStat('bttv', `BTTV: ${countBttv} LOADED`, 'on');
-            }
-        } catch(e) { setStat('bttv', 'BTTV: FAILED', 'err'); }
+        if(bId) {
+            try {
+                const bLook = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${bId}`);
+                if(bLook.ok) {
+                    const bData = await bLook.json();
+                    [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => {
+                        emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
+                        countBttv++;
+                    });
+                    setStat('bttv', `BTTV: ${countBttv} LOADED`, 'on');
+                }
+            } catch(e) { setStat('bttv', 'BTTV: FAILED', 'err'); }
+        }
 
         setStat('total', `TOTAL: ${Object.keys(emoteMap).length} EMOTES`, 'total');
     }
