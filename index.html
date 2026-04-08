@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sakura Timer - Ultra Mega Chonk 3D</title>
+    <title>Sakura Timer - Spaced Edition</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
         body { 
-            background: #00ff00; /* Green Screen for OBS */
+            background: #00ff00; 
             font-family: 'Luckiest Guy', sans-serif; 
             margin: 0; 
             height: 100vh; 
@@ -17,45 +17,50 @@
             flex-direction: column;
             justify-content: center; 
             align-items: flex-start; 
-            padding-left: 120px; /* Space from left edge of screen */
+            padding-left: 120px; 
         }
         
         #timer-wrapper { 
-            font-size: 280px; 
-            color: #FFFFFF;
-            /* Applying the custom 3D SVG filter */
-            filter: url(#megaChonk3D); 
-            /* Mario Party tilt */
+            font-size: 300px; 
+            font-style: italic;
             transform: skewX(-5deg); 
             user-select: none;
-            transition: color 1s linear;
             font-variant-numeric: tabular-nums;
             text-rendering: geometricPrecision;
             white-space: nowrap;
+            
+            /* ADDED: Spacing between the numbers */
+            letter-spacing: 20px; 
+            
+            /* ADJUSTED: Extra space for the last number's shadow */
+            padding-right: 100px; 
+
+            background: linear-gradient(to bottom, #FFFFFF 30%, #A0A0A0 80%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+
+            filter: 
+                drop-shadow(0 0 0 black) 
+                drop-shadow(4px 0 0 black) 
+                drop-shadow(-4px 0 0 black) 
+                drop-shadow(0 4px 0 black) 
+                drop-shadow(0 -4px 0 black)
+                drop-shadow(4px 4px 0 black)
+                drop-shadow(-4px -4px 0 black)
+                drop-shadow(4px -4px 0 black)
+                drop-shadow(-4px 4px 0 black)
+                drop-shadow(12px 12px 0px rgba(0,0,0,1));
         }
 
         /* --- MANAGER REMOTE UI --- */
         #controls { 
-            position: fixed; 
-            bottom: 30px; 
-            left: 50%; 
-            transform: translateX(-50%);
-            background: white; 
-            border: 6px solid #000; 
-            border-radius: 35px; 
-            padding: 20px; 
-            text-align: center; 
-            box-shadow: 0 12px 0 #333; 
-            z-index: 9999; 
-            font-family: sans-serif;
-            display: none; /* Only shows if #control is in URL */
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: white; border: 6px solid #000; border-radius: 35px; padding: 20px; 
+            text-align: center; box-shadow: 0 12px 0 #333; z-index: 9999; font-family: sans-serif; display: none; 
         }
-        
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
         input { font-size: 20px; padding: 10px; width: 140px; border: 4px solid #000; border-radius: 12px; text-align: center; margin-bottom: 10px; font-weight: bold; }
         button { padding: 12px 25px; font-size: 18px; cursor: pointer; font-weight: bold; border-radius: 50px; border: 4px solid #000; box-shadow: 0 5px 0 #000; transition: 0.1s; }
-        button:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
-        
         .start { background: #43B047; color: white; }
         .pause { background: #E52521; color: white; }
         .reset { background: #FBD000; color: black; }
@@ -68,70 +73,24 @@
         <span id="timer">200000</span>
     </div>
 
-    <svg width="0" height="0" style="position: absolute;">
-        <defs>
-            <filter id="megaChonk3D" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">
-                
-                <feMorphology in="SourceGraphic" result="thickened" operator="dilate" radius="8"/>
-                
-                <feOffset in="thickened" dx="1" dy="1" result="s1"/>
-                <feOffset in="thickened" dx="2" dy="2" result="s2"/>
-                <feOffset in="thickened" dx="3" dy="3" result="s3"/>
-                <feOffset in="thickened" dx="4" dy="4" result="s4"/>
-                <feOffset in="thickened" dx="5" dy="5" result="s5"/>
-                <feOffset in="thickened" dx="6" dy="6" result="s6"/>
-                <feOffset in="thickened" dx="7" dy="7" result="s7"/>
-                <feOffset in="thickened" dx="8" dy="8" result="s8"/>
-                <feMerge result="blockRaw">
-                    <feMergeNode in="s1"/><feMergeNode in="s2"/><feMergeNode in="s3"/>
-                    <feMergeNode in="s4"/><feMergeNode in="s5"/><feMergeNode in="s6"/>
-                    <feMergeNode in="s7"/><feMergeNode in="s8"/>
-                </feMerge>
-                <feFlood flood-color="#b0bac5" result="silverColor"/>
-                <feComposite in="silverColor" in2="blockRaw" operator="in" result="silverBlock"/>
-
-                <feMorphology in="silverBlock" result="outerBorderArea" operator="dilate" radius="16"/>
-                <feFlood flood-color="black" result="blackColor"/>
-                <feComposite in="blackColor" in2="outerBorderArea" operator="in" result="blackOutline"/>
-
-                <feOffset in="blackOutline" dx="20" dy="20" result="hardShadowArea"/>
-                <feFlood flood-color="black" flood-opacity="0.4" result="shadowAlpha"/>
-                <feComposite in="shadowAlpha" in2="hardShadowArea" operator="in" result="finalHardShadow"/>
-
-                <feMerge>
-                    <feMergeNode in="finalHardShadow"/> <feMergeNode in="blackOutline"/>
-                    <feMergeNode in="silverBlock"/>
-                    <feMergeNode in="SourceGraphic"/>   </feMerge>
-            </filter>
-        </defs>
-    </svg>
-
     <div id="controls">
-        <div style="font-weight: bold; font-size: 20px; margin-bottom: 10px; color: #000;">MANAGER REMOTE</div>
-        
+        <div style="font-weight: bold; font-size: 20px; margin-bottom: 10px; color: #000;">SPACED TIMER REMOTE</div>
         <div style="background: #f0f0f0; padding: 15px; border-radius: 20px; border: 3px dashed #000;">
-            <div style="font-size: 12px; margin-bottom: 5px; font-weight: bold;">STARTING SECONDS:</div>
             <input type="number" id="new-max" value="200000">
             <button class="update-btn" onclick="updateMaxVal()">UPDATE START TIME</button>
         </div>
-
         <div id="conn-status" style="font-size: 11px; color: #666; margin: 12px 0;">Status: Offline</div>
-        
         <div class="btn-group">
             <button class="pause" onclick="triggerAction('pause')">PAUSE</button>
             <button class="start" onclick="triggerAction('start')">START</button>
         </div>
-        
         <button class="reset" onclick="triggerAction('reset')" style="margin-top:15px; width:100%;">RESET TO START</button>
     </div>
 
     <script>
         const TIMER_ID = 'mugi-sakura-timer-2026'; 
         const isController = window.location.hash.includes('control');
-        
-        if (isController) {
-            document.getElementById('controls').style.display = 'block';
-        }
+        if (isController) document.getElementById('controls').style.display = 'block';
 
         let maxVal = localStorage.getItem('sakura_max') ? parseInt(localStorage.getItem('sakura_max')) : 200000;
         let baseSeconds = localStorage.getItem('sakura_base') ? parseInt(localStorage.getItem('sakura_base')) : maxVal;
@@ -139,23 +98,11 @@
         let interval;
         let conn;
 
-        document.getElementById('timer').innerText = baseSeconds;
-
         const peer = new Peer(isController ? null : TIMER_ID);
+        peer.on('open', () => { if (isController) connectToOBS(); });
+        peer.on('connection', (c) => { conn = c; setupConnection(c); });
 
-        peer.on('open', (id) => {
-            if (isController) connectToOBS();
-        });
-
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnection(c);
-        });
-
-        function connectToOBS() {
-            conn = peer.connect(TIMER_ID);
-            setupConnection(conn);
-        }
+        function connectToOBS() { conn = peer.connect(TIMER_ID); setupConnection(conn); }
 
         function setupConnection(c) {
             conn = c;
@@ -163,7 +110,6 @@
                 if (isController) {
                     document.getElementById('conn-status').innerText = "Status: CONNECTED";
                     document.getElementById('conn-status').style.color = "green";
-                    setTimeout(requestManualSync, 500);
                 }
             });
             conn.on('data', (data) => {
@@ -172,7 +118,6 @@
                 }
                 if (data.action === 'syncResponse') {
                     maxVal = data.max; baseSeconds = data.base; startTime = data.start;
-                    document.getElementById('new-max').value = maxVal;
                     if (startTime) runStart(startTime); else runPause(baseSeconds);
                 }
                 if (data.action === 'updateMax') runUpdateMax(data.val);
@@ -182,20 +127,6 @@
             });
         }
 
-        // --- DYNAMIC COLOR LOGIC (20% YELLOW / 5% RED) ---
-        function getColorForTime(seconds) {
-            const thresholdYellow = maxVal * 0.20; 
-            const thresholdRed = maxVal * 0.05;    
-
-            if (seconds > thresholdYellow) return "rgb(255, 255, 255)";
-            if (seconds > thresholdRed) {
-                const range = thresholdYellow - thresholdRed;
-                const ratio = (seconds - thresholdRed) / range;
-                return `rgb(255, 255, ${Math.floor(255 * ratio)})`;
-            } 
-            return "rgb(255, 0, 0)";
-        }
-
         function updateDisplay() {
             let current = baseSeconds;
             if (startTime) {
@@ -203,22 +134,18 @@
                 current = Math.max(0, baseSeconds - elapsed);
             }
             document.getElementById('timer').innerText = current;
-            document.getElementById('timer-wrapper').style.color = getColorForTime(current);
             if (current === 0) clearInterval(interval);
         }
 
         function updateMaxVal() {
             const val = parseInt(document.getElementById('new-max').value);
-            if (isNaN(val)) return;
-            runUpdateMax(val);
-            if (conn) conn.send({ action: 'updateMax', val: val });
+            if (!isNaN(val)) { runUpdateMax(val); if (conn) conn.send({ action: 'updateMax', val: val }); }
         }
 
         function runUpdateMax(val) {
             maxVal = val; baseSeconds = val; startTime = null;
             localStorage.setItem('sakura_max', maxVal);
             localStorage.setItem('sakura_base', baseSeconds);
-            localStorage.removeItem('sakura_start');
             updateDisplay();
         }
 
@@ -233,7 +160,6 @@
             clearInterval(interval);
             baseSeconds = val; startTime = null;
             localStorage.setItem('sakura_base', baseSeconds);
-            localStorage.removeItem('sakura_start');
             updateDisplay();
         }
 
@@ -244,10 +170,8 @@
             const cur = parseInt(document.getElementById('timer').innerText);
             if (action === 'start') { runStart(now); if (conn) conn.send({ action: 'start', time: now }); }
             else if (action === 'pause') { runPause(cur); if (conn) conn.send({ action: 'pause', val: cur }); }
-            else if (action === 'reset') { if(confirm("Reset Everything?")) { runReset(); if (conn) conn.send({ action: 'reset' }); } }
+            else if (action === 'reset') { if(confirm("Reset?")) { runReset(); if (conn) conn.send({ action: 'reset' }); } }
         }
-
-        function requestManualSync() { if (conn && conn.open) conn.send({ action: 'requestSync' }); }
 
         if (startTime) runStart(startTime);
         updateDisplay();
