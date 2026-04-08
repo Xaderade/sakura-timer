@@ -2,29 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Leaderboard Suite v7.2</title>
+    <title>Mugi Co. | Leaderboard Suite v7.3</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; }
         body { margin: 0; background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
 
         /* --- CONTROL PANEL --- */
-        #control { position: absolute; top: 0; right: 0; width: 300px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 25px; z-index: 100; transform: translateX(100%); transition: 0.3s; }
+        #control { position: absolute; top: 0; right: 0; width: 320px; height: 100vh; background: var(--bg); border-left: 2px solid var(--p); padding: 25px; z-index: 100; transform: translateX(100%); transition: 0.3s; }
         #control.active { transform: translateX(0); }
-        .stat { background: #111; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #222; margin-bottom: 8px; }
+        .stat { background: #111; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #222; margin-bottom: 10px; }
         .stat.on { border-color: var(--success); color: var(--success); }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 10px; margin: 5px 0 15px 0; border-radius: 4px; box-sizing: border-box; }
+        
+        label { font-size: 11px; color: #888; text-transform: uppercase; font-weight: 900; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; margin: 5px 0 15px 0; border-radius: 4px; box-sizing: border-box; font-family: monospace; }
         
         /* --- LEADERBOARD --- */
-        #leaderboard { display: flex; gap: 20px; padding: 20px; background: rgba(0,0,0,0.8); width: fit-content; border-bottom: 3px solid var(--p); border-radius: 0 0 15px 0; }
-        .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 80px; transition: transform 0.3s; }
-        .rank-tag { font-size: 10px; font-weight: 900; background: var(--g); color: #000; padding: 2px 8px; border-radius: 3px; margin-bottom: 5px; }
-        .img-wrap { height: 70px; width: 70px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px; }
-        .emote-img { max-height: 60px; max-width: 60px; }
-        .count { font-size: 24px; font-weight: 900; margin-top: 5px; text-shadow: 2px 2px 0 var(--p); }
+        #leaderboard { display: flex; gap: 20px; padding: 20px; background: rgba(0,0,0,0.85); width: fit-content; border-bottom: 4px solid var(--p); border-radius: 0 0 20px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .emote-slot { display: flex; flex-direction: column; align-items: center; min-width: 85px; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .rank-tag { font-size: 11px; font-weight: 900; background: var(--g); color: #000; padding: 2px 10px; border-radius: 4px; margin-bottom: 8px; }
+        .img-wrap { height: 80px; width: 80px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        .emote-img { max-height: 65px; max-width: 65px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
+        .count { font-size: 26px; font-weight: 900; margin-top: 8px; text-shadow: 2px 2px 0 var(--p); }
         
-        #m-toggle { position: absolute; top: 15px; right: 15px; background: var(--p); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; }
-        .pop { transform: scale(1.1); }
+        #m-toggle { position: absolute; top: 15px; right: 15px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .pop { transform: scale(1.15); }
     </style>
 </head>
 <body>
@@ -32,25 +34,29 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="color:var(--p); margin-top:0;">MUGI_LEADER_v7.2</h3>
-    <label style="font-size:10px;">CHANNEL</label>
-    <input type="text" id="inp-ch" value="CrazyJapanese">
-    <label style="font-size:10px;">7TV USER ID</label>
-    <input type="text" id="inp-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
+    <h3 style="color:var(--p); margin-top:0;">MUGI_SYSTEM_v7.3</h3>
     
-    <div id="st-tw" class="stat">TWITCH: OFF</div>
+    <label>Twitch Channel Name</label>
+    <input type="text" id="inp-ch" placeholder="e.g. CrazyJapanese" value="CrazyJapanese">
+    
+    <label>7TV User ID (Long Hex)</label>
+    <input type="text" id="inp-id" placeholder="Paste ID from 7TV URL" value="01FEBH4WVG0008A7S9XD2BPYFJ">
+    
+    <div id="st-tw" class="stat">TWITCH: DISCONNECTED</div>
     <div id="st-7v" class="stat">7TV: STANDBY</div>
     
-    <button style="width:100%; padding:12px; background:var(--p); color:white; border:none; border-radius:4px; font-weight:900; cursor:pointer;" onclick="boot()">BOOT SYSTEM</button>
-    <button style="width:100%; padding:8px; background:#333; color:white; border:none; border-radius:4px; margin-top:10px; font-size:10px;" onclick="resetCounts()">RESET LEADERBOARD</button>
+    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; border-radius:6px; font-weight:900; cursor:pointer; margin-top:10px;" onclick="boot()">BOOT ENGINE</button>
+    <button style="width:100%; padding:10px; background:#222; color:#888; border:none; border-radius:6px; margin-top:15px; font-size:11px; cursor:pointer;" onclick="resetCounts()">RESET ALL COUNTS</button>
+    
+    <p style="font-size:10px; color:#555; margin-top:20px; line-height:1.4;">Tip: Changing the Channel Name or ID requires clicking "BOOT ENGINE" to apply the changes.</p>
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-4" class="emote-slot"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-0" class="emote-slot"><div class="rank-tag">RANK 1</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="rank-tag">RANK 2</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="rank-tag">RANK 3</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="rank-tag">RANK 4</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-4" class="emote-slot"><div class="rank-tag">RANK 5</div><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <script>
@@ -59,21 +65,25 @@
     let emoteCounts = {};
 
     async function boot() {
-        const ch = document.getElementById('inp-ch').value.trim();
-        const id = document.getElementById('inp-id').value.trim();
+        // Get values from the inputs
+        const channelName = document.getElementById('inp-ch').value.trim().toLowerCase();
+        const sevenTvId = document.getElementById('inp-id').value.trim();
+        
         const st7 = document.getElementById('st-7v');
         const stTw = document.getElementById('st-tw');
 
-        // 1. Fetch 7TV (v6.2 pathing)
+        // 1. Sync 7TV Assets
+        st7.innerText = "7TV: SYNCING...";
         try {
-            const response = await fetch(`https://7tv.io/v3/users/${id}`);
+            const response = await fetch(`https://7tv.io/v3/users/${sevenTvId}`);
             const data = await response.json();
             
-            emoteMap = {};
+            emoteMap = {}; // Clear old map
             data.emote_set.emotes.forEach(e => {
                 emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
             });
 
+            // Add Global 7TV
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
@@ -81,20 +91,29 @@
             st7.className = 'stat on';
             st7.innerText = `7TV: ${Object.keys(emoteMap).length} ASSETS`;
         } catch (e) { 
+            st7.className = 'stat';
             st7.innerText = "7TV: FETCH FAILED";
             console.error(e);
         }
 
-        // 2. Connect Twitch
+        // 2. Connect to Twitch Channel
         if(tmiClient) tmiClient.disconnect();
-        tmiClient = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [ch] });
+        
+        tmiClient = new tmi.Client({ 
+            connection: { secure: true, reconnect: true }, 
+            channels: [channelName] 
+        });
         
         tmiClient.connect().then(() => {
             stTw.className = 'stat on';
-            stTw.innerText = "TWITCH: ONLINE";
+            stTw.innerText = `TWITCH: ${channelName.toUpperCase()}`;
+            // Hide menu after successful boot
             document.getElementById('control').classList.remove('active');
+        }).catch(err => {
+            stTw.innerText = "TWITCH: CONN ERROR";
         });
 
+        // 3. Listener Logic
         tmiClient.on('message', (chan, tags, msg) => {
             let found = new Set();
             msg.split(' ').forEach(word => {
@@ -136,8 +155,9 @@
         emoteCounts = {};
         for(let i=0; i<5; i++) {
             const slot = document.getElementById(`slot-${i}`);
-            slot.querySelector('.img-wrap').innerHTML = "";
-            slot.querySelector('.img-wrap').removeAttribute('data-name');
+            const wrap = slot.querySelector('.img-wrap');
+            wrap.innerHTML = "";
+            wrap.removeAttribute('data-name');
             slot.querySelector('.count').innerText = "0";
         }
     }
