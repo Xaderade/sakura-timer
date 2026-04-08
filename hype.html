@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Tank-Proof v9.1</title>
+    <title>Mugi Co. | Balanced v9.2</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; --fail: #ff4d4d; --g: #ffd700; }
@@ -35,7 +35,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h4 style="margin:0; color:var(--p);">MUGI_TANK_v9.1</h4>
+    <h4 style="margin:0; color:var(--p);">MUGI_BALANCED_v9.2</h4>
     <label style="font-size:10px; color:#777;">CHANNEL</label>
     <input type="text" id="inp-ch" value="forsen">
     <label style="font-size:10px; color:#777;">7TV ID</label>
@@ -81,13 +81,11 @@
 
     async function loadAssets(sId, bId) {
         emoteMap = {};
-        // 7TV
         const sData = await safeFetch(`https://7tv.io/v3/users/${sId}`, '7tv', '7TV');
         if(sData) sData.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
         const g7 = await safeFetch('https://7tv.io/v3/emote-sets/global', '7tv', '7TV');
         if(g7) g7.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
 
-        // BTTV
         const bData = await safeFetch(`https://api.betterttv.net/3/cached/users/twitch/${bId}`, 'bttv', 'BTTV');
         if(bData) [...(bData.sharedEmotes||[]), ...(bData.channelEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`; });
     }
@@ -105,41 +103,45 @@
     }
 
     async function reboot() {
-        if (typeof tmi === 'undefined') { alert("TMI.js missing from folder!"); return; }
+        if (typeof tmi === 'undefined') { alert("TMI.js missing!"); return; }
         const CH = document.getElementById('inp-ch').value.trim();
         const S_ID = document.getElementById('inp-7id').value.trim();
         const B_ID = document.getElementById('inp-bid').value.trim();
-
         if (client) { try { await client.disconnect(); } catch(e){} }
         emoteCounts = {};
-        
         await loadAssets(S_ID, B_ID);
         startEngine();
-
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
+        
         client.on('message', (chan, tags, msg) => {
-            let found = [];
+            let foundInThisMessage = new Set(); // ANTI-SPAM: Unique per message
+            
             msg.split(' ').forEach(w => {
                 const c = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
-                if (emoteMap[c]) found.push(c);
+                if (emoteMap[c]) foundInThisMessage.add(c);
             });
+
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
                     tags.emotes[id].forEach(r => {
                         const rr = r.split('-');
                         const n = msg.substring(parseInt(rr[0]), parseInt(rr[1]) + 1);
                         if(!emoteMap[n]) emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0`;
-                        found.push(n);
+                        foundInThisMessage.add(n);
                     });
                 });
             }
-            found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
-            if (found.length > 0) updateLeaderboard(true);
+
+            if (foundInThisMessage.size > 0) {
+                foundInThisMessage.forEach(e => {
+                    emoteCounts[e] = (emoteCounts[e] || 0) + 1;
+                });
+                updateLeaderboard(true);
+            }
         });
 
         client.connect().then(() => setStat('tmi', `TWITCH: ${CH.toUpperCase()}`, 'on'))
                       .catch(() => setStat('tmi', 'TWITCH: FAIL', 'err'));
-        
         document.getElementById('control').classList.remove('active');
     }
 
@@ -168,7 +170,6 @@
             }
         }
     }
-
     window.onload = () => { setTimeout(reboot, 500); };
 </script>
 </body>
