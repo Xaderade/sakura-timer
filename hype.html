@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Full Set v5.8</title>
+    <title>Mugi Co. | Deep Dive v5.9</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; }
@@ -13,7 +13,7 @@
         .stat.on { border-color: var(--success); color: var(--success); }
         #chat { position: absolute; bottom: 40px; left: 30px; width: 650px; }
         .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; }
-        .emote { height: 1.35em; vertical-align: middle; margin: -4px 2px; }
+        .emote { height: 1.45em; vertical-align: middle; margin: -4px 2px; }
         #m-toggle { position: absolute; top: 20px; right: 20px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 101; cursor: pointer; font-weight: 900; }
     </style>
 </head>
@@ -22,16 +22,15 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="color:var(--p)">MUGI_FULL_SET_v5.8</h3>
+    <h3 style="color:var(--p)">MUGI_DEEP_DIVE_v5.9</h3>
     <input type="text" id="ch-name" value="CrazyJapanese" style="width:100%; background:#000; color:white; border:1px solid #444; padding:10px; margin-bottom:15px;">
     <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ" style="width:100%; background:#000; color:white; border:1px solid #444; padding:10px; margin-bottom:15px;">
     
     <div id="st-tw" class="stat">TWITCH: OFF</div>
-    <div id="st-7v-ch" class="stat">7TV CHANNEL: 0</div>
-    <div id="st-7v-gb" class="stat">7TV GLOBAL: 0</div>
+    <div id="st-7v" class="stat">7TV ASSETS: 0</div>
     
-    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; border-radius:6px; font-weight:900;" onclick="boot()">INITIALIZE ENGINE</button>
-    <div id="log" style="font-size:11px; color:var(--g); margin-top:15px; font-family: monospace;">Awaiting Data...</div>
+    <button style="width:100%; padding:15px; background:var(--p); color:white; border:none; border-radius:6px; font-weight:900;" onclick="boot()">BOOT ENGINE</button>
+    <div id="log" style="font-size:11px; color:var(--g); margin-top:15px; font-family: monospace;">Standing by...</div>
 </div>
 
 <div id="chat"></div>
@@ -45,46 +44,51 @@
         const ch = document.getElementById('ch-name').value.trim().toLowerCase();
         const id = document.getElementById('ch-id').value.trim();
 
-        log.innerText = "Deep Scanning 7TV Assets...";
+        log.innerText = "Querying 7TV Set ID...";
 
         try {
-            // Fetch the user object to find the ACTIVE emote set ID
+            // 1. Get User Data
             const uRes = await fetch(`https://7tv.io/v3/users/${id}`);
             const uData = await uRes.json();
             
-            // Fetch Global Emotes
+            // 2. Identify the SPECIFIC active emote set ID
+            // This is the key change: we find the ID first, then fetch THAT set's emotes.
+            const setId = uData.emote_set?.id || uData.active_emote_set?.id;
+            
+            if (!setId) throw new Error("No active set found");
+
+            // 3. Fetch the full contents of that specific set
+            const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+            const setData = await setRes.json();
+
+            // 4. Fetch Global as well
             const gRes = await fetch(`https://7tv.io/v3/emote-sets/global`);
             const gData = await gRes.json();
 
             stvMap.clear();
-
-            // Load Channel Emotes from the specific active set
-            const channelEmotes = uData.emote_set?.emotes || [];
-            channelEmotes.forEach(e => stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`));
             
-            document.getElementById('st-7v-ch').className = 'stat on';
-            document.getElementById('st-7v-ch').innerText = `CHANNEL EMOTES: ${channelEmotes.length}`;
+            // Map Channel Emotes
+            if (setData.emotes) {
+                setData.emotes.forEach(e => stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`));
+            }
 
-            // Load Global Emotes
-            const globalEmotes = gData.emotes || [];
-            globalEmotes.forEach(e => stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`));
-            
-            document.getElementById('st-7v-gb').className = 'stat on';
-            document.getElementById('st-7v-gb').innerText = `GLOBAL EMOTES: ${globalEmotes.length}`;
+            // Map Global Emotes
+            if (gData.emotes) {
+                gData.emotes.forEach(e => stvMap.set(e.name, `https://cdn.7tv.app/emote/${e.id}/2x.webp`));
+            }
 
-            log.innerText = `Mapped ${stvMap.size} total emotes.`;
+            document.getElementById('st-7v').className = 'stat on';
+            document.getElementById('st-7v').innerText = `7TV ASSETS: ${stvMap.size}`;
+            log.innerText = `Successfully mapped ${stvMap.size} total emotes.`;
+
         } catch (e) {
             log.innerText = "Error fetching 7TV sets.";
             console.error(e);
         }
 
-        // Twitch Connection Logic
+        // Connection
         if(tmiClient) await tmiClient.disconnect();
-        tmiClient = new tmi.Client({
-            connection: { secure: true, reconnect: true },
-            channels: [ch]
-        });
-
+        tmiClient = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [ch] });
         tmiClient.connect().then(() => {
             document.getElementById('st-tw').className = 'stat on';
             document.getElementById('st-tw').innerText = "TWITCH: ONLINE";
@@ -95,8 +99,7 @@
             const div = document.createElement('div');
             div.className = 'msg';
 
-            let words = msg.split(' ');
-            let finalHtml = words.map(word => {
+            let finalHtml = msg.split(' ').map(word => {
                 const clean = word.replace(/[\u200B-\u200D\uFEFF]/g, "");
                 return stvMap.has(clean) ? `<img src="${stvMap.get(clean)}" class="emote">` : word;
             }).join(' ');
