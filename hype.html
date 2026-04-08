@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mugi Co. Production Suite v4.6</title>
+    <title>Mugi Co. | Production Suite</title>
     <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
     <style>
         :root {
             --mugi-purple: #9146ff;
             --mugi-gold: #ffd700;
-            --bg-main: rgba(13, 13, 18, 0.98);
+            --bg-glass: rgba(13, 13, 18, 0.95);
             --success: #00ffcc;
         }
 
@@ -18,40 +18,45 @@
         /* --- THE #CONTROL SYSTEM --- */
         #control {
             position: absolute; top: 0; right: 0; width: 320px;
-            height: 100vh; background: var(--bg-main);
+            height: 100vh; background: var(--bg-glass);
             border-left: 2px solid var(--mugi-purple);
             padding: 25px; box-sizing: border-box;
             z-index: 9999; transform: translateX(100%);
             transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            backdrop-filter: blur(10px);
         }
         #control.active { transform: translateX(0); }
 
-        .control-header { font-size: 20px; font-weight: 900; color: var(--mugi-purple); margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .control-header { font-size: 18px; font-weight: 900; color: var(--mugi-purple); margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 10px; display: flex; justify-content: space-between; }
         
         .field-group { margin-bottom: 18px; }
-        label { display: block; font-size: 11px; text-transform: uppercase; margin-bottom: 6px; color: var(--mugi-purple); font-weight: bold; }
-        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; }
+        label { display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 6px; color: var(--mugi-purple); font-weight: bold; letter-spacing: 1px; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
         
         .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
-        .stat-node { background: #1a1a1a; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #333; }
-        .stat-node.on { border-color: var(--success); color: var(--success); box-shadow: 0 0 10px rgba(0, 255, 204, 0.2); }
+        .stat-node { background: #1a1a1a; padding: 10px; border-radius: 6px; font-size: 10px; text-align: center; border: 1px solid #333; opacity: 0.5; }
+        .stat-node.on { border-color: var(--success); color: var(--success); opacity: 1; box-shadow: 0 0 10px rgba(0, 255, 204, 0.2); }
 
         /* --- HUD ELEMENTS --- */
         #hud-top { position: absolute; top: 25px; left: 25px; display: flex; flex-direction: column; gap: 15px; }
-        .trend-card { background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px; border-left: 4px solid var(--mugi-purple); width: 280px; }
+        .trend-card { background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; border-left: 4px solid var(--mugi-purple); width: 280px; }
         #emote-trend-list { display: flex; gap: 12px; margin-top: 12px; height: 45px; align-items: center; }
-        .trend-emote { position: relative; }
+        .trend-emote { position: relative; animation: pop 0.3s ease-out; }
         .count-badge { position: absolute; bottom: -5px; right: -5px; background: var(--mugi-purple); font-size: 10px; padding: 2px 5px; border-radius: 6px; font-weight: bold; }
 
         /* --- CHAT OVERLAY --- */
         #chat-render { position: absolute; bottom: 40px; left: 30px; width: 500px; height: 60vh; display: flex; flex-direction: column; justify-content: flex-end; }
-        .msg { font-size: 26px; font-weight: 600; text-shadow: 2px 2px 4px #000; margin-bottom: 12px; }
+        .msg { font-size: 26px; font-weight: 600; text-shadow: 2px 2px 4px #000; margin-bottom: 12px; animation: slideIn 0.2s ease-out; }
         .user { font-weight: 800; color: var(--mugi-purple); }
         .emote { height: 1.35em; vertical-align: middle; }
 
-        .btn-init { width: 100%; background: var(--mugi-purple); color: white; border: none; padding: 14px; font-weight: bold; cursor: pointer; border-radius: 6px; }
+        .btn-init { width: 100%; background: var(--mugi-purple); color: white; border: none; padding: 14px; font-weight: bold; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+        .btn-init:hover { background: #772ce8; }
         
-        #toggle-panel { position: absolute; top: 20px; right: 20px; background: var(--mugi-purple); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; z-index: 10000; font-weight: 900; }
+        #toggle-panel { position: absolute; top: 20px; right: 20px; background: var(--mugi-purple); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; z-index: 10000; font-weight: 900; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+
+        @keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -59,28 +64,38 @@
     <button id="toggle-panel" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
     <div id="control">
-        <div class="control-header">MUGI_SYSTEM <span style="font-size: 10px; opacity: 0.5;">v4.6</span></div>
+        <div class="control-header">
+            <span>MUGI_SYSTEM</span>
+            <span style="font-size: 10px; opacity: 0.5;">LIVE_CORE</span>
+        </div>
+        
         <div class="field-group">
             <label>Twitch Channel</label>
-            <input type="text" id="ch-name" value="CrazyJapanese">
+            <input type="text" id="ch-name" placeholder="CrazyJapanese">
         </div>
+
         <div class="field-group">
-            <label>7TV ID</label>
-            <input type="text" id="ch-id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
+            <label>7TV User ID</label>
+            <input type="text" id="ch-id" placeholder="01FEBH4WVG0008A7S9XD2BPYFJ">
         </div>
+
         <div class="status-grid">
             <div id="status-twitch" class="stat-node">TWITCH: OFF</div>
             <div id="status-7tv" class="stat-node">7TV: OFF</div>
             <div id="status-obs" class="stat-node">OBS: OK</div>
             <div id="status-sb" class="stat-node">SB: WAIT</div>
         </div>
+
         <button class="btn-init" onclick="initSystem()">INITIALIZE ENGINE</button>
-        <div id="log-out" style="margin-top: 20px; font-size: 11px; color: var(--mugi-gold);">Status: Idle</div>
+        
+        <div id="log-out" style="margin-top: 25px; font-size: 11px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px; color: var(--mugi-gold);">
+            Status: Ready for Uplink
+        </div>
     </div>
 
     <div id="hud-top">
         <div class="trend-card">
-            <label>Trending Emotes</label>
+            <label style="font-size: 10px; color: var(--mugi-purple); font-weight: 900; letter-spacing: 1px;">TRENDING EMOTES</label>
             <div id="emote-trend-list"></div>
         </div>
     </div>
@@ -92,20 +107,21 @@
         let counts = {};
         let tmiClient = null;
 
-        async function initSystem() {
-            // Check for TMI.js presence
-            if (typeof tmi === 'undefined') {
-                document.getElementById('log-out').innerText = "FATAL: TMI.js not loaded. Check internet/CORS.";
-                return;
-            }
+        // Auto-load session from GitHub Pages storage
+        const storage = JSON.parse(localStorage.getItem('mugi_live_v1')) || { ch: '', id: '' };
+        document.getElementById('ch-name').value = storage.ch;
+        document.getElementById('ch-id').value = storage.id;
 
+        async function initSystem() {
             const ch = document.getElementById('ch-name').value.trim().toLowerCase();
             const id = document.getElementById('ch-id').value.trim();
             const log = document.getElementById('log-out');
 
             if(!ch || !id) return;
+            localStorage.setItem('mugi_live_v1', JSON.stringify({ ch, id }));
 
-            // 1. Fetch 7TV
+            // 1. Sync 7TV Assets
+            log.innerText = "Uplinking 7TV...";
             try {
                 const [uRes, gRes] = await Promise.all([
                     fetch(`https://7tv.io/v3/users/${id}`),
@@ -120,15 +136,16 @@
                 });
                 
                 document.getElementById('status-7tv').className = 'stat-node on';
-                document.getElementById('status-7tv').innerText = '7TV: ' + Object.keys(emoteMap).length + ' LOADED';
-                log.innerText = "7TV Assets Ready.";
+                document.getElementById('status-7tv').innerText = '7TV: ' + Object.keys(emoteMap).length;
+                log.innerText = "Assets Cached.";
             } catch (e) { 
-                log.innerText = "7TV Fetch Failed. Check 7TV ID.";
+                log.innerText = "Error: 7TV Sync Failed.";
                 console.error(e);
             }
 
-            // 2. Twitch IRC
+            // 2. Twitch Secure Handshake
             if(tmiClient) tmiClient.disconnect();
+            
             tmiClient = new tmi.Client({
                 connection: { secure: true, reconnect: true },
                 channels: [ch]
@@ -137,10 +154,10 @@
             tmiClient.connect().then(() => {
                 document.getElementById('status-twitch').className = 'stat-node on';
                 document.getElementById('status-twitch').innerText = 'TWITCH: ONLINE';
+                document.getElementById('status-sb').className = 'stat-node on';
                 log.innerText = "Engine Operational.";
             }).catch(err => {
-                log.innerText = "Twitch Conn Error.";
-                console.error(err);
+                log.innerText = "Twitch Auth Failed.";
             });
 
             tmiClient.on('message', (chan, tags, msg, self) => {
@@ -161,7 +178,7 @@
             let parsed = msg.split(' ').map(w => emoteMap[w] ? `<img src="${emoteMap[w]}" class="emote">` : w).join(' ');
             div.innerHTML = `<span class="user" style="color:${color || '#9146ff'}">${user}:</span> ${parsed}`;
             container.appendChild(div);
-            if(container.childNodes.length > 10) container.removeChild(container.firstChild);
+            if(container.childNodes.length > 8) container.removeChild(container.firstChild);
         }
 
         function updateTrend() {
@@ -172,10 +189,14 @@
             `).join('');
         }
 
+        // 30s Decay to keep trends fresh
         setInterval(() => {
             for(let e in counts) { counts[e] = Math.max(0, counts[e] - 1); if(counts[e] === 0) delete counts[e]; }
             updateTrend();
         }, 30000);
+
+        // Auto-run if config exists
+        if(storage.ch && storage.id) initSystem();
     </script>
 </body>
 </html>
