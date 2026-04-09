@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.1 [DYNAMIC BORDERS]</title>
+    <title>Mugi Co. | Engine v16.2 [PRESSURE DECAY]</title>
     <script src="tmi.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
@@ -15,7 +15,6 @@
         
         body { margin: 0; background-color: var(--chroma); color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
-        /* HUD RESTORED */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 3px; }
         .indicator { font-size: 10px; font-weight: 900; padding: 4px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; }
         .indicator.version { background: var(--p); border-left: none; text-align: center; font-size: 11px; margin-bottom: 2px; }
@@ -27,7 +26,6 @@
         .emote-slot { position: relative; display: flex; flex-direction: column; align-items: center; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4); opacity: 0; transform: translateY(50px); }
         .emote-slot.active { opacity: 1; transform: translateY(0); }
 
-        /* BORDER DYNAMICS */
         .img-wrap { 
             height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; 
             background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000; 
@@ -36,7 +34,6 @@
         }
         .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; }
         
-        /* BORDER FLASH CLASSES */
         .flash-1 { border-color: var(--p) !important; box-shadow: 0 0 20px var(--p), 10px 10px 0px #000 !important; }
         .flash-2 { border-color: var(--cyan) !important; box-shadow: 0 0 30px var(--cyan), 10px 10px 0px #000 !important; }
         .flash-3 { border-color: var(--g) !important; box-shadow: 0 0 40px var(--g), 10px 10px 0px #000 !important; }
@@ -65,10 +62,10 @@
             animation: milestoneSplash 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        .m-tier-1 { color: var(--p); font-size: 40px; text-shadow: 0 0 20px var(--p), 4px 4px 0 #000; }
-        .m-tier-2 { color: var(--cyan); font-size: 50px; text-shadow: 0 0 30px var(--cyan), 5px 5px 0 #000; animation: neonPulse 0.5s infinite alternate, milestoneSplash 1.2s forwards; }
-        .m-tier-3 { font-size: 50px; background: linear-gradient(to right, #ffd700, #fff, #ffd700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px var(--g)); background-size: 200% auto; animation: chromaMove 1s linear infinite, milestoneSplash 1.2s forwards; }
-        .m-tier-4 { font-size: 60px; color: #fff; text-shadow: 4px 0 var(--red), -4px 0 var(--cyan), 0 0 50px var(--red); animation: glitchShake 0.1s infinite, milestoneSplash 1.2s forwards; font-style: italic; }
+        .m-tier-1 { color: var(--p); font-size: 50px; text-shadow: 0 0 20px var(--p), 4px 4px 0 #000; }
+        .m-tier-2 { color: var(--cyan); font-size: 55px; text-shadow: 0 0 30px var(--cyan), 5px 5px 0 #000; animation: neonPulse 0.5s infinite alternate, milestoneSplash 1.2s forwards; }
+        .m-tier-3 { font-size: 60px; background: linear-gradient(to right, #ffd700, #fff, #ffd700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px var(--g)); background-size: 200% auto; animation: chromaMove 1s linear infinite, milestoneSplash 1.2s forwards; }
+        .m-tier-4 { font-size: 65px; color: #fff; text-shadow: 4px 0 var(--red), -4px 0 var(--cyan), 0 0 50px var(--red); animation: glitchShake 0.1s infinite, milestoneSplash 1.2s forwards; font-style: italic; }
 
         @keyframes neonPulse { from { filter: brightness(1); } to { filter: brightness(1.5); } }
         @keyframes chromaMove { to { background-position: 200% center; } }
@@ -86,14 +83,12 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v16.1</div>
+    <div class="indicator version">MUGI ENGINE v16.2</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-spam" class="indicator">FILTER: ON</div>
-    <div id="stat-decay" class="indicator">DECAY: 0.15</div>
-    <div id="stat-7g" class="indicator">7TV GLOBAL: 0</div>
-    <div id="stat-7c" class="indicator">7TV CHANNEL: 0</div>
-    <div id="stat-bttv" class="indicator">BTTV: 0</div>
-    <div id="stat-ffz" class="indicator">FFZ: 0</div>
+    <div id="stat-decay" class="indicator">BASE DECAY: 0.15</div>
+    <div id="stat-pressure" class="indicator">PRESSURE: ACTIVE</div>
+    <div id="stat-assets" class="indicator">ASSETS: 0</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
@@ -106,7 +101,7 @@
     <input type="text" id="inp-7id" placeholder="User ID">
     
     <div class="slider-label">
-        <label>DECAY SPEED</label>
+        <label>BASE DECAY SPEED</label>
         <span id="val-decay">0.15</span>
     </div>
     <input type="range" id="inp-decay" min="0.05" max="1.0" step="0.05" value="0.15" oninput="document.getElementById('val-decay').innerText = this.value">
@@ -133,6 +128,7 @@
     let mainLoop = null;
     let spamMode = false;
     let decayRate = 0.15;
+    let assetCount = 0;
 
     const setStat = (id, text, state) => {
         const el = document.getElementById(`stat-${id}`);
@@ -140,11 +136,10 @@
     };
 
     async function loadAssets(userId, channel) {
-        let c7g=0, c7c=0, cB=0, cF=0;
-        
+        assetCount = 0;
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
-            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7g++; });
-            setStat('7g', `7TV GLOBAL: ${c7g}`, 'on');
+            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; assetCount++; });
+            setStat('assets', `ASSETS: ${assetCount}`, 'on');
         });
 
         try {
@@ -154,26 +149,25 @@
 
             if(tId) {
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; cB++; });
-                    setStat('bttv', `BTTV: ${cB}`, 'on');
+                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; assetCount++; });
+                    setStat('assets', `ASSETS: ${assetCount}`, 'on');
                 });
                 fetch(`https://api.frankerfacez.com/v1/room/id/${tId}`).then(r => r.json()).then(d => {
                     Object.values(d.sets).forEach(set => { set.emoticons.forEach(e => { 
                         const url = e.urls['4'] || e.urls['2'] || e.urls['1'];
-                        emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`; cF++;
+                        emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`; assetCount++;
                     });});
-                    setStat('ffz', `FFZ: ${cF}`, 'on');
+                    setStat('assets', `ASSETS: ${assetCount}`, 'on');
                 });
             }
-
             if(userId) {
                 fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
                     const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
                     if(setId) {
                         const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                         const sData = await sRes.json();
-                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7c++; });
-                        setStat('7c', `7TV CHANNEL: ${c7c}`, 'on');
+                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; assetCount++; });
+                        setStat('assets', `ASSETS: ${assetCount}`, 'on');
                     }
                 });
             }
@@ -193,14 +187,20 @@
         localStorage.setItem('mugi_decay', decayRate);
 
         setStat('spam', spamMode ? 'FILTER: OFF (SPAM MODE)' : 'FILTER: ON', spamMode ? 'warn' : 'on');
-        setStat('decay', `DECAY: ${decayRate.toFixed(2)}`);
+        setStat('decay', `BASE DECAY: ${decayRate.toFixed(2)}`);
 
         loadAssets(ID7, CH);
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
         emoteCounts = {};
+        
         mainLoop = setInterval(() => {
-            Object.keys(emoteCounts).forEach(k => { emoteCounts[k] -= decayRate; if(emoteCounts[k] <= 0) delete emoteCounts[k]; });
+            Object.keys(emoteCounts).forEach(k => { 
+                // PRESSURE DECAY LOGIC: Base + 2% of current count
+                const pressure = emoteCounts[k] * 0.02;
+                emoteCounts[k] -= (decayRate + pressure); 
+                if(emoteCounts[k] <= 0) delete emoteCounts[k]; 
+            });
             updateLeaderboard(null);
         }, 1000);
 
@@ -227,7 +227,6 @@
     function spawnComboEffect(slot, count) {
         const container = slot.querySelector('.combo-container');
         const wrap = slot.querySelector('.img-wrap');
-        
         const riser = document.createElement('div');
         riser.className = 'riser'; riser.innerText = '+1';
         riser.style.setProperty('--x-offset', `${(Math.random() * 100 - 50)}px`);
@@ -245,8 +244,6 @@
             const m = document.createElement('div');
             m.className = `milestone m-tier-${tier}`; m.innerText = text;
             container.appendChild(m);
-            
-            // Apply border flash
             wrap.className = `img-wrap flash-${tier}`;
             setTimeout(() => { wrap.className = 'img-wrap'; }, 1200);
             setTimeout(() => m.remove(), 1200);
