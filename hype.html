@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v14.2</title>
+    <title>Mugi Co. | Engine v14.3</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -24,7 +24,7 @@
         .pop { animation: emotePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes emotePop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
 
-        .rank-tag { font-size: 24px; font-weight: 900; background: var(--g); color: #000; padding: 5px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 0 #998100; }
+        .rank-tag { font-size: 24px; font-weight: 900; background: var(--g); color: #000; padding: 5px 20px; border-radius: 8px; margin-bottom: 20px; }
         .img-wrap { height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; }
         .emote-img { max-height: 200px; max-width: 200px; object-fit: contain; }
         .count { font-size: 84px; font-weight: 900; text-shadow: 8px 8px 0 var(--p), -2px -2px 0 #000; font-style: italic; }
@@ -38,7 +38,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v14.2</div>
+    <div class="indicator version">MUGI ENGINE v14.3</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
@@ -46,7 +46,7 @@
     
     <div id="activity-log">
         <div id="log-channel" style="color:var(--g); font-weight:bold; margin-bottom:4px; text-transform:uppercase;">STATUS: IDLE</div>
-        <div id="log-0" class="log-entry">Waiting for input...</div>
+        <div id="log-0" class="log-entry">System Standby...</div>
         <div id="log-1" class="log-entry"></div>
         <div id="log-2" class="log-entry"></div>
     </div>
@@ -55,12 +55,12 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v14.2 RESTORATION</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v14.3 RECOVERY</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="CrazyJapanese">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="01FEBH4WVG0008A7S9XD2BPYFJ">
-    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE ENGINE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">START RECOVERY</button>
 </div>
 
 <div id="leaderboard">
@@ -76,6 +76,7 @@
     let emoteCounts = {};
     let client = null;
     let mainLoop = null;
+    let joinRetry = null;
 
     const updateLog = (msg) => {
         document.getElementById('log-2').innerText = document.getElementById('log-1').innerText;
@@ -91,43 +92,34 @@
     async function loadAssets(userId, channel) {
         let c7 = 0; let cB = 0;
         updateLog("Fetching Emote Data...");
-
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
                 const twData = await twRes.json();
                 const tId = twData[0]?.id;
                 if(tId) {
-                    fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(res => res.json()).then(bData => {
-                        [...(bData.channelEmotes || []), ...(bData.sharedEmotes || [])].forEach(e => {
+                    fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
+                        [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => {
                             emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
                             cB++;
                         });
                         setStat('bttv', `BTTV: ${cB} LOADED`, 'on');
-                        setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
                     }).catch(() => setStat('bttv', "BTTV: FAIL", "err"));
                 }
             }
-
-            fetch(`https://7tv.io/v3/users/${userId}`).then(res => res.json()).then(async uData => {
-                const setId = uData.emote_set?.id || uData.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
+            fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
+                const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
                 if(setId) {
                     const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                     const sData = await sRes.json();
-                    sData.emotes?.forEach(e => {
-                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
-                        c7++;
-                    });
+                    sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; c7++; });
                     setStat('7tv', `7TV: ${c7} LOADED`, 'on');
-                    setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
                 }
-            }).catch(() => setStat('7tv', "7TV: FAIL", "err"));
-
-            fetch('https://7tv.io/v3/emote-sets/global').then(res => res.json()).then(gData => {
-                gData.emotes?.forEach(e => { if(!emoteMap[e.name]) emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
             });
-
-        } catch(e) { updateLog("System: API error, check console"); }
+            fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
+                g.emotes?.forEach(e => { if(!emoteMap[e.name]) emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
+            });
+        } catch(e) { updateLog("Asset error. Checking console."); }
     }
 
     function reboot() {
@@ -139,40 +131,42 @@
         localStorage.setItem('mugi_id7', ID7);
 
         loadAssets(ID7, CH);
-        
         if(client) { try { client.disconnect(); } catch(e){} }
         if(mainLoop) clearInterval(mainLoop);
+        if(joinRetry) clearInterval(joinRetry);
 
         mainLoop = setInterval(() => {
-            Object.keys(emoteCounts).forEach(k => {
-                emoteCounts[k] -= 0.2;
-                if(emoteCounts[k] <= 0) delete emoteCounts[k];
-            });
+            Object.keys(emoteCounts).forEach(k => { emoteCounts[k] -= 0.15; if(emoteCounts[k] <= 0) delete emoteCounts[k]; });
             updateLeaderboard(false);
         }, 1000);
 
         setStat('tmi', "Twitch: CONNECTING...", "wait");
-        updateLog("Establishing IRC handshake...");
+        updateLog("Connecting to IRC...");
 
-        client = new tmi.Client({ 
-            connection: { reconnect: true, secure: true }, 
-            channels: [CH] 
-        });
+        client = new tmi.Client({ connection: { reconnect: true, secure: true }, channels: [CH] });
         
         client.on('connected', () => {
             setStat('tmi', `Twitch: CONNECTED`, 'on');
-            updateLog(`IRC Handshake success`);
-            // Explicit join command
-            client.join(CH).catch(() => updateLog("Room Join failed"));
+            updateLog(`IRC: Handshake Success`);
+            // Immediate Force Join
+            client.join(CH).catch(() => updateLog("Join failed, retrying..."));
+            // Retry Loop
+            joinRetry = setInterval(() => {
+                if(client.getChannels().length === 0) {
+                    updateLog("Room Join Failed... Retrying...");
+                    client.join(CH).catch(()=>{});
+                } else { clearInterval(joinRetry); }
+            }, 3000);
         });
 
         client.on('join', (channel) => {
             document.getElementById('log-channel').innerText = `LISTENING: ${channel.replace('#','')}`;
-            updateLog(`Joined room: ${channel}`);
+            updateLog(`Room: Joined ${channel}`);
+            clearInterval(joinRetry);
         });
 
         client.on('message', (chan, tags, msg) => {
-            updateLog(`${tags['display-name']}: ${msg.substring(0,25)}`);
+            updateLog(`${tags['display-name']}: ${msg.substring(0,20)}`);
             let found = new Set();
             msg.split(' ').forEach(w => {
                 const clean = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
@@ -194,11 +188,7 @@
             }
         });
 
-        client.connect().catch(e => { 
-            setStat('tmi', "Twitch: ERR", 'err');
-            updateLog("!! Twitch connection rejected");
-        });
-            
+        client.connect().catch(() => setStat('tmi', "Twitch: ERR", 'err'));
         document.getElementById('control').classList.remove('active');
     }
 
@@ -214,22 +204,18 @@
                     wrap.setAttribute('data-name', n);
                 }
                 slot.querySelector('.count').innerText = Math.ceil(c);
-                if(isFromChat) {
-                    slot.classList.remove('pop');
-                    void slot.offsetWidth;
-                    slot.classList.add('pop');
-                }
+                if(isFromChat) { slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop'); }
                 slot.style.display = "flex";
             } else { slot.style.display = "none"; }
         }
     }
 
     window.onload = () => {
-        const savedCh = localStorage.getItem('mugi_ch');
-        const savedID7 = localStorage.getItem('mugi_id7');
-        if(savedCh) document.getElementById('inp-ch').value = savedCh;
-        if(savedID7) document.getElementById('inp-7id').value = savedID7;
-        if(savedCh) setTimeout(reboot, 500);
+        if(localStorage.getItem('mugi_ch')) {
+            document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch');
+            document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7');
+            setTimeout(reboot, 500);
+        }
     };
 </script>
 </body>
