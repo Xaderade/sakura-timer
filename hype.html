@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v13.0</title>
+    <title>Mugi Co. | Engine v13.1</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -28,7 +28,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v13.0</div>
+    <div class="indicator version">MUGI ENGINE v13.1</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
@@ -38,7 +38,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.0 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.1 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="cdawg">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
@@ -70,7 +70,7 @@
         let c7 = 0; let cB = 0; let tId = null;
 
         try {
-            // 1. RESOLVE TWITCH ID
+            // STEP 1: RESOLVE TWITCH ID (Essential for BTTV)
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
                 const twData = await twRes.json();
@@ -78,7 +78,7 @@
             }
             if(!tId && (channel.toLowerCase() === 'cdawg')) tId = '45098797';
 
-            // 2. BTTV (ACTIVE CHANNEL SET)
+            // STEP 2: BTTV FETCH (STABLE REVERSION)
             if(tId) {
                 const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`);
                 if(bttvRes.ok) {
@@ -91,19 +91,15 @@
                 }
             }
 
-            // 3. 7TV (STRICTLY ACTIVE SET)
-            setStat('7tv', "7TV: Fetching Active Set...", 'wait');
+            // STEP 3: 7TV ACTIVE SET
             const uRes = await fetch(`https://7tv.io/v3/users/${userId}`);
             if(uRes.ok) {
                 const uData = await uRes.json();
+                let setId = uData.emote_set?.id || uData.active_emote_set?.id;
                 
-                // Prioritize the top-level 'emote_set' which is the currently active one
-                let setId = uData.emote_set?.id;
-
-                // Fallback to checking Twitch connection for the active set ID if the user object is sparse
                 if(!setId && uData.connections) {
-                    const twitch = uData.connections.find(c => c.platform === 'TWITCH');
-                    setId = twitch?.emote_set?.id;
+                    const tw = uData.connections.find(c => c.platform === 'TWITCH');
+                    setId = tw?.emote_set_id || (tw?.emote_set && tw.emote_set.id);
                 }
 
                 if(setId) {
@@ -114,18 +110,18 @@
                             emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
                             c7++;
                         });
-                        setStat('7tv', `7TV: ${c7} Active Emotes`, 'on');
+                        setStat('7tv', `7TV: ${c7} Active Loaded`, 'on');
                     }
-                } else { setStat('7tv', "7TV: No Active Set Found", 'err'); }
-            } else { setStat('7tv', "7TV: Profile Error", 'err'); }
+                }
+            }
 
-            // 4. GLOBAL 7TV (REQUIRED FALLBACK)
+            // STEP 4: GLOBAL 7TV
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; c7++; } });
 
             setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
-        } catch(e) { console.error(e); setStat('total', "Fetch Failed", 'err'); }
+        } catch(e) { console.error(e); setStat('total', "Asset Fetch Error", 'err'); }
     }
 
     async function reboot() {
