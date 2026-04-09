@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Hardened v10.4</title>
+    <title>Mugi Co. | Deep-Scan v10.5</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -39,11 +39,11 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_HARDENED v10.4</h3>
+    <h3 style="margin:0; color:var(--p);">MUGI_DEEPSCAN v10.5</h3>
     <label>Twitch Channel</label>
     <input type="text" id="inp-ch" value="CrazyJapanese">
     <label>7TV User ID</label>
-    <input type="text" id="inp-7id" value="01FEBH4WVG0008A7S9XD2BPYFJ">
+    <input type="text" id="inp-7id" value="01H0KFX9KR0008P6KEE2JM34TA">
     <label>Drain Rate</label>
     <input type="number" id="inp-decay" value="0.2" step="0.1">
     <button style="width:100%; padding:18px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:6px; margin-top: 25px;" onclick="reboot()">BOOT OVERLAY</button>
@@ -72,41 +72,53 @@
         emoteMap = {};
         let count7tv = 0;
 
-        // 1. CHANNEL EMOTES (The priority)
         try {
-            const response = await fetch(`https://7tv.io/v3/users/${userId}`);
-            if (!response.ok) throw new Error("User ID not found");
-            const data = await response.json();
+            // 1. Fetch User Data to find the active Set ID
+            const userRes = await fetch(`https://7tv.io/v3/users/${userId}`);
+            if (!userRes.ok) throw new Error("7TV User not found");
+            const userData = await userRes.json();
             
-            if(data && data.emote_set && data.emote_set.emotes) {
-                data.emote_set.emotes.forEach(emote => {
+            // Look for the set ID in both common locations
+            const setId = userData.emote_set?.id || userData.active_emote_set?.id;
+            
+            if (setId) {
+                // 2. Fetch the specific Emote Set for full list
+                const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+                const setData = await setRes.json();
+                if (setData.emotes) {
+                    setData.emotes.forEach(emote => {
+                        emoteMap[emote.name] = `https://cdn.7tv.app/emote/${emote.id}/4x.webp`;
+                        count7tv++;
+                    });
+                }
+            } else if (userData.emote_set?.emotes) {
+                // Fallback: use inline emotes if found
+                userData.emote_set.emotes.forEach(emote => {
                     emoteMap[emote.name] = `https://cdn.7tv.app/emote/${emote.id}/4x.webp`;
                     count7tv++;
                 });
             }
-        } catch (err) {
-            console.warn("7TV Channel Load Failed:", err);
-        }
 
-        // 2. GLOBAL EMOTES (Safety check added)
-        try {
+            // 3. GLOBAL EMOTES
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             if (gRes.ok) {
                 const gData = await gRes.json();
-                const globalEmotes = gData.emotes || []; 
-                globalEmotes.forEach(e => { 
-                    if(!emoteMap[e.name]) {
-                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
-                        count7tv++;
-                    }
-                });
+                if (gData.emotes) {
+                    gData.emotes.forEach(e => {
+                        if(!emoteMap[e.name]) {
+                            emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
+                            count7tv++;
+                        }
+                    });
+                }
             }
-        } catch (err) {
-            console.warn("7TV Global Load Failed:", err);
-        }
 
-        setStat('7tv', `7TV: ${count7tv} LOADED`, count7tv > 0 ? 'on' : 'err');
-        setStat('total', `TOTAL: ${Object.keys(emoteMap).length} LOADED`, 'on');
+            setStat('7tv', `7TV: ${count7tv} LOADED`, count7tv > 0 ? 'on' : 'err');
+            setStat('total', `TOTAL: ${Object.keys(emoteMap).length} LOADED`, 'on');
+        } catch (err) {
+            console.error("7TV Asset Load Failed:", err);
+            setStat('7tv', "7TV FETCH FAILED", 'err');
+        }
     }
 
     function startEngine() {
