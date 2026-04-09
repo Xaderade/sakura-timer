@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v15.9 [MASTER BUILD]</title>
+    <title>Mugi Co. | Engine v16.0 [FX BUILD]</title>
     <script src="tmi.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
@@ -15,37 +15,27 @@
         
         body { margin: 0; background-color: var(--chroma); color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
-        /* FULL STATUS HUD */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 3px; }
-        .indicator { font-size: 10px; font-weight: 900; padding: 4px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; transition: 0.2s; }
-        .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 1px; margin-bottom: 2px; font-size: 11px; }
+        .indicator { font-size: 10px; font-weight: 900; padding: 4px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; }
+        .indicator.version { background: var(--p); border-left: none; text-align: center; font-size: 11px; margin-bottom: 2px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.warn { border-left-color: var(--red); color: var(--red); }
 
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 50px; width: 100vw; height: 100vh; padding-bottom: 100px; box-sizing: border-box; }
         
-        .emote-slot { 
-            position: relative; display: flex; flex-direction: column; align-items: center; 
-            transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4);
-            opacity: 0; transform: translateY(50px);
-        }
+        .emote-slot { position: relative; display: flex; flex-direction: column; align-items: center; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4); opacity: 0; transform: translateY(50px); }
         .emote-slot.active { opacity: 1; transform: translateY(0); }
 
-        .img-wrap { 
-            height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; 
-            background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000;
-            margin-bottom: 20px; position: relative; z-index: 5;
-        }
+        .img-wrap { height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000; margin-bottom: 20px; position: relative; z-index: 5; }
         .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; }
         
         .count { font-size: 72px; font-weight: 900; text-shadow: 5px 5px 0px var(--p), -2px -2px 0px #000; letter-spacing: -3px; }
-
         .pop { animation: hitPop 0.1s ease-out; }
         @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
         .combo-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
-        /* RISER & MILESTONES */
+        /* RISER (+1) */
         .riser {
             position: absolute; left: 50%; top: 40%; font-weight: 900; font-size: 56px; color: #fff;
             text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000;
@@ -57,44 +47,44 @@
             100% { transform: translate(var(--x-offset), -180px) scale(1); opacity: 0; }
         }
 
+        /* MASSIVE MILESTONES */
         .milestone {
-            position: absolute; left: 50%; bottom: 280px; font-weight: 900; 
-            white-space: nowrap; pointer-events: none;
+            position: absolute; left: 50%; bottom: 250px; font-weight: 900; 
+            white-space: nowrap; pointer-events: none; z-index: 100;
             animation: milestoneSplash 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
-        .m-tier-1, .m-tier-2 {
-            text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
-            animation: neonBreathe 1.5s ease-in-out infinite alternate;
+
+        /* Tier 1: Neon Purple (+10) */
+        .m-tier-1 { color: var(--p); font-size: 80px; text-shadow: 0 0 20px var(--p), 4px 4px 0 #000; }
+
+        /* Tier 2: Cyan Glow (+25) */
+        .m-tier-2 { color: var(--cyan); font-size: 100px; text-shadow: 0 0 30px var(--cyan), 5px 5px 0 #000; animation: neonPulse 0.5s infinite alternate, milestoneSplash 1.2s forwards; }
+        @keyframes neonPulse { from { filter: brightness(1); } to { filter: brightness(1.5); } }
+
+        /* Tier 3: Gold Chroma (+50) */
+        .m-tier-3 { 
+            font-size: 120px; background: linear-gradient(to right, #ffd700, #fff, #ffd700);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px var(--g)); background-size: 200% auto;
+            animation: chromaMove 1s linear infinite, milestoneSplash 1.2s forwards;
+        }
+        @keyframes chromaMove { to { background-position: 200% center; } }
+
+        /* Tier 4: Glitch Red (+100) */
+        .m-tier-4 { 
+            font-size: 140px; color: #fff; text-shadow: 4px 0 var(--red), -4px 0 var(--cyan), 0 0 50px var(--red);
+            animation: glitchShake 0.1s infinite, milestoneSplash 1.2s forwards; font-style: italic;
+        }
+        @keyframes glitchShake {
+            0% { transform: translate(-51%, 0); }
+            50% { transform: translate(-49%, 2px); }
+            100% { transform: translate(-50%, -1px); }
         }
 
-        @keyframes neonBreathe {
-            from { filter: brightness(1) blur(0px); }
-            to { filter: brightness(1.5) blur(1px); }
-        }
-        .m-tier-3 {
-            background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-size: 200% auto;
-            filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
-            animation: chromaShift 2s linear infinite, milestoneSplash 1.2s forwards;
-        }
-
-        @keyframes chromaShift {
-            to { background-position: 200% center; }
-        }
-        .m-tier-4 {
-            color: white;
-            text-shadow: 3px 0 #ff4d4d, -3px 0 #00ffff;
-            animation: glitch 0.2s infinite, milestoneSplash 1.2s forwards;
-        }
-
-        @keyframes glitch {
-            0% { transform: translate(-50%, 0); }
-            25% { transform: translate(-52%, 2px); }
-            50% { transform: translate(-48%, -2px); }
-            75% { transform: translate(-51%, 1px); }
-            100% { transform: translate(-50%, 0); }
+        @keyframes milestoneSplash {
+            0% { transform: translate(-50%, 80px) scale(0.2); opacity: 0; }
+            25% { transform: translate(-50%, 0) scale(1.1); opacity: 1; }
+            100% { transform: translate(-50%, -150px) scale(1); opacity: 0; }
         }
 
         /* CONTROL PANEL */
@@ -109,14 +99,11 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v15.9</div>
+    <div class="indicator version">MUGI ENGINE v16.0</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-spam" class="indicator">FILTER: ON</div>
     <div id="stat-decay" class="indicator">DECAY: 0.15</div>
-    <div id="stat-7g" class="indicator">7TV GLOBAL: 0 LOADED</div>
-    <div id="stat-7c" class="indicator">7TV CHANNEL: 0 LOADED</div>
-    <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
-    <div id="stat-ffz" class="indicator">FFZ: 0 LOADED</div>
+    <div id="stat-total" class="indicator">EMOTES LOADED: 0</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
@@ -125,7 +112,6 @@
     <h2 style="margin:0 0 20px 0; color:var(--p);">CONFIG</h2>
     <label style="font-size:11px;">CHANNEL NAME</label>
     <input type="text" id="inp-ch" placeholder="Channel">
-    
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="User ID">
     
@@ -164,12 +150,10 @@
     };
 
     async function loadAssets(userId, channel) {
-        let c7g=0, c7c=0, cB=0, cF=0;
-        
-        // 7TV Global
+        let count = 0;
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
-            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7g++; });
-            setStat('7g', `7TV GLOBAL: ${c7g} LOADED`, 'on');
+            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; count++; });
+            setStat('total', `EMOTES LOADED: ${count}`, 'on');
         });
 
         try {
@@ -178,35 +162,16 @@
             const tId = twData[0]?.id;
 
             if(tId) {
-                // BTTV
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => {
-                        emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; cB++;
-                    });
-                    setStat('bttv', `BTTV: ${cB} LOADED`, 'on');
+                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; count++; });
+                    setStat('total', `EMOTES LOADED: ${count}`, 'on');
                 });
-                // FFZ
                 fetch(`https://api.frankerfacez.com/v1/room/id/${tId}`).then(r => r.json()).then(d => {
-                    Object.values(d.sets).forEach(set => {
-                        set.emoticons.forEach(e => {
-                            const url = e.urls['4'] || e.urls['2'] || e.urls['1'];
-                            emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`; cF++;
-                        });
-                    });
-                    setStat('ffz', `FFZ: ${cF} LOADED`, 'on');
-                });
-            }
-
-            if(userId) {
-                // 7TV Channel
-                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
-                    const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
-                    if(setId) {
-                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
-                        const sData = await sRes.json();
-                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7c++; });
-                        setStat('7c', `7TV CHANNEL: ${c7c} LOADED`, 'on');
-                    }
+                    Object.values(d.sets).forEach(set => { set.emoticons.forEach(e => { 
+                        const url = e.urls['4'] || e.urls['2'] || e.urls['1'];
+                        emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`; count++;
+                    });});
+                    setStat('total', `EMOTES LOADED: ${count}`, 'on');
                 });
             }
         } catch(e) { console.error(e); }
@@ -217,7 +182,6 @@
         const ID7 = document.getElementById('inp-7id').value.trim();
         spamMode = document.getElementById('inp-spam').checked;
         decayRate = parseFloat(document.getElementById('inp-decay').value);
-        
         if(!CH) return;
 
         localStorage.setItem('mugi_ch', CH);
@@ -231,13 +195,9 @@
         loadAssets(ID7, CH);
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
-
         emoteCounts = {};
         mainLoop = setInterval(() => {
-            Object.keys(emoteCounts).forEach(k => { 
-                emoteCounts[k] -= decayRate; 
-                if(emoteCounts[k] <= 0) delete emoteCounts[k]; 
-            });
+            Object.keys(emoteCounts).forEach(k => { emoteCounts[k] -= decayRate; if(emoteCounts[k] <= 0) delete emoteCounts[k]; });
             updateLeaderboard(null);
         }, 1000);
 
@@ -310,8 +270,8 @@
             document.getElementById('inp-ch').value = savedCh;
             document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
             document.getElementById('inp-spam').checked = localStorage.getItem('mugi_spam') === 'true';
-            const savedDecay = localStorage.getItem('mugi_decay');
-            if(savedDecay) { document.getElementById('inp-decay').value = savedDecay; document.getElementById('val-decay').innerText = savedDecay; }
+            const sd = localStorage.getItem('mugi_decay');
+            if(sd) { document.getElementById('inp-decay').value = sd; document.getElementById('val-decay').innerText = sd; }
             setTimeout(reboot, 500);
         }
     };
