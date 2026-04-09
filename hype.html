@@ -2,23 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v13.5</title>
+    <title>Mugi Co. | Engine v13.6</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
+        
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
         .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 1px; margin-bottom: 5px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
-        .indicator.wait { border-left-color: var(--g); color: var(--g); }
-        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 60px; width: 100vw; height: 100vh; padding-bottom: 50px; box-sizing: border-box; }
-        .emote-slot { display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); }
-        .rank-tag { font-size: 20px; font-weight: 900; background: var(--g); color: #000; padding: 4px 15px; border-radius: 6px; margin-bottom: 15px; }
-        .img-wrap { height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; }
-        .emote-img { max-height: 220px; max-width: 220px; object-fit: contain; }
-        .count { font-size: 72px; font-weight: 900; margin-top: 10px; text-shadow: 6px 6px 0 var(--p), -2px -2px 0 #000; }
+
+        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 60px; width: 100vw; height: 100vh; padding-bottom: 80px; box-sizing: border-box; }
+        
+        .emote-slot { 
+            display: flex; flex-direction: column; align-items: center; 
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.8));
+        }
+
+        /* POP ANIMATION */
+        .pop { animation: emotePop 0.3s ease-out; }
+        @keyframes emotePop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        .rank-tag { font-size: 24px; font-weight: 900; background: var(--g); color: #000; padding: 5px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 5px 0 #b39700; }
+        .img-wrap { height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; }
+        .emote-img { max-height: 200px; max-width: 200px; object-fit: contain; }
+        
+        .count { 
+            font-size: 84px; font-weight: 900; margin-top: 10px; 
+            text-shadow: 8px 8px 0 var(--p), -2px -2px 0 #000;
+            font-style: italic;
+        }
+
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; font-family: monospace; }
@@ -28,7 +49,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v13.5</div>
+    <div class="indicator version">MUGI ENGINE v13.6</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
@@ -38,12 +59,12 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.5 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.6 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="cdawg">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="01GHNFF8W80001ZXYW7QBBPA9X">
-    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE ENGINE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">START ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -69,7 +90,6 @@
         emoteMap = {};
         let c7 = 0; let cB = 0; let tId = null;
 
-        // 1. RESOLVE TWITCH ID (Essential for BTTV)
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
@@ -77,11 +97,8 @@
                 tId = twData[0]?.id;
             }
             if(!tId && channel.toLowerCase().includes('cdawg')) tId = '45098797';
-        } catch(e) { console.error("ID Lookup Error"); }
 
-        // 2. BTTV FETCH (STRICT)
-        if(tId) {
-            try {
+            if(tId) {
                 const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`);
                 if(bttvRes.ok) {
                     const bData = await bttvRes.json();
@@ -90,19 +107,14 @@
                         cB++;
                     });
                     setStat('bttv', `BTTV: ${cB} Loaded`, 'on');
-                } else { setStat('bttv', "BTTV: API Offline/404", 'err'); }
-            } catch(e) { setStat('bttv', "BTTV: Network Error", 'err'); }
-        } else { setStat('bttv', "BTTV: Missing Twitch ID", 'err'); }
+                }
+            }
 
-        // 3. 7TV ACTIVE SET (MAPPED VIA TWITCH CONNECTION)
-        try {
             const uRes = await fetch(`https://7tv.io/v3/users/${userId}`);
             if(uRes.ok) {
                 const uData = await uRes.json();
-                // We strictly find the Twitch connection to get the active set
                 const conn = uData.connections?.find(c => c.platform === 'TWITCH');
                 const setId = uData.emote_set?.id || conn?.emote_set?.id;
-
                 if(setId) {
                     const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                     const sData = await sRes.json();
@@ -113,16 +125,13 @@
                     setStat('7tv', `7TV: ${c7} Loaded`, 'on');
                 }
             }
-        } catch(e) { setStat('7tv', "7TV: Fetch Error", 'err'); }
 
-        // 4. GLOBAL 7TV (FALLBACK)
-        try {
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; c7++; } });
-        } catch(e) {}
 
-        setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
+            setStat('total', `TOTAL: ${Object.keys(emoteMap).length}`, 'on');
+        } catch(e) { console.error(e); }
     }
 
     async function reboot() {
@@ -134,23 +143,29 @@
         localStorage.setItem('mugi_id7', ID7);
 
         if(client) { try { await client.disconnect(); } catch(e){} }
-        setStat('tmi', `Twitch: Connecting...`, 'wait');
         
         await loadAssets(ID7, CH);
         
+        // DECAY LOOP: Runs every second to lower scores and keep the board moving
         if(mainLoop) clearInterval(mainLoop);
         mainLoop = setInterval(() => {
-            Object.keys(emoteCounts).forEach(k => { emoteCounts[k] -= 0.2; if(emoteCounts[k] <= 0) delete emoteCounts[k]; });
+            Object.keys(emoteCounts).forEach(k => {
+                emoteCounts[k] -= 0.2; // Adjust this number to change how fast emotes disappear
+                if(emoteCounts[k] <= 0) delete emoteCounts[k];
+            });
             updateLeaderboard(false);
         }, 1000);
 
         client = new tmi.Client({ connection: { reconnect: true, secure: true }, channels: [CH] });
+        
         client.on('message', (chan, tags, msg) => {
             let found = new Set();
             msg.split(' ').forEach(w => {
                 const clean = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
                 if (emoteMap[clean]) found.add(clean);
             });
+            
+            // Twitch Native Emotes
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
                     tags.emotes[id].forEach(r => {
@@ -161,29 +176,45 @@
                     });
                 });
             }
-            found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
-            if(found.size > 0) updateLeaderboard(true);
+
+            if(found.size > 0) {
+                found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
+                updateLeaderboard(true);
+            }
         });
 
-        client.connect().then(() => setStat('tmi', `Twitch: Connected`, 'on')).catch(() => setStat('tmi', "Twitch: Failed", 'err'));
+        client.connect().then(() => setStat('tmi', `Twitch: Connected`, 'on'));
         document.getElementById('control').classList.remove('active');
     }
 
-    function updateLeaderboard(isChat) {
+    function updateLeaderboard(isFromChat) {
         const sorted = Object.entries(emoteCounts).sort((a,b) => b[1]-a[1]).slice(0,5);
+        
         for(let i=0; i<5; i++){
             const slot = document.getElementById(`slot-${i}`);
             if(sorted[i]){
                 const [n, c] = sorted[i];
                 const wrap = slot.querySelector('.img-wrap');
+                
+                // Update Image if it changed
                 if(wrap.getAttribute('data-name') !== n){
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
-                slot.querySelector('.count').innerText = Math.floor(c);
-                if(isChat) { slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop'); }
+
+                slot.querySelector('.count').innerText = Math.ceil(c);
+                
+                // Trigger Pop if this update came from a chat mention
+                if(isFromChat) {
+                    slot.classList.remove('pop');
+                    void slot.offsetWidth; // Force reflow
+                    slot.classList.add('pop');
+                }
+
                 slot.style.display = "flex";
-            } else { slot.style.display = "none"; }
+            } else {
+                slot.style.display = "none";
+            }
         }
     }
 
