@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mugi Co. | Path-Finder v6.2</title>
+    <script src="tmi.min.js"></script>
+    <style>
+        :root { --p: #9146ff; --bg: rgba(10, 10, 15, 0.98); --success: #00ffcc; }
+        body { margin: 0; background: transparent; color: white; font-family: sans-serif; overflow: hidden; }
+        #chat { position: absolute; bottom: 40px; left: 30px; width: 650px; }
+        .msg { font-size: 28px; font-weight: 700; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; }
+        .emote { height: 1.45em; vertical-align: middle; margin: -4px 2px; }
+        .user { color: var(--p); }
+        #status { position: absolute; top: 10px; left: 10px; font-size: 12px; color: #555; }
+    </style>
+</head>
+<body>
+
+<div id="status">INITIALIZING...</div>
+<div id="chat"></div>
+
+<script>
+    const CHANNEL = 'CrazyJapanese';
+    const SEVENTV_ID = '01FEBH4WVG0008A7S9XD2BPYFJ';
+    let emoteMap = {};
+
+    async function loadEmotes() {
+        const status = document.getElementById('status');
+        try {
+            // 1. Fetch the exact JSON you provided
+            const response = await fetch(`https://7tv.io/v3/users/${SEVENTV_ID}`);
+            const data = await response.json();
+
+            // 2. DRILL DOWN: data -> emote_set -> emotes
+            // This is the specific path to find the list of 100+ emotes
+            const channelEmotes = data.emote_set.emotes;
+
+            channelEmotes.forEach(emote => {
+                // Map the NAME to the 2x WEBP image URL
+                emoteMap[emote.name] = `https://cdn.7tv.app/emote/${emote.id}/2x.webp`;
+            });
+
+            // 3. Add Global Emotes as well
+            const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
+            const gData = await gRes.json();
+            gData.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
+
+            status.innerText = `ONLINE: ${Object.keys(emoteMap).length} EMOTES LOADED`;
+            status.style.color = 'var(--success)';
+        } catch (err) {
+            console.error(err);
+            status.innerText = "7TV FETCH FAILED";
+        }
+    }
+
+    const client = new tmi.Client({
+        connection: { secure: true, reconnect: true },
+        channels: [CHANNEL]
+    });
+
+    client.on('message', (chan, tags, msg) => {
+        const chat = document.getElementById('chat');
+        const div = document.createElement('div');
+        div.className = 'msg';
+
+        // Swap 7TV text for images
+        let finalHtml = msg.split(' ').map(word => {
+            return emoteMap[word] ? `<img src="${emoteMap[word]}" class="emote">` : word;
+        }).join(' ');
+
+        // Swap Twitch Native (Kappa, etc.)
+        if (tags.emotes) {
+            Object.keys(tags.emotes).forEach(id => {
+                const range = tags.emotes[id][0].split('-');
+                const name = msg.substring(parseInt(range[0]), parseInt(range[1]) + 1);
+                const tImg = `<img src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0" class="emote">`;
+                finalHtml = finalHtml.split(name).join(tImg);
+            });
+        }
+
+        div.innerHTML = `<span class="user">${tags['display-name']}:</span> ${finalHtml}`;
+        chat.appendChild(div);
+        if(chat.childNodes.length > 10) chat.removeChild(chat.firstChild);
+    });
+
+    client.connect();
+    loadEmotes();
+</script>
+</body>
+</html>
