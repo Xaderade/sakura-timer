@@ -2,15 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Full Diagnostics v11.9</title>
-    <script src="tmi.min.js"></script>
+    <title>Mugi Co. | Absolute v12.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
         
-        /* DIAGNOSTIC HUD */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.9); border-left: 4px solid #444; min-width: 240px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.9); border-left: 4px solid #444; min-width: 260px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
         .indicator.wait { border-left-color: var(--g); color: var(--g); }
@@ -25,7 +24,7 @@
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; font-family: monospace; }
-        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px; font-weight: bold; }
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px; }
         .pop { transform: scale(1.15); transition: 0.05s; }
     </style>
 </head>
@@ -33,19 +32,19 @@
 
 <div id="hud">
     <div id="stat-tmi" class="indicator">Twitch: Disconnected</div>
-    <div id="stat-7tv" class="indicator">7TV: Waiting...</div>
-    <div id="stat-7set" class="indicator">Set ID: None</div>
-    <div id="stat-bttv" class="indicator">BTTV: Standby</div>
+    <div id="stat-7set" class="indicator">Set: Waiting...</div>
+    <div id="stat-7tv" class="indicator">7TV: 0 Loaded</div>
+    <div id="stat-bttv" class="indicator">BTTV: 0 Loaded</div>
     <div id="stat-total" class="indicator">Total Active: 0</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">MUGI ENGINE v11.9</h2>
-    <label style="font-size:11px; font-weight:bold;">TWITCH CHANNEL</label>
-    <input type="text" id="inp-ch" value="CrazyJapanese">
-    <label style="font-size:11px; font-weight:bold; margin-top:15px; display:block;">7TV USER ID</label>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">MUGI ENGINE v12.0</h2>
+    <label style="font-size:11px;">TWITCH CHANNEL</label>
+    <input type="text" id="inp-ch" placeholder="CrazyJapanese">
+    <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="01GHNFF8W80001ZXYW7QBBPA9X">
     <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE ENGINE</button>
 </div>
@@ -75,19 +74,34 @@
         let countBttv = 0;
         
         try {
-            // 1. RESOLVE TWITCH ID (Needed for BTTV)
-            const twRes = await fetch(`https://decapi.me/twitch/id/${channel.toLowerCase()}`);
-            const twitchId = await twRes.text();
+            // 1. Resolve Twitch ID for BTTV (Alternative API)
+            setStat('bttv', "BTTV: Resolving ID...", 'wait');
+            const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
+            const twData = await twRes.json();
+            const twitchId = twData[0]?.id;
 
-            // 2. 7TV DEEP FETCH (Stage 1: Find Set)
-            setStat('7tv', "7TV: Resolving Set...", 'wait');
+            if(twitchId) {
+                const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`);
+                if(bttvRes.ok) {
+                    const bttvData = await bttvRes.json();
+                    [...(bttvData.channelEmotes || []), ...(bttvData.sharedEmotes || [])].forEach(e => {
+                        emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
+                        countBttv++;
+                    });
+                    setStat('bttv', `BTTV: ${countBttv} Loaded`, 'on');
+                }
+            } else {
+                setStat('bttv', "BTTV: User ID Not Found", 'err');
+            }
+
+            // 2. 7TV Deep Resolution
+            setStat('7set', "Set: Fetching...", 'wait');
             const userRes = await fetch(`https://7tv.io/v3/users/${userId}`);
             const user = await userRes.json();
             const setId = user.emote_set?.id || user.active_emote_set?.id;
             
             if(setId) {
-                setStat('7set', `Set ID: ${setId.substring(0,12)}...`, 'on');
-                // Stage 2: Fetch Raw Set (Bypasses the 256 limit)
+                setStat('7set', `Set: ${setId.substring(0,10)}...`, 'on');
                 const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                 const setData = await setRes.json();
                 setData.emotes?.forEach(e => {
@@ -96,28 +110,21 @@
                 });
             }
 
-            // 3. BTTV FETCH
-            setStat('bttv', "BTTV: Fetching...", 'wait');
-            const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`);
-            if(bttvRes.ok) {
-                const bttvData = await bttvRes.json();
-                [...(bttvData.channelEmotes || []), ...(bttvData.sharedEmotes || [])].forEach(e => {
-                    emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
-                    countBttv++;
-                });
-            }
-
-            // 4. GLOBAL 7TV
+            // 3. Global 7TV Fallback
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
-            gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; count7tv++; } });
+            gData.emotes?.forEach(e => { 
+                if(!emoteMap[e.name]) { 
+                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; 
+                    count7tv++; 
+                } 
+            });
 
             setStat('7tv', `7TV: ${count7tv} Loaded`, 'on');
-            setStat('bttv', `BTTV: ${countBttv} Loaded`, 'on');
             setStat('total', `Total Active: ${Object.keys(emoteMap).length}`, 'on');
 
         } catch(e) {
-            setStat('7tv', "Sync Error", 'err');
+            setStat('7set', "Sync Failed", 'err');
             console.error(e);
         }
     }
@@ -136,6 +143,12 @@
     async function reboot() {
         const CH = document.getElementById('inp-ch').value.trim();
         const ID = document.getElementById('inp-7id').value.trim();
+        
+        if(!CH || !ID) {
+            setStat('tmi', "Twitch: Missing Config", 'err');
+            return;
+        }
+
         localStorage.setItem('mugi_ch', CH);
         localStorage.setItem('mugi_id', ID);
 
@@ -147,12 +160,14 @@
         startEngine();
 
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
+        
         client.on('message', (chan, tags, msg) => {
             let found = new Set();
             msg.split(' ').forEach(w => {
                 const clean = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
                 if (emoteMap[clean]) found.add(clean);
             });
+            // Native Twitch Emotes
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
                     tags.emotes[id].forEach(r => {
@@ -167,7 +182,10 @@
             if(found.size > 0) updateLeaderboard(true);
         });
 
-        client.connect().then(() => setStat('tmi', `Twitch: ${CH.toUpperCase()}`, 'on'));
+        client.connect()
+            .then(() => setStat('tmi', `Twitch: ${CH.toUpperCase()}`, 'on'))
+            .catch(() => setStat('tmi', "Twitch: Connection Fail", 'err'));
+            
         document.getElementById('control').classList.remove('active');
     }
 
@@ -190,9 +208,11 @@
     }
 
     window.onload = () => {
-        document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch') || "CrazyJapanese";
+        document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch') || "";
         document.getElementById('inp-7id').value = localStorage.getItem('mugi_id') || "";
-        if(document.getElementById('inp-7id').value) setTimeout(reboot, 800);
+        if(document.getElementById('inp-7id').value && document.getElementById('inp-ch').value) {
+            setTimeout(reboot, 1000);
+        }
     };
 </script>
 </body>
