@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v15.5 [FFZ FIX]</title>
+    <title>Mugi Co. | Engine v15.6 [COMBO RESTORED]</title>
     <script src="tmi.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
@@ -42,6 +42,7 @@
         .pop { animation: hitPop 0.1s ease-out; }
         @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
+        /* RISER & MILESTONES */
         .combo-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
         .riser {
@@ -56,6 +57,20 @@
             100% { transform: translate(var(--x-offset), -180px) scale(1); opacity: 0; }
         }
 
+        .milestone {
+            position: absolute; left: 50%; bottom: 280px; font-size: 52px; font-weight: 900; color: var(--g);
+            text-shadow: 4px 4px 0 #000, -2px -2px 0 #000, 0 0 20px var(--g); z-index: 60;
+            white-space: nowrap; pointer-events: none;
+            animation: milestoneSplash 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes milestoneSplash {
+            0% { transform: translate(-50%, 50px) scale(0); opacity: 0; }
+            20% { transform: translate(-50%, 0) scale(1.4); opacity: 1; }
+            80% { opacity: 1; transform: translate(-50%, -80px) scale(1); }
+            100% { transform: translate(-50%, -120px) scale(0.8); opacity: 0; }
+        }
+
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
         input, select { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; font-weight: bold; }
@@ -66,7 +81,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v15.5</div>
+    <div class="indicator version">MUGI ENGINE v15.6</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-spam" class="indicator">FILTER: ON</div>
     <div id="stat-7g" class="indicator">7TV GLOBAL: 0 LOADED</div>
@@ -111,9 +126,7 @@
     };
 
     async function loadAssets(userId, channel) {
-        let c7g = 0, c7c = 0, cB = 0, cF = 0;
-
-        // 7TV Global
+        let c7g = 0, c7c = 0, cF = 0;
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
             g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7g++; });
             setStat('7g', `7TV GLOBAL: ${c7g} LOADED`, 'on');
@@ -125,14 +138,12 @@
             const tId = twData[0]?.id;
 
             if(tId) {
-                // BTTV
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => {
                         emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
                     });
                 });
 
-                // FFZ Restoration
                 fetch(`https://api.frankerfacez.com/v1/room/id/${tId}`).then(r => r.json()).then(d => {
                     Object.values(d.sets).forEach(set => {
                         set.emoticons.forEach(e => {
@@ -206,13 +217,30 @@
         document.getElementById('control').classList.remove('active');
     }
 
-    function spawnRiser(container) {
+    function spawnComboEffect(container, count) {
+        // Regular +1 Riser
         const el = document.createElement('div');
         el.className = 'riser';
         el.innerText = '+1';
         el.style.setProperty('--x-offset', `${(Math.random() * 100 - 50)}px`);
         container.appendChild(el);
         setTimeout(() => el.remove(), 700);
+
+        // Milestone Splash Logic
+        const val = Math.floor(count);
+        let splashText = "";
+        if (val === 10) splashText = "+10 COMBO";
+        else if (val === 25) splashText = "+25 ULTRA!!";
+        else if (val === 50) splashText = "+50 MEGA!!";
+        else if (val === 100) splashText = "100 GODLIKE";
+
+        if (splashText) {
+            const m = document.createElement('div');
+            m.className = 'milestone';
+            m.innerText = splashText;
+            container.appendChild(m);
+            setTimeout(() => m.remove(), 1200);
+        }
     }
 
     function updateLeaderboard(triggeredEmoteName) {
@@ -233,7 +261,7 @@
                     slot.classList.remove('pop');
                     void slot.offsetWidth;
                     slot.classList.add('pop');
-                    spawnRiser(comboCon);
+                    spawnComboEffect(comboCon, c);
                 }
             } else {
                 slot.classList.remove('active');
