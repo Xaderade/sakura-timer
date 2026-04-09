@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | 353+ v11.6</title>
+    <title>Mugi Co. | Total Unlock v11.7</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -34,11 +34,11 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_353 v11.6</h3>
+    <h3 style="margin:0; color:var(--p);">MUGI_TOTAL v11.7</h3>
     <label style="font-size:11px;">Twitch Channel</label>
     <input type="text" id="inp-ch" value="CrazyJapanese">
-    <label style="font-size:11px; margin-top:10px; display:block;">7TV User ID</label>
-    <input type="text" id="inp-7id" value="01GHNFF8W80001ZXYW7QBBPA9X">
+    <label style="font-size:11px; margin-top:10px; display:block;">7TV User ID (Manual)</label>
+    <input type="text" id="inp-7id" placeholder="Paste 01GHN... or 01H0K...">
     <button style="width:100%; padding:18px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 20px;" onclick="reboot()">START ENGINE</button>
 </div>
 
@@ -65,27 +65,26 @@
         emoteMap = {};
         let count = 0;
         try {
-            // STEP 1: Force User Object fetch
+            // STEP 1: Find the Set ID from the User
             const userRes = await fetch(`https://7tv.io/v3/users/${userId}`);
             const user = await userRes.json();
-            
-            // STEP 2: Use specific emote_set.id to avoid truncation
             const setId = user.emote_set?.id || user.active_emote_set?.id;
-            if(!setId) throw "No Set ID Found";
+            
+            if(!setId) throw "No Set ID";
 
-            // STEP 3: Fetch RAW SET (The 353 source)
+            // STEP 2: Fetch the Set ID DIRECTLY (This bypasses the 256/811 limits)
             const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
             const setData = await setRes.json();
             
             if(setData.emotes) {
                 setData.emotes.forEach(e => {
-                    // Using 2x for better performance with large sets
+                    // Optimized for speed and full rendering
                     emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
                     count++;
                 });
             }
 
-            // STEP 4: Global fallback
+            // STEP 3: Add Global Emotes
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes.forEach(e => {
@@ -116,6 +115,9 @@
     async function reboot() {
         const CH = document.getElementById('inp-ch').value.trim();
         const ID = document.getElementById('inp-7id').value.trim();
+        localStorage.setItem('mugi_ch', CH);
+        localStorage.setItem('mugi_id', ID);
+
         if(client) await client.disconnect();
         emoteCounts = {};
         await loadAssets(ID);
@@ -163,7 +165,11 @@
         }
     }
 
-    window.onload = () => setTimeout(reboot, 500);
+    window.onload = () => {
+        document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch') || "CrazyJapanese";
+        document.getElementById('inp-7id').value = localStorage.getItem('mugi_id') || "";
+        if(document.getElementById('inp-7id').value) setTimeout(reboot, 500);
+    };
 </script>
 </body>
 </html>
