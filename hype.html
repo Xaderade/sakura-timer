@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Auto-Link v10.7</title>
+    <title>Mugi Co. | Bridge v10.9</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
         
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
-        .indicator { font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 3px; background: rgba(0,0,0,0.85); border-left: 3px solid #444; width: fit-content; min-width: 170px; }
+        .indicator { font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 3px; background: rgba(0,0,0,0.85); border-left: 3px solid #444; width: fit-content; min-width: 180px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
 
@@ -39,11 +39,11 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_AUTOLINK v10.7</h3>
-    <label>Twitch Channel</label>
-    <input type="text" id="inp-ch" placeholder="Channel Name">
-    <label>7TV ID (Leave blank to auto-find)</label>
-    <input type="text" id="inp-7id" placeholder="Optional ID">
+    <h3 style="margin:0; color:var(--p);">MUGI_BRIDGE v10.9</h3>
+    <label>Twitch Channel Name</label>
+    <input type="text" id="inp-ch" placeholder="CrazyJapanese">
+    <label>7TV User ID (Fills automatically)</label>
+    <input type="text" id="inp-7id" placeholder="01H0KFX...">
     <label>Drain Rate</label>
     <input type="number" id="inp-decay" value="0.2" step="0.1">
     <button style="width:100%; padding:18px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:6px; margin-top: 25px;" onclick="reboot()">BOOT OVERLAY</button>
@@ -68,26 +68,32 @@
         if(el) { el.innerText = text; if(state) el.className = `indicator ${state}`; }
     };
 
-    async function loadAssets(channel, manualId) {
+    async function loadAssets(channel, manual7tvId) {
         emoteMap = {};
         let count7tv = 0;
-        let targetId = manualId;
+        let final7tvId = manual7tvId;
 
         try {
-            // STEP 1: AUTO-LOOKUP ID IF NOT PROVIDED
-            if (!targetId) {
-                setStat('7tv', "LOOKING UP ID...", 'on');
-                const lookup = await fetch(`https://7tv.io/v3/users/twitch/${channel.toLowerCase()}`);
-                if (lookup.ok) {
-                    const lookupData = await lookup.json();
-                    targetId = lookupData.id;
-                    document.getElementById('inp-7id').value = targetId; // Fill it in for the user
+            // STEP 1: RESOLVE TWITCH NAME TO NUMERIC ID (REQUIRED BY 7TV)
+            setStat('7tv', "RESOLVING TWITCH ID...", 'on');
+            const resolver = await fetch(`https://iv0.au/api/twitch/user/${channel.toLowerCase()}`);
+            if (!resolver.ok) throw new Error("Twitch Lookup Failed");
+            const twitchData = await resolver.json();
+            const numericTwitchId = twitchData.id;
+
+            // STEP 2: FIND 7TV ACCOUNT LINKED TO THAT NUMERIC ID
+            if (!final7tvId) {
+                const linkRes = await fetch(`https://7tv.io/v3/users/twitch/${numericTwitchId}`);
+                if (linkRes.ok) {
+                    const linkData = await linkRes.json();
+                    final7tvId = linkData.user?.id || linkData.id;
+                    document.getElementById('inp-7id').value = final7tvId;
                 }
             }
 
-            // STEP 2: RECURSIVE DRILL-DOWN (FROM v10.6)
-            if (targetId) {
-                const userRes = await fetch(`https://7tv.io/v3/users/${targetId}`);
+            // STEP 3: RECURSIVE EMOTE FETCH
+            if (final7tvId) {
+                const userRes = await fetch(`https://7tv.io/v3/users/${final7tvId}`);
                 const userData = await userRes.json();
                 let setId = userData.active_emote_set?.id || userData.emote_set?.id || (userData.emote_sets?.[0]?.id);
 
@@ -103,25 +109,23 @@
                 }
             }
 
-            // STEP 3: GLOBAL EMOTES
+            // STEP 4: GLOBAL EMOTES
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             if (gRes.ok) {
                 const gData = await gRes.json();
-                if (gData.emotes) {
-                    gData.emotes.forEach(e => {
-                        if(!emoteMap[e.name]) {
-                            emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
-                            count7tv++;
-                        }
-                    });
-                }
+                gData.emotes?.forEach(e => {
+                    if(!emoteMap[e.name]) {
+                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
+                        count7tv++;
+                    }
+                });
             }
 
             setStat('7tv', `7TV: ${count7tv} LOADED`, count7tv > 0 ? 'on' : 'err');
             setStat('total', `TOTAL: ${Object.keys(emoteMap).length} LOADED`, 'on');
         } catch (err) {
-            console.error("7TV Asset Load Failed:", err);
-            setStat('7tv', "7TV ERROR", 'err');
+            console.error("Asset Load Failed:", err);
+            setStat('7tv', "LOOKUP FAILED", 'err');
         }
     }
 
@@ -142,21 +146,14 @@
         const ID = document.getElementById('inp-7id').value.trim();
         const DECAY = document.getElementById('inp-decay').value;
 
-        // Save for next time
         localStorage.setItem('mugi_ch', CH);
         localStorage.setItem('mugi_id', ID);
         localStorage.setItem('mugi_decay', DECAY);
 
         if (client) { try { await client.disconnect(); } catch(e){} }
-        
         emoteCounts = {};
         await loadAssets(CH, ID);
         startEngine();
-
-        if (typeof tmi === 'undefined') {
-            setStat('tmi', 'TMI.JS MISSING', 'err');
-            return;
-        }
 
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
         client.on('message', (chan, tags, msg) => {
@@ -220,16 +217,10 @@
         }
     }
 
-    // Restore settings and auto-boot
     window.onload = () => {
-        const savedCh = localStorage.getItem('mugi_ch') || "CrazyJapanese";
-        const savedId = localStorage.getItem('mugi_id') || "";
-        const savedDecay = localStorage.getItem('mugi_decay') || "0.2";
-        
-        document.getElementById('inp-ch').value = savedCh;
-        document.getElementById('inp-7id').value = savedId;
-        document.getElementById('inp-decay').value = savedDecay;
-
+        document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch') || "CrazyJapanese";
+        document.getElementById('inp-7id').value = localStorage.getItem('mugi_id') || "";
+        document.getElementById('inp-decay').value = localStorage.getItem('mugi_decay') || "0.2";
         setTimeout(reboot, 800);
     };
 </script>
