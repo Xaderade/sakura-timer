@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Total Unlock v11.7</title>
+    <title>Mugi Co. | Deep-Fetch v11.8</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -27,18 +27,18 @@
 <body>
 
 <div id="hud">
-    <div id="stat-7tv" class="indicator">7TV: CONNECTING</div>
-    <div id="stat-total" class="indicator">TOTAL: 0 EMOTES</div>
+    <div id="stat-7tv" class="indicator">7TV: STANDBY</div>
+    <div id="stat-total" class="indicator">TOTAL: 0 LOADED</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_TOTAL v11.7</h3>
+    <h3 style="margin:0; color:var(--p);">MUGI_DEEP v11.8</h3>
     <label style="font-size:11px;">Twitch Channel</label>
     <input type="text" id="inp-ch" value="CrazyJapanese">
     <label style="font-size:11px; margin-top:10px; display:block;">7TV User ID (Manual)</label>
-    <input type="text" id="inp-7id" placeholder="Paste 01GHN... or 01H0K...">
+    <input type="text" id="inp-7id" placeholder="01GHNFF8W80001ZXYW7QBBPA9X">
     <button style="width:100%; padding:18px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 20px;" onclick="reboot()">START ENGINE</button>
 </div>
 
@@ -65,39 +65,47 @@
         emoteMap = {};
         let count = 0;
         try {
-            // STEP 1: Find the Set ID from the User
+            // STEP 1: Fetch User Profile to find the active Set ID
+            setStat('7tv', "STAGE 1: USER LOOKUP", 'on');
             const userRes = await fetch(`https://7tv.io/v3/users/${userId}`);
+            if(!userRes.ok) throw "USER_NOT_FOUND";
             const user = await userRes.json();
-            const setId = user.emote_set?.id || user.active_emote_set?.id;
             
-            if(!setId) throw "No Set ID";
+            const setId = user.emote_set?.id || user.active_emote_set?.id || (user.emote_sets && user.emote_sets[0]?.id);
+            if(!setId) throw "SET_ID_MISSING";
 
-            // STEP 2: Fetch the Set ID DIRECTLY (This bypasses the 256/811 limits)
+            // STEP 2: Fetch the Set ID DIRECTLY (Full data, no truncation)
+            setStat('7tv', "STAGE 2: SET FETCH", 'on');
             const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+            if(!setRes.ok) throw "SET_FETCH_FAILED";
             const setData = await setRes.json();
             
             if(setData.emotes) {
                 setData.emotes.forEach(e => {
-                    // Optimized for speed and full rendering
-                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+                    // Pulling the primary image from the data structure
+                    const imgUrl = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+                    emoteMap[e.name] = imgUrl;
                     count++;
                 });
             }
 
             // STEP 3: Add Global Emotes
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
-            const gData = await gRes.json();
-            gData.emotes.forEach(e => {
-                if(!emoteMap[e.name]) {
-                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
-                    count++;
-                }
-            });
+            if(gRes.ok) {
+                const gData = await gRes.json();
+                gData.emotes?.forEach(e => {
+                    if(!emoteMap[e.name]) {
+                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+                        count++;
+                    }
+                });
+            }
 
             setStat('7tv', `7TV: ${count} LOADED`, 'on');
             setStat('total', `TOTAL: ${Object.keys(emoteMap).length} ACTIVE`, 'on');
         } catch(e) {
-            setStat('7tv', "LOAD ERROR", 'err');
+            console.error(e);
+            setStat('7tv', `LOAD ERROR: ${e}`, 'err');
         }
     }
 
@@ -118,9 +126,15 @@
         localStorage.setItem('mugi_ch', CH);
         localStorage.setItem('mugi_id', ID);
 
-        if(client) await client.disconnect();
+        if(client) { try { await client.disconnect(); } catch(e){} }
         emoteCounts = {};
-        await loadAssets(ID);
+        
+        if(ID) {
+            await loadAssets(ID);
+        } else {
+            setStat('7tv', "PASTE 7TV ID", 'err');
+        }
+        
         startEngine();
 
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
@@ -143,7 +157,7 @@
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
             if(found.size > 0) updateLeaderboard(true);
         });
-        client.connect();
+        client.connect().catch(e => setStat('7tv', "TMI ERROR", 'err'));
         document.getElementById('control').classList.remove('active');
     }
 
@@ -168,7 +182,7 @@
     window.onload = () => {
         document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch') || "CrazyJapanese";
         document.getElementById('inp-7id').value = localStorage.getItem('mugi_id') || "";
-        if(document.getElementById('inp-7id').value) setTimeout(reboot, 500);
+        if(document.getElementById('inp-7id').value) setTimeout(reboot, 800);
     };
 </script>
 </body>
