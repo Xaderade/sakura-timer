@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Mugi Co. | Engine v14.4</title>
-    <script src="tmi.min.js"></script>
+    <script src="https://bundle.run/tmi.js@1.8.5"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
@@ -18,25 +18,33 @@
         #activity-log { font-family: monospace; font-size: 10px; color: #aaa; background: rgba(0,0,0,0.95); padding: 10px; border-radius: 4px; margin-top: 5px; max-width: 280px; border: 1px solid #333; }
         .log-entry { border-bottom: 1px solid #222; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #eee; }
 
-        /* MODIFIED: Reduced gap for closer emotes */
-        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 20px; width: 100vw; height: 100vh; padding-bottom: 40px; box-sizing: border-box; }
+        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 20px; width: 100vw; height: 100vh; padding-bottom: 60px; box-sizing: border-box; }
         
-        /* MODIFIED: Removed drop-shadow */
-        .emote-slot { display: flex; flex-direction: column; align-items: center; transition: transform 0.2s; }
-        
-        /* MODIFIED: Animation now targets only the image wrap */
-        .pop { animation: emotePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes emotePop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        /* SMOOTH TRANSITIONS: Handles entry/exit animation */
+        .emote-slot { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            transform: translateY(30px);
+        }
 
-        /* MODIFIED: Hidden ranking numbers */
-        .rank-tag { display: none; }
+        .emote-slot.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .rank-tag { display: none; } /* Hidden as requested */
         
-        /* MODIFIED: Increased size of emote container */
         .img-wrap { height: 260px; width: 260px; display: flex; align-items: center; justify-content: center; }
         .emote-img { max-height: 260px; max-width: 260px; object-fit: contain; }
         
-        /* MODIFIED: Reduced size of count */
         .count { font-size: 32px; font-weight: 900; text-shadow: 3px 3px 0 var(--p), -1px -1px 0 #000; font-style: italic; margin-top: 10px; }
+
+        /* POP: Only applied to the emote wrap */
+        .pop { animation: emotePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes emotePop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
 
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
@@ -51,7 +59,6 @@
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
-    <div id="stat-total" class="indicator">TOTAL ACTIVE: 0</div>
     
     <div id="activity-log">
         <div id="log-channel" style="color:var(--g); font-weight:bold; margin-bottom:4px; text-transform:uppercase;">STATUS: IDLE</div>
@@ -80,11 +87,11 @@
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot" style="display:none;"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-1" class="emote-slot" style="display:none;"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-2" class="emote-slot" style="display:none;"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-3" class="emote-slot" style="display:none;"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-4" class="emote-slot" style="display:none;"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-0" class="emote-slot"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-4" class="emote-slot"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <script>
@@ -155,7 +162,10 @@
         if(joinRetry) clearInterval(joinRetry);
 
         mainLoop = setInterval(() => {
-            Object.keys(emoteCounts).forEach(k => { emoteCounts[k] -= decaySpeed; if(emoteCounts[k] <= 0) delete emoteCounts[k]; });
+            Object.keys(emoteCounts).forEach(k => { 
+                emoteCounts[k] -= decaySpeed; 
+                if(emoteCounts[k] <= 0) delete emoteCounts[k]; 
+            });
             updateLeaderboard(null);
         }, 1000);
 
@@ -177,7 +187,6 @@
         });
 
         client.on('message', (chan, tags, msg) => {
-            updateLog(`${tags['display-name']}: ${msg.substring(0,20)}`);
             let found = new Set();
             msg.split(' ').forEach(w => {
                 const clean = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
@@ -207,35 +216,43 @@
 
     function updateLeaderboard(triggeredEmoteName) {
         const sorted = Object.entries(emoteCounts).sort((a,b) => b[1]-a[1]).slice(0,5);
+        
         for(let i=0; i<5; i++){
             const slot = document.getElementById(`slot-${i}`);
+            const wrap = slot.querySelector('.img-wrap');
+            const countDisplay = slot.querySelector('.count');
+
             if(sorted[i]){
                 const [n, c] = sorted[i];
-                const wrap = slot.querySelector('.img-wrap');
                 
                 if(wrap.getAttribute('data-name') !== n){
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
                 
-                slot.querySelector('.count').innerText = Math.ceil(c);
+                countDisplay.innerText = Math.ceil(c);
+                slot.classList.add('active');
                 
-                // MODIFIED: Only trigger animation on the 'wrap' (the emote), not the whole slot
                 if(triggeredEmoteName === n) {
                     wrap.classList.remove('pop');
                     void wrap.offsetWidth;
                     wrap.classList.add('pop');
                 }
-                
-                slot.style.display = "flex";
-            } else { slot.style.display = "none"; }
+            } else {
+                slot.classList.remove('active');
+                // Reset internal state after transition completes
+                setTimeout(() => {
+                    if(!slot.classList.contains('active')) wrap.setAttribute('data-name', '');
+                }, 500);
+            }
         }
     }
 
     window.onload = () => {
-        if(localStorage.getItem('mugi_ch')) {
-            document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch');
-            document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7');
+        const savedCh = localStorage.getItem('mugi_ch');
+        if(savedCh) {
+            document.getElementById('inp-ch').value = savedCh;
+            document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
             setTimeout(reboot, 500);
         }
     };
