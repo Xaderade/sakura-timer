@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | ID-Logic v12.3</title>
-    <script src="https://cdn.jsdelivr.net/npm/tmi.js@1.8.5/dist/tmi.min.js"></script>
+    <title>Mugi Co. | Local-Fix v12.5</title>
+    <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.9); border-left: 4px solid #444; min-width: 280px; }
+        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
         .indicator.wait { border-left-color: var(--g); color: var(--g); }
@@ -22,13 +22,12 @@
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; font-family: monospace; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px; }
-        .pop { transform: scale(1.15); transition: 0.05s; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div id="stat-tmi" class="indicator">Twitch: DISCONNECTED</div>
+    <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-total" class="indicator">TOTAL ACTIVE: 0</div>
@@ -37,12 +36,12 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">MUGI_ID v12.3</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">MUGI_LOCAL v12.5</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="cdawg">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="01GHNFF8W80001ZXYW7QBBPA9X">
-    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">START ENGINE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE</button>
 </div>
 
 <div id="leaderboard">
@@ -66,68 +65,57 @@
 
     async function loadAssets(userId, channel) {
         emoteMap = {};
-        let count7 = 0; let countB = 0; let tId = null;
+        let c7 = 0; let cB = 0; let tId = null;
 
         try {
-            // STEP 1: RESOLVE NUMERIC TWITCH ID
-            setStat('bttv', "Twitch ID: Resolving...", 'wait');
+            // STEP 1: RESOLVE TWITCH ID
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
                 const twData = await twRes.json();
                 tId = twData[0]?.id;
             }
-
-            // Hardcode fallback for CDawg
+            // Hardcoded fallback for CDawg if API flinches
             if(!tId && (channel.toLowerCase() === 'cdawg' || channel.toLowerCase() === 'cdawgva')) tId = '45098797';
 
-            // STEP 2: LOAD BTTV VIA TWITCH ID
+            // STEP 2: BTTV FETCH VIA ID
             if(tId) {
                 const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`);
                 if(bttvRes.ok) {
                     const bData = await bttvRes.json();
                     [...(bData.channelEmotes || []), ...(bData.sharedEmotes || [])].forEach(e => {
                         emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
-                        countB++;
+                        cB++;
                     });
-                    setStat('bttv', `BTTV: ${countB} Loaded (ID: ${tId})`, 'on');
+                    setStat('bttv', `BTTV: ${cB} Loaded`, 'on');
                 }
             }
 
-            // STEP 3: LOAD 7TV (USER -> SET)
+            // STEP 3: 7TV CUSTOM SET FETCH
             const uRes = await fetch(`https://7tv.io/v3/users/${userId}`);
             if(uRes.ok) {
                 const uData = await uRes.json();
                 const setId = uData.emote_set?.id || uData.active_emote_set?.id;
+                
                 if(setId) {
                     const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
-                    const sData = await sRes.json();
-                    sData.emotes?.forEach(e => {
-                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
-                        count7++;
-                    });
-                    setStat('7tv', `7TV: ${count7} Loaded`, 'on');
+                    if(sRes.ok) {
+                        const sData = await sRes.json();
+                        sData.emotes?.forEach(e => {
+                            emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+                            c7++;
+                        });
+                        setStat('7tv', `7TV: ${c7} Loaded`, 'on');
+                    }
                 }
             }
 
-            // STEP 4: GLOBAL 7TV
+            // STEP 4: GLOBAL 7TV FALLBACK
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
-            gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; count7++; } });
+            gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; c7++; } });
 
             setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
-
-        } catch(e) { console.error(e); setStat('total', "Sync Error", 'err'); }
-    }
-
-    function startEngine() {
-        if(mainLoop) clearInterval(mainLoop);
-        mainLoop = setInterval(() => {
-            Object.keys(emoteCounts).forEach(k => {
-                emoteCounts[k] -= 0.2;
-                if(emoteCounts[k] <= 0) delete emoteCounts[k];
-            });
-            updateLeaderboard(false);
-        }, 1000);
+        } catch(e) { console.error(e); setStat('total', "Asset Load Error", 'err'); }
     }
 
     async function reboot() {
@@ -141,11 +129,22 @@
         if(client) { try { await client.disconnect(); } catch(e){} }
         setStat('tmi', `Twitch: Connecting...`, 'wait');
         
-        emoteCounts = {};
         await loadAssets(ID7, CH);
-        startEngine();
+        
+        if(mainLoop) clearInterval(mainLoop);
+        mainLoop = setInterval(() => {
+            Object.keys(emoteCounts).forEach(k => { emoteCounts[k] -= 0.2; if(emoteCounts[k] <= 0) delete emoteCounts[k]; });
+            updateLeaderboard(false);
+        }, 1000);
 
-        client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
+        // Check if TMI exists locally
+        if (typeof tmi === 'undefined') {
+            setStat('tmi', "LOCAL TMI.MIN.JS MISSING", 'err');
+            return;
+        }
+
+        client = new tmi.Client({ connection: { reconnect: true, secure: true }, channels: [CH] });
+        
         client.on('message', (chan, tags, msg) => {
             let found = new Set();
             msg.split(' ').forEach(w => {
@@ -165,7 +164,11 @@
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
             if(found.size > 0) updateLeaderboard(true);
         });
-        client.connect().then(() => setStat('tmi', `Twitch: ${CH.toUpperCase()}`, 'on'));
+
+        client.connect()
+            .then(() => setStat('tmi', `Twitch: ${CH.toUpperCase()}`, 'on'))
+            .catch(() => setStat('tmi', "Twitch: Connection Fail", 'err'));
+            
         document.getElementById('control').classList.remove('active');
     }
 
@@ -190,7 +193,7 @@
     window.onload = () => {
         document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch') || "";
         document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || "";
-        if(document.getElementById('inp-ch').value) setTimeout(reboot, 800);
+        if(document.getElementById('inp-ch').value) setTimeout(reboot, 1000);
     };
 </script>
 </body>
