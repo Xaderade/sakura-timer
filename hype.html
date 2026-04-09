@@ -2,44 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Deep-Fetch v11.8</title>
+    <title>Mugi Co. | Full Diagnostics v11.9</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
-        #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
-        .indicator { font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 3px; background: rgba(0,0,0,0.85); border-left: 3px solid #444; width: fit-content; min-width: 220px; }
+        
+        /* DIAGNOSTIC HUD */
+        #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
+        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.9); border-left: 4px solid #444; min-width: 240px; text-transform: uppercase; letter-spacing: 0.5px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
+        .indicator.wait { border-left-color: var(--g); color: var(--g); }
+
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 60px; width: 100vw; height: 100vh; padding-bottom: 50px; box-sizing: border-box; }
         .emote-slot { display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); }
         .rank-tag { font-size: 20px; font-weight: 900; background: var(--g); color: #000; padding: 4px 15px; border-radius: 6px; margin-bottom: 15px; }
         .img-wrap { height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; }
         .emote-img { max-height: 220px; max-width: 220px; object-fit: contain; }
         .count { font-size: 72px; font-weight: 900; margin-top: 10px; text-shadow: 6px 6px 0 var(--p), -2px -2px 0 #000; }
-        #control { position: absolute; top: 0; right: 0; width: 320px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 25px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
+
+        #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; font-family: monospace; }
-        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 22px; }
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px; font-weight: bold; }
         .pop { transform: scale(1.15); transition: 0.05s; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div id="stat-7tv" class="indicator">7TV: STANDBY</div>
-    <div id="stat-total" class="indicator">TOTAL: 0 LOADED</div>
+    <div id="stat-tmi" class="indicator">Twitch: Disconnected</div>
+    <div id="stat-7tv" class="indicator">7TV: Waiting...</div>
+    <div id="stat-7set" class="indicator">Set ID: None</div>
+    <div id="stat-bttv" class="indicator">BTTV: Standby</div>
+    <div id="stat-total" class="indicator">Total Active: 0</div>
 </div>
 
-<button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
+<button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_DEEP v11.8</h3>
-    <label style="font-size:11px;">Twitch Channel</label>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">MUGI ENGINE v11.9</h2>
+    <label style="font-size:11px; font-weight:bold;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" value="CrazyJapanese">
-    <label style="font-size:11px; margin-top:10px; display:block;">7TV User ID (Manual)</label>
+    <label style="font-size:11px; font-weight:bold; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="01GHNFF8W80001ZXYW7QBBPA9X">
-    <button style="width:100%; padding:18px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 20px;" onclick="reboot()">START ENGINE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -58,54 +66,59 @@
 
     const setStat = (id, text, state) => {
         const el = document.getElementById(`stat-${id}`);
-        if(el) { el.innerText = text; if(state) el.className = `indicator ${state}`; }
+        if(el) { el.innerText = text; el.className = `indicator ${state || ''}`; }
     };
 
-    async function loadAssets(userId) {
+    async function loadAssets(userId, channel) {
         emoteMap = {};
-        let count = 0;
+        let count7tv = 0;
+        let countBttv = 0;
+        
         try {
-            // STEP 1: Fetch User Profile to find the active Set ID
-            setStat('7tv', "STAGE 1: USER LOOKUP", 'on');
+            // 1. RESOLVE TWITCH ID (Needed for BTTV)
+            const twRes = await fetch(`https://decapi.me/twitch/id/${channel.toLowerCase()}`);
+            const twitchId = await twRes.text();
+
+            // 2. 7TV DEEP FETCH (Stage 1: Find Set)
+            setStat('7tv', "7TV: Resolving Set...", 'wait');
             const userRes = await fetch(`https://7tv.io/v3/users/${userId}`);
-            if(!userRes.ok) throw "USER_NOT_FOUND";
             const user = await userRes.json();
+            const setId = user.emote_set?.id || user.active_emote_set?.id;
             
-            const setId = user.emote_set?.id || user.active_emote_set?.id || (user.emote_sets && user.emote_sets[0]?.id);
-            if(!setId) throw "SET_ID_MISSING";
-
-            // STEP 2: Fetch the Set ID DIRECTLY (Full data, no truncation)
-            setStat('7tv', "STAGE 2: SET FETCH", 'on');
-            const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
-            if(!setRes.ok) throw "SET_FETCH_FAILED";
-            const setData = await setRes.json();
-            
-            if(setData.emotes) {
-                setData.emotes.forEach(e => {
-                    // Pulling the primary image from the data structure
-                    const imgUrl = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
-                    emoteMap[e.name] = imgUrl;
-                    count++;
+            if(setId) {
+                setStat('7set', `Set ID: ${setId.substring(0,12)}...`, 'on');
+                // Stage 2: Fetch Raw Set (Bypasses the 256 limit)
+                const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+                const setData = await setRes.json();
+                setData.emotes?.forEach(e => {
+                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+                    count7tv++;
                 });
             }
 
-            // STEP 3: Add Global Emotes
+            // 3. BTTV FETCH
+            setStat('bttv', "BTTV: Fetching...", 'wait');
+            const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`);
+            if(bttvRes.ok) {
+                const bttvData = await bttvRes.json();
+                [...(bttvData.channelEmotes || []), ...(bttvData.sharedEmotes || [])].forEach(e => {
+                    emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
+                    countBttv++;
+                });
+            }
+
+            // 4. GLOBAL 7TV
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
-            if(gRes.ok) {
-                const gData = await gRes.json();
-                gData.emotes?.forEach(e => {
-                    if(!emoteMap[e.name]) {
-                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
-                        count++;
-                    }
-                });
-            }
+            const gData = await gRes.json();
+            gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; count7tv++; } });
 
-            setStat('7tv', `7TV: ${count} LOADED`, 'on');
-            setStat('total', `TOTAL: ${Object.keys(emoteMap).length} ACTIVE`, 'on');
+            setStat('7tv', `7TV: ${count7tv} Loaded`, 'on');
+            setStat('bttv', `BTTV: ${countBttv} Loaded`, 'on');
+            setStat('total', `Total Active: ${Object.keys(emoteMap).length}`, 'on');
+
         } catch(e) {
+            setStat('7tv', "Sync Error", 'err');
             console.error(e);
-            setStat('7tv', `LOAD ERROR: ${e}`, 'err');
         }
     }
 
@@ -127,14 +140,10 @@
         localStorage.setItem('mugi_id', ID);
 
         if(client) { try { await client.disconnect(); } catch(e){} }
+        setStat('tmi', `Twitch: Connecting...`, 'wait');
+        
         emoteCounts = {};
-        
-        if(ID) {
-            await loadAssets(ID);
-        } else {
-            setStat('7tv', "PASTE 7TV ID", 'err');
-        }
-        
+        await loadAssets(ID, CH);
         startEngine();
 
         client = new tmi.Client({ connection: { secure: true, reconnect: true }, channels: [CH] });
@@ -157,7 +166,8 @@
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
             if(found.size > 0) updateLeaderboard(true);
         });
-        client.connect().catch(e => setStat('7tv', "TMI ERROR", 'err'));
+
+        client.connect().then(() => setStat('tmi', `Twitch: ${CH.toUpperCase()}`, 'on'));
         document.getElementById('control').classList.remove('active');
     }
 
