@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v15.4 [SPAM TOGGLE]</title>
+    <title>Mugi Co. | Engine v15.5 [FFZ FIX]</title>
     <script src="tmi.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
@@ -66,11 +66,12 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v15.4</div>
+    <div class="indicator version">MUGI ENGINE v15.5</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-spam" class="indicator">FILTER: ON</div>
     <div id="stat-7g" class="indicator">7TV GLOBAL: 0 LOADED</div>
     <div id="stat-7c" class="indicator">7TV CHANNEL: 0 LOADED</div>
+    <div id="stat-ffz" class="indicator">FFZ: 0 LOADED</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
@@ -110,7 +111,9 @@
     };
 
     async function loadAssets(userId, channel) {
-        let c7g = 0; let c7c = 0;
+        let c7g = 0, c7c = 0, cB = 0, cF = 0;
+
+        // 7TV Global
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
             g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7g++; });
             setStat('7g', `7TV GLOBAL: ${c7g} LOADED`, 'on');
@@ -122,10 +125,23 @@
             const tId = twData[0]?.id;
 
             if(tId) {
+                // BTTV
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => {
                         emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
                     });
+                });
+
+                // FFZ Restoration
+                fetch(`https://api.frankerfacez.com/v1/room/id/${tId}`).then(r => r.json()).then(d => {
+                    Object.values(d.sets).forEach(set => {
+                        set.emoticons.forEach(e => {
+                            const url = e.urls['4'] || e.urls['2'] || e.urls['1'];
+                            emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`;
+                            cF++;
+                        });
+                    });
+                    setStat('ffz', `FFZ: ${cF} LOADED`, 'on');
                 });
             }
 
@@ -147,7 +163,6 @@
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         const ID7 = document.getElementById('inp-7id').value.trim();
         spamMode = document.getElementById('inp-spam').checked;
-        
         if(!CH) return;
 
         localStorage.setItem('mugi_ch', CH);
@@ -155,7 +170,6 @@
         localStorage.setItem('mugi_spam', spamMode);
 
         setStat('spam', spamMode ? 'FILTER: OFF (SPAM MODE)' : 'FILTER: ON', spamMode ? 'warn' : 'on');
-
         loadAssets(ID7, CH);
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
@@ -173,23 +187,16 @@
         client.on('connected', () => setStat('tmi', `Twitch: ONLINE`, 'on'));
         client.on('message', (chan, tags, msg) => {
             let matches = [];
-            
-            // Collect all emote instances
             msg.split(' ').forEach(w => { if(emoteMap[w]) matches.push(w); });
-            
             if(tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
                     const range = tags.emotes[id][0].split('-');
                     const n = msg.substring(parseInt(range[0]), parseInt(range[1]) + 1);
                     if(!emoteMap[n]) emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
-                    // Add every instance found in Twitch tags
                     tags.emotes[id].forEach(() => matches.push(n));
                 });
             }
-
-            // Apply Spam Filter Logic
             const finalEmotes = spamMode ? matches : [...new Set(matches)];
-            
             finalEmotes.forEach(e => { 
                 emoteCounts[e] = (emoteCounts[e] || 0) + 1; 
                 updateLeaderboard(e); 
