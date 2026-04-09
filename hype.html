@@ -2,38 +2,33 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v14.6 [GAME UI]</title>
+    <title>Mugi Co. | Engine v14.7 [MILESTONE UI]</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { 
             --p: #9146ff; 
-            --p-glow: rgba(145, 70, 255, 0.6);
+            --p-glow: rgba(145, 70, 255, 0.8);
             --g: #ffd700; 
-            --g-glow: rgba(255, 215, 0, 0.6);
+            --g-glow: rgba(255, 215, 0, 0.8);
+            --cyan: #00ffff;
+            --cyan-glow: rgba(0, 255, 255, 0.8);
             --chroma: #00FF00; 
-            --ui-bg: rgba(0, 0, 0, 0.85);
+            --ui-bg: rgba(0, 0, 0, 0.9);
             --ui-border: #444;
-            --font-game: 'Georgia', 'Times New Roman', serif; /* RPG style numbers */
+            --font-game: 'Georgia', 'Times New Roman', serif;
         }
         
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; user-select: none; }
         
-        /* HUD */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.95); border-left: 4px solid var(--ui-border); min-width: 280px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.95); border-left: 4px solid var(--ui-border); min-width: 280px; }
         .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 1px; margin-bottom: 5px; font-family: monospace; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
-        .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
-        .indicator.wait { border-left-color: var(--g); color: var(--g); }
-        
-        #activity-log { font-family: monospace; font-size: 10px; color: #aaa; background: rgba(0,0,0,0.95); padding: 10px; border-radius: 4px; margin-top: 5px; max-width: 280px; border: 1px solid #333; }
-        .log-entry { border-bottom: 1px solid #222; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #eee; }
 
-        /* LEADERBOARD GAME UI */
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 30px; width: 100vw; height: 100vh; padding-bottom: 80px; box-sizing: border-box; }
         
         .emote-slot { 
-            position: relative; /* Container for rising numbers */
+            position: relative; 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
@@ -42,14 +37,8 @@
             transform: translateY(50px) scale(0.8);
         }
 
-        .emote-slot.active {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
+        .emote-slot.active { opacity: 1; transform: translateY(0) scale(1); }
 
-        .rank-tag { display: none; }
-        
-        /* Stylized Emote Container */
         .img-wrap { 
             height: 200px; width: 200px; 
             display: flex; align-items: center; justify-content: center; 
@@ -59,153 +48,130 @@
             box-shadow: 0 10px 0 #000, 0 0 20px rgba(0,0,0,0.5);
             margin-bottom: 15px;
             position: relative;
-            overflow: hidden;
         }
-        /* Visual Flairs (Corners) */
-        .img-wrap::before, .img-wrap::after {
-            content: ''; position: absolute; width: 15px; height: 15px; border: 3px solid var(--p);
-        }
-        .img-wrap::before { top: 5px; left: 5px; border-right: none; border-bottom: none; }
-        .img-wrap::after { bottom: 5px; right: 5px; border-left: none; border-top: none; }
 
         .emote-img { max-height: 180px; max-width: 180px; object-fit: contain; }
         
-        /* Game Style Counter */
         .count { 
             font-family: var(--font-game);
             font-size: 54px; 
             font-weight: 900; 
-            color: white;
-            text-shadow: 
-                4px 4px 0 #000,
-                -1px -1px 0 #000,  
-                1px -1px 0 #000,
-                -1px 1px 0 #000,
-                1px 1px 0 #000,
-                0 0 15px var(--p-glow);
+            text-shadow: 4px 4px 0 #000, 0 0 15px var(--p-glow);
             font-style: italic; 
-            position: relative;
         }
 
-        /* Juicy Animations */
-        .pop { animation: uiWobble 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        /* JUICE: Wobble on every hit */
+        .pop { animation: uiWobble 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes uiWobble { 
-            0% { transform: scale(1) rotate(0deg); } 
-            30% { transform: scale(1.2) rotate(-5deg); filter: brightness(1.5); } 
-            60% { transform: scale(0.95) rotate(3deg); }
-            100% { transform: scale(1) rotate(0deg); filter: brightness(1); } 
+            0% { transform: scale(1); } 
+            50% { transform: scale(1.15) rotate(-3deg); } 
+            100% { transform: scale(1); } 
         }
 
-        /* DYNAMIC RISING NUMBERS / COMBO TEXT */
+        /* COMBO SPLASH SYSTEM */
         .combo-container {
             position: absolute;
-            bottom: 230px; /* Rises from top of emote wrap */
-            width: 300px;
+            bottom: 250px;
+            width: 400px;
             text-align: center;
             pointer-events: none;
-            z-index: 10;
+            z-index: 50;
         }
 
-        .rising-text {
+        .splash {
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
             font-family: var(--font-game);
             font-weight: 900;
             white-space: nowrap;
-            opacity: 0;
-            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
-            animation: riseFade 1.5s ease-out forwards;
+            text-shadow: 3px 3px 0 #000, -1px -1px 0 #000;
+            font-style: italic;
         }
 
-        /* Types of Combo Splashes */
-        .rising-text.minor { color: white; font-size: 28px; }
-        .rising-text.combo { 
-            color: var(--g); 
-            font-size: 36px; 
-            text-shadow: 3px 3px 0 #000, 0 0 10px var(--g-glow); 
-            animation: riseFadeThud 1.8s ease-out forwards;
-        }
-        .rising-text.mega { 
-            color: var(--p); 
-            font-size: 48px; 
-            text-shadow: 4px 4px 0 #000, 0 0 20px var(--p-glow); 
-            animation: riseFadeMega 2s ease-out forwards;
-        }
+        /* Milestone 10: White/Silver Rise */
+        .m-10 { color: #eee; font-size: 30px; animation: splashRise 1s ease-out forwards; }
+        
+        /* Milestone 25: Gold Pulse */
+        .m-25 { color: var(--g); font-size: 45px; text-shadow: 4px 4px 0 #000, 0 0 20px var(--g-glow); animation: splashThud 1.2s ease-out forwards; }
+        
+        /* Milestone 50: Cyan Shake */
+        .m-50 { color: var(--cyan); font-size: 60px; text-shadow: 5px 5px 0 #000, 0 0 30px var(--cyan-glow); animation: splashShake 1.5s ease-out forwards; }
+        
+        /* Milestone 100: Hyper Purple Chaos */
+        .m-100 { color: var(--p); font-size: 85px; text-shadow: 6px 6px 0 #000, 0 0 40px var(--p-glow); animation: splashGod 2s ease-out forwards; }
 
-        @keyframes riseFade {
+        @keyframes splashRise {
             0% { transform: translate(-50%, 20px); opacity: 0; }
-            15% { transform: translate(-50%, 0); opacity: 1; }
-            80% { opacity: 1; }
+            20% { opacity: 1; }
+            100% { transform: translate(-50%, -80px); opacity: 0; }
+        }
+
+        @keyframes splashThud {
+            0% { transform: translate(-50%, 20px) scale(3); opacity: 0; }
+            15% { transform: translate(-50%, 0) scale(1); opacity: 1; }
             100% { transform: translate(-50%, -100px); opacity: 0; }
         }
 
-        /* Adds a "THUD" scale pop at start */
-        @keyframes riseFadeThud {
-            0% { transform: translate(-50%, 20px) scale(2); opacity: 0; }
-            10% { transform: translate(-50%, 0) scale(1); opacity: 1; }
-            80% { opacity: 1; }
-            100% { transform: translate(-50%, -120px) scale(1); opacity: 0; }
-        }
-
-        /* Adds screen shake effect */
-        @keyframes riseFadeMega {
-            0% { transform: translate(-50%, 20px) scale(3); opacity: 0; }
-            8% { transform: translate(-50%, -5px) scale(1); opacity: 1; }
-            12% { transform: translate(-53%, 2px) scale(1); }
-            16% { transform: translate(-47%, -3px) scale(1); }
+        @keyframes splashShake {
+            0% { transform: translate(-50%, 0) scale(0); opacity: 0; }
+            10% { transform: translate(-52%, -2px) scale(1.2); opacity: 1; }
+            15% { transform: translate(-48%, 2px) scale(1.2); }
             20% { transform: translate(-50%, 0) scale(1); }
-            80% { opacity: 1; filter: blur(0px); }
-            100% { transform: translate(-50%, -150px) scale(1.2); opacity: 0; filter: blur(2px); }
+            100% { transform: translate(-50%, -130px) scale(1); opacity: 0; }
         }
 
-        /* CONTROL PANEL */
+        @keyframes splashGod {
+            0% { transform: translate(-50%, 50px) scale(5); filter: blur(10px); opacity: 0; }
+            10% { transform: translate(-50%, 0) scale(1); filter: blur(0); opacity: 1; }
+            15% { transform: translate(-55%, -5px) scale(1.1); }
+            20% { transform: translate(-45%, 5px) scale(1.1); }
+            25% { transform: translate(-50%, 0) scale(1); }
+            90% { opacity: 1; }
+            100% { transform: translate(-50%, -200px) scale(1.5); opacity: 0; filter: hue-rotate(360deg); }
+        }
+
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
         input, select { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; }
-        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px;}
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v14.6 [GAME UI]</div>
+    <div class="indicator version">MUGI ENGINE v14.7</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
-    <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
-    <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
-    
     <div id="activity-log">
         <div id="log-channel" style="color:var(--g); font-weight:bold; margin-bottom:4px; text-transform:uppercase;">STATUS: IDLE</div>
         <div id="log-0" class="log-entry">Engine Standby...</div>
         <div id="log-1" class="log-entry"></div>
-        <div id="log-2" class="log-entry"></div>
     </div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p); font-family:monospace;">v14.6 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p); font-family:monospace;">v14.7 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="Channel Name">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="01FEBH...">
     <label style="font-size:11px; margin-top:15px; display:block;">DECAY SPEED</label>
     <select id="inp-decay">
-        <option value="0.05">Very Slow (Chill)</option>
+        <option value="0.05">Very Slow</option>
         <option value="0.15" selected>Normal</option>
-        <option value="0.3">Fast (High Traffic)</option>
-        <option value="0.6">Hyper (Chaotic)</option>
+        <option value="0.5">Fast</option>
     </select>
-    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE ENGINE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE</button>
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-4" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-0" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-4" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <script>
@@ -213,11 +179,9 @@
     let emoteCounts = {};
     let client = null;
     let mainLoop = null;
-    let joinRetry = null;
     let decaySpeed = 0.15;
 
     const updateLog = (msg) => {
-        document.getElementById('log-2').innerText = document.getElementById('log-1').innerText;
         document.getElementById('log-1').innerText = document.getElementById('log-0').innerText;
         document.getElementById('log-0').innerText = msg;
     };
@@ -228,8 +192,7 @@
     };
 
     async function loadAssets(userId, channel) {
-        let c7 = 0; let cB = 0;
-        emoteMap = {}; // Clear map on reload
+        emoteMap = {};
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
@@ -239,10 +202,8 @@
                     fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                         [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => {
                             emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
-                            cB++;
                         });
-                        setStat('bttv', `BTTV: ${cB} LOADED`, 'on');
-                    }).catch(() => setStat('bttv', "BTTV: FAIL", "err"));
+                    });
                 }
             }
             if(userId) {
@@ -251,15 +212,14 @@
                     if(setId) {
                         const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                         const sData = await sRes.json();
-                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7++; });
-                        setStat('7tv', `7TV: ${c7} LOADED`, 'on');
+                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
                     }
                 });
             }
             fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
                 g.emotes?.forEach(e => { if(!emoteMap[e.name]) emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
             });
-        } catch(e) { updateLog("API Handshake Error"); }
+        } catch(e) { updateLog("Asset Load Error"); }
     }
 
     function reboot() {
@@ -274,9 +234,8 @@
         loadAssets(ID7, CH);
         if(client) { try { client.disconnect(); } catch(e){} }
         if(mainLoop) clearInterval(mainLoop);
-        if(joinRetry) clearInterval(joinRetry);
 
-        emoteCounts = {}; // Clear counts
+        emoteCounts = {};
 
         mainLoop = setInterval(() => {
             Object.keys(emoteCounts).forEach(k => { 
@@ -286,80 +245,52 @@
             updateLeaderboard(null);
         }, 1000);
 
-        setStat('tmi', "Twitch: CONNECTING...", "wait");
         client = new tmi.Client({ connection: { reconnect: true, secure: true }, channels: [CH] });
-        
-        client.on('connected', () => {
-            setStat('tmi', `Twitch: CONNECTED`, 'on');
-            client.join(CH);
-            joinRetry = setInterval(() => {
-                if(client.getChannels().length === 0) { client.join(CH); } else { clearInterval(joinRetry); }
-            }, 3000);
-        });
-
-        client.on('join', (channel) => {
-            document.getElementById('log-channel').innerText = `LISTENING: ${channel.replace('#','')}`;
-            updateLog(`Joined room: ${channel}`);
-            clearInterval(joinRetry);
-        });
-
+        client.on('connected', () => setStat('tmi', `Twitch: CONNECTED`, 'on'));
         client.on('message', (chan, tags, msg) => {
-            let found = new Set();
-            msg.split(' ').forEach(w => {
+            let words = msg.split(' ');
+            let uniqueInMsg = new Set();
+            words.forEach(w => {
                 const clean = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
-                if (emoteMap[clean]) found.add(clean);
+                if (emoteMap[clean]) uniqueInMsg.add(clean);
             });
+            // Handle native Twitch emotes
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
-                    tags.emotes[id].forEach(r => {
-                        const b = r.split('-');
-                        const name = msg.substring(parseInt(b[0]), parseInt(b[1]) + 1);
-                        if(!emoteMap[name]) emoteMap[name] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
-                        found.add(name);
-                    });
+                    const firstPos = tags.emotes[id][0].split('-');
+                    const name = msg.substring(parseInt(firstPos[0]), parseInt(firstPos[1]) + 1);
+                    if(!emoteMap[name]) emoteMap[name] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
+                    uniqueInMsg.add(name);
                 });
             }
-            if(found.size > 0) {
-                found.forEach(e => { 
-                    emoteCounts[e] = (emoteCounts[e] || 0) + 1; 
-                    updateLeaderboard(e);
-                });
-            }
+
+            uniqueInMsg.forEach(e => {
+                emoteCounts[e] = (emoteCounts[e] || 0) + 1;
+                updateLeaderboard(e);
+            });
         });
 
-        client.connect().catch(() => setStat('tmi', "Twitch: ERR", 'err'));
+        client.connect();
         document.getElementById('control').classList.remove('active');
     }
 
-    // New function to handle the RPG-style rising numbers
-    function spawnRisingText(container, count, totalCount) {
-        const el = document.createElement('div');
-        let type = 'minor';
-        let text = `+${count}`;
+    function triggerMilestone(container, currentCount) {
+        const val = Math.floor(currentCount);
+        let splashClass = "";
+        let text = "";
 
-        // Combo Logic
-        const total = Math.ceil(totalCount);
-        if(total >= 100) {
-            type = 'mega';
-            text = `MEGA COMBO +${total}`;
-        } else if (total >= 50) {
-            type = 'combo';
-            text = `ULTRA +${total}`;
-        } else if (total >= 20) {
-            type = 'combo';
-            text = `COMBO +${total}`;
-        } else if (count >= 10) {
-            type = 'minor';
-            text = `+${count}!!`;
+        if (val === 10) { splashClass = "m-10"; text = "+10 COMBO"; }
+        else if (val === 25) { splashClass = "m-25"; text = "+25 ULTRA!!"; }
+        else if (val === 50) { splashClass = "m-50"; text = "+50 MEGA COMBO"; }
+        else if (val === 100) { splashClass = "m-100"; text = "+100 GODLIKE!!"; }
+
+        if (text !== "") {
+            const el = document.createElement('div');
+            el.className = `splash ${splashClass}`;
+            el.innerText = text;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 2500);
         }
-
-        el.className = `rising-text ${type}`;
-        el.innerText = text;
-
-        container.appendChild(el);
-
-        // Remove element after animation completes to keep DOM clean
-        setTimeout(() => el.remove(), 2100);
     }
 
     function updateLeaderboard(triggeredEmoteName) {
@@ -373,29 +304,23 @@
 
             if(sorted[i]){
                 const [n, c] = sorted[i];
-                
                 if(wrap.getAttribute('data-name') !== n){
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
-                
                 countDisplay.innerText = Math.ceil(c);
                 slot.classList.add('active');
                 
                 if(triggeredEmoteName === n) {
-                    // Juicy Wobble Animation on the whole container
                     slot.classList.remove('pop');
-                    void slot.offsetWidth; // Reflow
+                    void slot.offsetWidth;
                     slot.classList.add('pop');
-
-                    // Spawn Damage Number (assuming +1 per trigger)
-                    spawnRisingText(comboCon, 1, c);
+                    // Check for milestones
+                    triggerMilestone(comboCon, c);
                 }
             } else {
                 slot.classList.remove('active');
-                setTimeout(() => {
-                    if(!slot.classList.contains('active')) wrap.setAttribute('data-name', '');
-                }, 500);
+                setTimeout(() => { if(!slot.classList.contains('active')) wrap.setAttribute('data-name', ''); }, 500);
             }
         }
     }
