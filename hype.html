@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v14.4</title>
-    <script src="https://bundle.run/tmi.js@1.8.5"></script>
+    <title>Mugi Co. | Engine v14.5</title>
+    <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
@@ -20,7 +20,7 @@
 
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 20px; width: 100vw; height: 100vh; padding-bottom: 60px; box-sizing: border-box; }
         
-        /* SMOOTH TRANSITIONS: Handles entry/exit animation */
+        /* v14.5 SMOOTH TRANSITIONS */
         .emote-slot { 
             display: flex; 
             flex-direction: column; 
@@ -35,14 +35,13 @@
             transform: translateY(0);
         }
 
-        .rank-tag { display: none; } /* Hidden as requested */
+        .rank-tag { display: none; }
         
         .img-wrap { height: 260px; width: 260px; display: flex; align-items: center; justify-content: center; }
         .emote-img { max-height: 260px; max-width: 260px; object-fit: contain; }
         
         .count { font-size: 32px; font-weight: 900; text-shadow: 3px 3px 0 var(--p), -1px -1px 0 #000; font-style: italic; margin-top: 10px; }
 
-        /* POP: Only applied to the emote wrap */
         .pop { animation: emotePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes emotePop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
 
@@ -55,7 +54,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v14.4</div>
+    <div class="indicator version">MUGI ENGINE v14.5</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
@@ -71,7 +70,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v14.4 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v14.5 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="Channel Name">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
@@ -235,12 +234,11 @@
                 
                 if(triggeredEmoteName === n) {
                     wrap.classList.remove('pop');
-                    void wrap.offsetWidth;
+                    void wrap.offsetWidth; 
                     wrap.classList.add('pop');
                 }
             } else {
                 slot.classList.remove('active');
-                // Reset internal state after transition completes
                 setTimeout(() => {
                     if(!slot.classList.contains('active')) wrap.setAttribute('data-name', '');
                 }, 500);
