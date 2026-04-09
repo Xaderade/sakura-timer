@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v13.9</title>
+    <title>Mugi Co. | Engine v14.0</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -38,15 +38,15 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v13.9</div>
+    <div class="indicator version">MUGI ENGINE v14.0</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
     <div id="stat-total" class="indicator">TOTAL ACTIVE: 0</div>
     
     <div id="activity-log">
-        <div id="log-channel" style="color:var(--g); font-weight:bold; margin-bottom:4px; text-transform:uppercase;">STATUS: DISCONNECTED</div>
-        <div id="log-0" class="log-entry">System Initializing...</div>
+        <div id="log-channel" style="color:var(--g); font-weight:bold; margin-bottom:4px; text-transform:uppercase;">STATUS: IDLE</div>
+        <div id="log-0" class="log-entry">Waiting for Start...</div>
         <div id="log-1" class="log-entry"></div>
         <div id="log-2" class="log-entry"></div>
     </div>
@@ -55,7 +55,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.9 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v14.0 PARALLEL BOOT</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="CrazyJapanese">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
@@ -89,8 +89,8 @@
     };
 
     async function loadAssets(userId, channel) {
-        emoteMap = {};
         let c7 = 0; let cB = 0; let tId = null;
+        updateLog("Fetching Emote Data...");
 
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
@@ -98,23 +98,21 @@
                 const twData = await twRes.json();
                 tId = twData[0]?.id;
             }
-            if(!tId && channel.toLowerCase().includes('cdawg')) tId = '45098797';
 
+            // BTTV Track
             if(tId) {
-                const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`);
-                if(bttvRes.ok) {
-                    const bData = await bttvRes.json();
+                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(res => res.json()).then(bData => {
                     [...(bData.channelEmotes || []), ...(bData.sharedEmotes || [])].forEach(e => {
                         emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
                         cB++;
                     });
                     setStat('bttv', `BTTV: ${cB} LOADED`, 'on');
-                }
+                    setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
+                }).catch(() => setStat('bttv', "BTTV: FAIL", "err"));
             }
 
-            const uRes = await fetch(`https://7tv.io/v3/users/${userId}`);
-            if(uRes.ok) {
-                const uData = await uRes.json();
+            // 7TV Track
+            fetch(`https://7tv.io/v3/users/${userId}`).then(res => res.json()).then(async uData => {
                 const setId = uData.emote_set?.id || uData.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
                 if(setId) {
                     const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
@@ -124,18 +122,19 @@
                         c7++;
                     });
                     setStat('7tv', `7TV: ${c7} LOADED`, 'on');
+                    setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
                 }
-            }
-            
-            const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
-            const gData = await gRes.json();
-            gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; } });
+            }).catch(() => setStat('7tv', "7TV: FAIL", "err"));
 
-            setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
-        } catch(e) { updateLog("Asset Loading Exception"); }
+            // Global Track
+            fetch('https://7tv.io/v3/emote-sets/global').then(res => res.json()).then(gData => {
+                gData.emotes?.forEach(e => { if(!emoteMap[e.name]) emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; });
+            });
+
+        } catch(e) { updateLog("API Error: Using Twitch Native Only"); }
     }
 
-    async function reboot() {
+    function reboot() {
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         const ID7 = document.getElementById('inp-7id').value.trim();
         if(!CH || !ID7) return;
@@ -143,13 +142,14 @@
         localStorage.setItem('mugi_ch', CH);
         localStorage.setItem('mugi_id7', ID7);
 
-        if(client) { try { await client.disconnect(); } catch(e){} }
-        setStat('tmi', "Twitch: ATTEMPTING...", "wait");
-        updateLog("Initializing Assets...");
+        // 1. Parallel Asset Load (Doesn't block IRC)
+        loadAssets(ID7, CH);
         
-        await loadAssets(ID7, CH);
-        
+        // 2. Clear old instances
+        if(client) { try { client.disconnect(); } catch(e){} }
         if(mainLoop) clearInterval(mainLoop);
+
+        // 3. Start Decay Loop
         mainLoop = setInterval(() => {
             Object.keys(emoteCounts).forEach(k => {
                 emoteCounts[k] -= 0.2;
@@ -158,36 +158,32 @@
             updateLeaderboard(false);
         }, 1000);
 
+        // 4. Connect to Twitch IRC
+        setStat('tmi', "Twitch: CONNECTING...", "wait");
+        updateLog("Connecting to IRC Server...");
+
         client = new tmi.Client({ 
-            options: { debug: false },
-            connection: { reconnect: true, secure: true }, 
+            connection: { reconnect: true, secure: true, timeout: 10000 }, 
             channels: [CH] 
         });
         
-        // EVENT: CONNECTED
-        client.on('connected', (addr, port) => {
+        client.on('connected', () => {
             setStat('tmi', `Twitch: CONNECTED`, 'on');
-            updateLog(`IRC: Handshake Success`);
+            updateLog(`IRC: Connected to Server`);
         });
 
-        // EVENT: JOINED
-        client.on('join', (channel, username, self) => {
-            if(self) {
-                document.getElementById('log-channel').innerText = `LISTENING: ${channel.replace('#','')}`;
-                updateLog(`Room: Joined ${channel}`);
-            }
+        client.on('join', (channel) => {
+            document.getElementById('log-channel').innerText = `LISTENING: ${channel.replace('#','')}`;
+            updateLog(`Joined Room: ${channel}`);
         });
 
-        // EVENT: MESSAGE
         client.on('message', (chan, tags, msg) => {
-            updateLog(`${tags['display-name']}: ${msg}`);
+            updateLog(`${tags['display-name']}: ${msg.substring(0,20)}${msg.length>20?'...':''}`);
             let found = new Set();
-            
             msg.split(' ').forEach(w => {
                 const clean = w.replace(/[\u200B-\u200D\uFEFF]/g, "");
                 if (emoteMap[clean]) found.add(clean);
             });
-            
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
                     tags.emotes[id].forEach(r => {
@@ -198,7 +194,6 @@
                     });
                 });
             }
-
             if(found.size > 0) {
                 found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
                 updateLeaderboard(true);
@@ -206,8 +201,8 @@
         });
 
         client.connect().catch(e => { 
-            setStat('tmi', "Twitch: FAILED", 'err'); 
-            updateLog("IRC Error: Check Channel Name");
+            setStat('tmi', "Twitch: ERR", 'err');
+            updateLog("!! Connection Rejected");
         });
             
         document.getElementById('control').classList.remove('active');
@@ -240,7 +235,7 @@
         const savedID7 = localStorage.getItem('mugi_id7');
         if(savedCh) document.getElementById('inp-ch').value = savedCh;
         if(savedID7) document.getElementById('inp-7id').value = savedID7;
-        if(savedCh && savedID7) setTimeout(reboot, 800);
+        if(savedCh && savedID7) setTimeout(reboot, 500);
     };
 </script>
 </body>
