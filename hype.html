@@ -2,15 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v14.5</title>
+    <title>Mugi Co. | Engine v14.6 [GAME UI]</title>
     <script src="tmi.min.js"></script>
     <style>
-        :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
-        body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
+        :root { 
+            --p: #9146ff; 
+            --p-glow: rgba(145, 70, 255, 0.6);
+            --g: #ffd700; 
+            --g-glow: rgba(255, 215, 0, 0.6);
+            --chroma: #00FF00; 
+            --ui-bg: rgba(0, 0, 0, 0.85);
+            --ui-border: #444;
+            --font-game: 'Georgia', 'Times New Roman', serif; /* RPG style numbers */
+        }
         
+        body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; user-select: none; }
+        
+        /* HUD */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 1px; margin-bottom: 5px; }
+        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.95); border-left: 4px solid var(--ui-border); min-width: 280px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 1px; margin-bottom: 5px; font-family: monospace; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
         .indicator.wait { border-left-color: var(--g); color: var(--g); }
@@ -18,43 +29,147 @@
         #activity-log { font-family: monospace; font-size: 10px; color: #aaa; background: rgba(0,0,0,0.95); padding: 10px; border-radius: 4px; margin-top: 5px; max-width: 280px; border: 1px solid #333; }
         .log-entry { border-bottom: 1px solid #222; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #eee; }
 
-        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 20px; width: 100vw; height: 100vh; padding-bottom: 60px; box-sizing: border-box; }
+        /* LEADERBOARD GAME UI */
+        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 30px; width: 100vw; height: 100vh; padding-bottom: 80px; box-sizing: border-box; }
         
-        /* v14.5 SMOOTH TRANSITIONS */
         .emote-slot { 
+            position: relative; /* Container for rising numbers */
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4);
             opacity: 0;
-            transform: translateY(30px);
+            transform: translateY(50px) scale(0.8);
         }
 
         .emote-slot.active {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
         }
 
         .rank-tag { display: none; }
         
-        .img-wrap { height: 260px; width: 260px; display: flex; align-items: center; justify-content: center; }
-        .emote-img { max-height: 260px; max-width: 260px; object-fit: contain; }
+        /* Stylized Emote Container */
+        .img-wrap { 
+            height: 200px; width: 200px; 
+            display: flex; align-items: center; justify-content: center; 
+            background: var(--ui-bg);
+            border: 4px solid var(--ui-border);
+            border-radius: 12px;
+            box-shadow: 0 10px 0 #000, 0 0 20px rgba(0,0,0,0.5);
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Visual Flairs (Corners) */
+        .img-wrap::before, .img-wrap::after {
+            content: ''; position: absolute; width: 15px; height: 15px; border: 3px solid var(--p);
+        }
+        .img-wrap::before { top: 5px; left: 5px; border-right: none; border-bottom: none; }
+        .img-wrap::after { bottom: 5px; right: 5px; border-left: none; border-top: none; }
+
+        .emote-img { max-height: 180px; max-width: 180px; object-fit: contain; }
         
-        .count { font-size: 32px; font-weight: 900; text-shadow: 3px 3px 0 var(--p), -1px -1px 0 #000; font-style: italic; margin-top: 10px; }
+        /* Game Style Counter */
+        .count { 
+            font-family: var(--font-game);
+            font-size: 54px; 
+            font-weight: 900; 
+            color: white;
+            text-shadow: 
+                4px 4px 0 #000,
+                -1px -1px 0 #000,  
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000,
+                0 0 15px var(--p-glow);
+            font-style: italic; 
+            position: relative;
+        }
 
-        .pop { animation: emotePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes emotePop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        /* Juicy Animations */
+        .pop { animation: uiWobble 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes uiWobble { 
+            0% { transform: scale(1) rotate(0deg); } 
+            30% { transform: scale(1.2) rotate(-5deg); filter: brightness(1.5); } 
+            60% { transform: scale(0.95) rotate(3deg); }
+            100% { transform: scale(1) rotate(0deg); filter: brightness(1); } 
+        }
 
+        /* DYNAMIC RISING NUMBERS / COMBO TEXT */
+        .combo-container {
+            position: absolute;
+            bottom: 230px; /* Rises from top of emote wrap */
+            width: 300px;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .rising-text {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font-game);
+            font-weight: 900;
+            white-space: nowrap;
+            opacity: 0;
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+            animation: riseFade 1.5s ease-out forwards;
+        }
+
+        /* Types of Combo Splashes */
+        .rising-text.minor { color: white; font-size: 28px; }
+        .rising-text.combo { 
+            color: var(--g); 
+            font-size: 36px; 
+            text-shadow: 3px 3px 0 #000, 0 0 10px var(--g-glow); 
+            animation: riseFadeThud 1.8s ease-out forwards;
+        }
+        .rising-text.mega { 
+            color: var(--p); 
+            font-size: 48px; 
+            text-shadow: 4px 4px 0 #000, 0 0 20px var(--p-glow); 
+            animation: riseFadeMega 2s ease-out forwards;
+        }
+
+        @keyframes riseFade {
+            0% { transform: translate(-50%, 20px); opacity: 0; }
+            15% { transform: translate(-50%, 0); opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translate(-50%, -100px); opacity: 0; }
+        }
+
+        /* Adds a "THUD" scale pop at start */
+        @keyframes riseFadeThud {
+            0% { transform: translate(-50%, 20px) scale(2); opacity: 0; }
+            10% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translate(-50%, -120px) scale(1); opacity: 0; }
+        }
+
+        /* Adds screen shake effect */
+        @keyframes riseFadeMega {
+            0% { transform: translate(-50%, 20px) scale(3); opacity: 0; }
+            8% { transform: translate(-50%, -5px) scale(1); opacity: 1; }
+            12% { transform: translate(-53%, 2px) scale(1); }
+            16% { transform: translate(-47%, -3px) scale(1); }
+            20% { transform: translate(-50%, 0) scale(1); }
+            80% { opacity: 1; filter: blur(0px); }
+            100% { transform: translate(-50%, -150px) scale(1.2); opacity: 0; filter: blur(2px); }
+        }
+
+        /* CONTROL PANEL */
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
         input, select { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; }
-        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; }
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 20px;}
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v14.5</div>
+    <div class="indicator version">MUGI ENGINE v14.6 [GAME UI]</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
@@ -70,7 +185,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v14.5 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p); font-family:monospace;">v14.6 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="Channel Name">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
@@ -86,11 +201,11 @@
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-4" class="emote-slot"><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-0" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#1</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#2</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#3</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#4</div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-4" class="emote-slot"><div class="combo-container"></div><div class="rank-tag">#5</div><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <script>
@@ -114,6 +229,7 @@
 
     async function loadAssets(userId, channel) {
         let c7 = 0; let cB = 0;
+        emoteMap = {}; // Clear map on reload
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
@@ -159,6 +275,8 @@
         if(client) { try { client.disconnect(); } catch(e){} }
         if(mainLoop) clearInterval(mainLoop);
         if(joinRetry) clearInterval(joinRetry);
+
+        emoteCounts = {}; // Clear counts
 
         mainLoop = setInterval(() => {
             Object.keys(emoteCounts).forEach(k => { 
@@ -213,6 +331,37 @@
         document.getElementById('control').classList.remove('active');
     }
 
+    // New function to handle the RPG-style rising numbers
+    function spawnRisingText(container, count, totalCount) {
+        const el = document.createElement('div');
+        let type = 'minor';
+        let text = `+${count}`;
+
+        // Combo Logic
+        const total = Math.ceil(totalCount);
+        if(total >= 100) {
+            type = 'mega';
+            text = `MEGA COMBO +${total}`;
+        } else if (total >= 50) {
+            type = 'combo';
+            text = `ULTRA +${total}`;
+        } else if (total >= 20) {
+            type = 'combo';
+            text = `COMBO +${total}`;
+        } else if (count >= 10) {
+            type = 'minor';
+            text = `+${count}!!`;
+        }
+
+        el.className = `rising-text ${type}`;
+        el.innerText = text;
+
+        container.appendChild(el);
+
+        // Remove element after animation completes to keep DOM clean
+        setTimeout(() => el.remove(), 2100);
+    }
+
     function updateLeaderboard(triggeredEmoteName) {
         const sorted = Object.entries(emoteCounts).sort((a,b) => b[1]-a[1]).slice(0,5);
         
@@ -220,6 +369,7 @@
             const slot = document.getElementById(`slot-${i}`);
             const wrap = slot.querySelector('.img-wrap');
             const countDisplay = slot.querySelector('.count');
+            const comboCon = slot.querySelector('.combo-container');
 
             if(sorted[i]){
                 const [n, c] = sorted[i];
@@ -233,9 +383,13 @@
                 slot.classList.add('active');
                 
                 if(triggeredEmoteName === n) {
-                    wrap.classList.remove('pop');
-                    void wrap.offsetWidth; 
-                    wrap.classList.add('pop');
+                    // Juicy Wobble Animation on the whole container
+                    slot.classList.remove('pop');
+                    void slot.offsetWidth; // Reflow
+                    slot.classList.add('pop');
+
+                    // Spawn Damage Number (assuming +1 per trigger)
+                    spawnRisingText(comboCon, 1, c);
                 }
             } else {
                 slot.classList.remove('active');
