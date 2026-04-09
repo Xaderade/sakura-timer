@@ -2,89 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v15.0 [INTER BLACK]</title>
+    <title>Mugi Co. | Engine v15.1 [FFZ ADDED]</title>
     <script src="tmi.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
 
         :root { 
-            --p: #9146ff; 
-            --cyan: #00ffff;
-            --g: #ffd700;
-            --chroma: #00FF00; 
+            --p: #9146ff; --cyan: #00ffff; --g: #ffd700; --chroma: #00FF00; 
             --ui-bg: rgba(0, 0, 0, 0.95);
-            /* Ultra-heavy font stack */
             --font-main: 'Inter', 'Arial Black', sans-serif; 
         }
         
         body { margin: 0; background-color: var(--chroma); color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
-        #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .indicator { font-size: 11px; font-weight: 900; padding: 6px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; }
-        .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 1px; }
+        #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
+        .indicator { font-size: 11px; font-weight: 900; padding: 5px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; }
+        .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 1px; margin-bottom: 2px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
 
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 50px; width: 100vw; height: 100vh; padding-bottom: 100px; box-sizing: border-box; }
         
         .emote-slot { 
-            position: relative; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
+            position: relative; display: flex; flex-direction: column; align-items: center; 
             transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4);
-            opacity: 0;
-            transform: translateY(50px);
+            opacity: 0; transform: translateY(50px);
         }
         .emote-slot.active { opacity: 1; transform: translateY(0); }
 
         .img-wrap { 
-            height: 220px; width: 220px; 
-            display: flex; align-items: center; justify-content: center; 
-            background: var(--ui-bg);
-            border: 6px solid #fff;
-            box-shadow: 10px 10px 0px #000;
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 5;
+            height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; 
+            background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000;
+            margin-bottom: 20px; position: relative; z-index: 5;
         }
         .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; }
         
-        .count { 
-            font-size: 72px; 
-            font-weight: 900; 
-            text-shadow: 5px 5px 0px var(--p), -2px -2px 0px #000;
-            letter-spacing: -3px;
-        }
+        .count { font-size: 72px; font-weight: 900; text-shadow: 5px 5px 0px var(--p), -2px -2px 0px #000; letter-spacing: -3px; }
 
         .pop { animation: hitPop 0.2s ease-out; }
-        @keyframes hitPop { 
-            0% { transform: scale(1); } 
-            50% { transform: scale(1.15); } 
-            100% { transform: scale(1); } 
-        }
+        @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
-        /* RISER SYSTEM - INTER BLACK */
-        .combo-container {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 50; 
-        }
+        .combo-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
         .riser {
-            position: absolute;
-            left: 50%;
-            top: 40%;
-            font-weight: 900;
-            font-size: 56px; /* High Impact Size */
-            color: #fff;
-            /* Thick Inter-Black Style Stroke */
-            text-shadow: 
-                -3px -3px 0 #000, 3px -3px 0 #000, 
-                -3px 3px 0 #000, 3px 3px 0 #000,
-                5px 5px 15px rgba(0,0,0,1);
-            animation: interRise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-            white-space: nowrap;
+            position: absolute; left: 50%; top: 40%; font-weight: 900; font-size: 56px; color: #fff;
+            text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 5px 5px 15px rgba(0,0,0,1);
+            animation: interRise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; white-space: nowrap;
         }
 
         @keyframes interRise {
@@ -94,14 +56,8 @@
         }
 
         .milestone {
-            position: absolute;
-            left: 50%;
-            bottom: 280px;
-            font-size: 48px;
-            font-weight: 900;
-            color: var(--g);
-            text-shadow: 4px 4px 0 #000, -2px -2px 0 #000, 0 0 20px var(--g);
-            z-index: 60;
+            position: absolute; left: 50%; bottom: 280px; font-size: 48px; font-weight: 900; color: var(--g);
+            text-shadow: 4px 4px 0 #000, -2px -2px 0 #000, 0 0 20px var(--g); z-index: 60;
             animation: milestoneSplash 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
@@ -120,32 +76,26 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v15.0</div>
+    <div class="indicator version">MUGI ENGINE v15.1</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
+    <div id="stat-ffz" class="indicator">FFZ: 0 LOADED</div>
     
-    <div id="activity-log">
-        <div id="log-0" class="log-entry">SYSTEM ONLINE</div>
-        <div id="log-1" class="log-entry">Ready for boot...</div>
+    <div id="activity-log" style="font-size: 10px; background: rgba(0,0,0,0.8); padding: 5px; margin-top: 5px;">
+        <div id="log-0">> SYSTEM READY</div>
     </div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v15.0 CONFIG</h2>
-    <label style="font-size:11px;">CHANNEL</label>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">CONFIG</h2>
+    <label style="font-size:11px;">CHANNEL NAME</label>
     <input type="text" id="inp-ch" placeholder="Channel">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="ID">
-    <label style="font-size:11px; margin-top:15px; display:block;">DECAY</label>
-    <select id="inp-decay">
-        <option value="0.1">Slow</option>
-        <option value="0.2" selected>Normal</option>
-        <option value="0.5">Aggressive</option>
-    </select>
-    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px;" onclick="reboot()">INITIALIZE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px;" onclick="reboot()">BOOT ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -160,12 +110,6 @@
     let emoteCounts = {};
     let client = null;
     let mainLoop = null;
-    let decaySpeed = 0.2;
-
-    const updateLog = (msg) => {
-        document.getElementById('log-1').innerText = document.getElementById('log-0').innerText;
-        document.getElementById('log-0').innerText = `> ${msg}`;
-    };
 
     const setStat = (id, text, state) => {
         const el = document.getElementById(`stat-${id}`);
@@ -173,21 +117,36 @@
     };
 
     async function loadAssets(userId, channel) {
-        let c7 = 0; let cB = 0;
+        let c7 = 0; let cB = 0; let cF = 0;
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
-            if(twRes.ok) {
-                const twData = await twRes.json();
-                const tId = twData[0]?.id;
-                if(tId) {
-                    fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                        [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => {
-                            emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; cB++;
-                        });
-                        setStat('bttv', `BTTV: ${cB} LOADED`, 'on');
+            const twData = await twRes.json();
+            const tId = twData[0]?.id;
+
+            if(tId) {
+                // BTTV
+                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
+                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => {
+                        emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; cB++;
                     });
-                }
+                    setStat('bttv', `BTTV: ${cB} LOADED`, 'on');
+                });
+                
+                // FFZ
+                fetch(`https://api.frankerfacez.com/v1/room/id/${tId}`).then(r => r.json()).then(d => {
+                    Object.values(d.sets).forEach(set => {
+                        set.emoticons.forEach(e => {
+                            // FFZ URLs often lack the protocol
+                            const url = e.urls['4'] || e.urls['2'] || e.urls['1'];
+                            emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`;
+                            cF++;
+                        });
+                    });
+                    setStat('ffz', `FFZ: ${cF} LOADED`, 'on');
+                });
             }
+
+            // 7TV
             if(userId) {
                 fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
                     const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
@@ -199,13 +158,12 @@
                     }
                 });
             }
-        } catch(e) { updateLog("ERR: LOAD"); }
+        } catch(e) { console.error("Asset Load Error", e); }
     }
 
     function reboot() {
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         const ID7 = document.getElementById('inp-7id').value.trim();
-        decaySpeed = parseFloat(document.getElementById('inp-decay').value);
         if(!CH) return;
 
         localStorage.setItem('mugi_ch', CH);
@@ -218,14 +176,14 @@
         emoteCounts = {};
         mainLoop = setInterval(() => {
             Object.keys(emoteCounts).forEach(k => { 
-                emoteCounts[k] -= decaySpeed; 
+                emoteCounts[k] -= 0.15; 
                 if(emoteCounts[k] <= 0) delete emoteCounts[k]; 
             });
             updateLeaderboard(null);
         }, 1000);
 
         client = new tmi.Client({ channels: [CH] });
-        client.on('connected', () => { setStat('tmi', `Twitch: ONLINE`, 'on'); updateLog("CONNECTED"); });
+        client.on('connected', () => setStat('tmi', `Twitch: ONLINE`, 'on'));
         client.on('message', (chan, tags, msg) => {
             let found = new Set();
             msg.split(' ').forEach(w => { if(emoteMap[w]) found.add(w); });
@@ -247,8 +205,7 @@
         const el = document.createElement('div');
         el.className = 'riser';
         el.innerText = '+1';
-        const drift = (Math.random() * 120 - 60); 
-        el.style.setProperty('--x-offset', `${drift}px`);
+        el.style.setProperty('--x-offset', `${(Math.random() * 100 - 50)}px`);
         container.appendChild(el);
         setTimeout(() => el.remove(), 700);
 
