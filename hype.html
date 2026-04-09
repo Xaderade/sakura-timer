@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.0 [FX BUILD]</title>
+    <title>Mugi Co. | Engine v16.1 [DYNAMIC BORDERS]</title>
     <script src="tmi.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
@@ -15,6 +15,7 @@
         
         body { margin: 0; background-color: var(--chroma); color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
+        /* HUD RESTORED */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 3px; }
         .indicator { font-size: 10px; font-weight: 900; padding: 4px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; }
         .indicator.version { background: var(--p); border-left: none; text-align: center; font-size: 11px; margin-bottom: 2px; }
@@ -26,16 +27,27 @@
         .emote-slot { position: relative; display: flex; flex-direction: column; align-items: center; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4); opacity: 0; transform: translateY(50px); }
         .emote-slot.active { opacity: 1; transform: translateY(0); }
 
-        .img-wrap { height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000; margin-bottom: 20px; position: relative; z-index: 5; }
+        /* BORDER DYNAMICS */
+        .img-wrap { 
+            height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; 
+            background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000; 
+            margin-bottom: 20px; position: relative; z-index: 5;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
         .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; }
         
+        /* BORDER FLASH CLASSES */
+        .flash-1 { border-color: var(--p) !important; box-shadow: 0 0 20px var(--p), 10px 10px 0px #000 !important; }
+        .flash-2 { border-color: var(--cyan) !important; box-shadow: 0 0 30px var(--cyan), 10px 10px 0px #000 !important; }
+        .flash-3 { border-color: var(--g) !important; box-shadow: 0 0 40px var(--g), 10px 10px 0px #000 !important; }
+        .flash-4 { border-color: var(--red) !important; box-shadow: 0 0 60px var(--red), 10px 10px 0px #000 !important; }
+
         .count { font-size: 72px; font-weight: 900; text-shadow: 5px 5px 0px var(--p), -2px -2px 0px #000; letter-spacing: -3px; }
         .pop { animation: hitPop 0.1s ease-out; }
         @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
         .combo-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
-        /* RISER (+1) */
         .riser {
             position: absolute; left: 50%; top: 40%; font-weight: 900; font-size: 56px; color: #fff;
             text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000;
@@ -47,47 +59,22 @@
             100% { transform: translate(var(--x-offset), -180px) scale(1); opacity: 0; }
         }
 
-        /* MASSIVE MILESTONES */
         .milestone {
             position: absolute; left: 50%; bottom: 250px; font-weight: 900; 
             white-space: nowrap; pointer-events: none; z-index: 100;
             animation: milestoneSplash 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        /* Tier 1: Neon Purple (+10) */
         .m-tier-1 { color: var(--p); font-size: 80px; text-shadow: 0 0 20px var(--p), 4px 4px 0 #000; }
-
-        /* Tier 2: Cyan Glow (+25) */
         .m-tier-2 { color: var(--cyan); font-size: 100px; text-shadow: 0 0 30px var(--cyan), 5px 5px 0 #000; animation: neonPulse 0.5s infinite alternate, milestoneSplash 1.2s forwards; }
+        .m-tier-3 { font-size: 120px; background: linear-gradient(to right, #ffd700, #fff, #ffd700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px var(--g)); background-size: 200% auto; animation: chromaMove 1s linear infinite, milestoneSplash 1.2s forwards; }
+        .m-tier-4 { font-size: 140px; color: #fff; text-shadow: 4px 0 var(--red), -4px 0 var(--cyan), 0 0 50px var(--red); animation: glitchShake 0.1s infinite, milestoneSplash 1.2s forwards; font-style: italic; }
+
         @keyframes neonPulse { from { filter: brightness(1); } to { filter: brightness(1.5); } }
-
-        /* Tier 3: Gold Chroma (+50) */
-        .m-tier-3 { 
-            font-size: 120px; background: linear-gradient(to right, #ffd700, #fff, #ffd700);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 15px var(--g)); background-size: 200% auto;
-            animation: chromaMove 1s linear infinite, milestoneSplash 1.2s forwards;
-        }
         @keyframes chromaMove { to { background-position: 200% center; } }
+        @keyframes glitchShake { 0% { transform: translate(-51%, 0); } 50% { transform: translate(-49%, 2px); } 100% { transform: translate(-50%, -1px); } }
+        @keyframes milestoneSplash { 0% { transform: translate(-50%, 80px) scale(0.2); opacity: 0; } 25% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 100% { transform: translate(-50%, -150px) scale(1); opacity: 0; } }
 
-        /* Tier 4: Glitch Red (+100) */
-        .m-tier-4 { 
-            font-size: 140px; color: #fff; text-shadow: 4px 0 var(--red), -4px 0 var(--cyan), 0 0 50px var(--red);
-            animation: glitchShake 0.1s infinite, milestoneSplash 1.2s forwards; font-style: italic;
-        }
-        @keyframes glitchShake {
-            0% { transform: translate(-51%, 0); }
-            50% { transform: translate(-49%, 2px); }
-            100% { transform: translate(-50%, -1px); }
-        }
-
-        @keyframes milestoneSplash {
-            0% { transform: translate(-50%, 80px) scale(0.2); opacity: 0; }
-            25% { transform: translate(-50%, 0) scale(1.1); opacity: 1; }
-            100% { transform: translate(-50%, -150px) scale(1); opacity: 0; }
-        }
-
-        /* CONTROL PANEL */
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; overflow-y: auto; }
         #control.active { transform: translateX(0); }
         input, select { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; font-weight: bold; }
@@ -99,11 +86,14 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v16.0</div>
+    <div class="indicator version">MUGI ENGINE v16.1</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-spam" class="indicator">FILTER: ON</div>
     <div id="stat-decay" class="indicator">DECAY: 0.15</div>
-    <div id="stat-total" class="indicator">EMOTES LOADED: 0</div>
+    <div id="stat-7g" class="indicator">7TV GLOBAL: 0</div>
+    <div id="stat-7c" class="indicator">7TV CHANNEL: 0</div>
+    <div id="stat-bttv" class="indicator">BTTV: 0</div>
+    <div id="stat-ffz" class="indicator">FFZ: 0</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
@@ -150,10 +140,11 @@
     };
 
     async function loadAssets(userId, channel) {
-        let count = 0;
+        let c7g=0, c7c=0, cB=0, cF=0;
+        
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
-            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; count++; });
-            setStat('total', `EMOTES LOADED: ${count}`, 'on');
+            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7g++; });
+            setStat('7g', `7TV GLOBAL: ${c7g}`, 'on');
         });
 
         try {
@@ -163,15 +154,27 @@
 
             if(tId) {
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; count++; });
-                    setStat('total', `EMOTES LOADED: ${count}`, 'on');
+                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; cB++; });
+                    setStat('bttv', `BTTV: ${cB}`, 'on');
                 });
                 fetch(`https://api.frankerfacez.com/v1/room/id/${tId}`).then(r => r.json()).then(d => {
                     Object.values(d.sets).forEach(set => { set.emoticons.forEach(e => { 
                         const url = e.urls['4'] || e.urls['2'] || e.urls['1'];
-                        emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`; count++;
+                        emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`; cF++;
                     });});
-                    setStat('total', `EMOTES LOADED: ${count}`, 'on');
+                    setStat('ffz', `FFZ: ${cF}`, 'on');
+                });
+            }
+
+            if(userId) {
+                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
+                    const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
+                    if(setId) {
+                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+                        const sData = await sRes.json();
+                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7c++; });
+                        setStat('7c', `7TV CHANNEL: ${c7c}`, 'on');
+                    }
                 });
             }
         } catch(e) { console.error(e); }
@@ -202,7 +205,7 @@
         }, 1000);
 
         client = new tmi.Client({ channels: [CH] });
-        client.on('connected', () => setStat('tmi', `Twitch: ONLINE`, 'on'));
+        client.on('connected', () => setStat('tmi', `CONNECTED: ${CH.toUpperCase()}`, 'on'));
         client.on('message', (chan, tags, msg) => {
             let found = [];
             msg.split(' ').forEach(w => { if(emoteMap[w]) found.push(w); });
@@ -221,7 +224,10 @@
         document.getElementById('control').classList.remove('active');
     }
 
-    function spawnComboEffect(container, count) {
+    function spawnComboEffect(slot, count) {
+        const container = slot.querySelector('.combo-container');
+        const wrap = slot.querySelector('.img-wrap');
+        
         const riser = document.createElement('div');
         riser.className = 'riser'; riser.innerText = '+1';
         riser.style.setProperty('--x-offset', `${(Math.random() * 100 - 50)}px`);
@@ -239,6 +245,10 @@
             const m = document.createElement('div');
             m.className = `milestone m-tier-${tier}`; m.innerText = text;
             container.appendChild(m);
+            
+            // Apply border flash
+            wrap.className = `img-wrap flash-${tier}`;
+            setTimeout(() => { wrap.className = 'img-wrap'; }, 1200);
             setTimeout(() => m.remove(), 1200);
         }
     }
@@ -258,7 +268,7 @@
                 slot.classList.add('active');
                 if(triggeredEmoteName === n) {
                     slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
-                    spawnComboEffect(slot.querySelector('.combo-container'), c);
+                    spawnComboEffect(slot, c);
                 }
             } else { slot.classList.remove('active'); }
         }
