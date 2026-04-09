@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Full Count v11.5</title>
+    <title>Mugi Co. | 353+ v11.6</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 4px; }
-        .indicator { font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 3px; background: rgba(0,0,0,0.85); border-left: 3px solid #444; width: fit-content; min-width: 200px; }
+        .indicator { font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 3px; background: rgba(0,0,0,0.85); border-left: 3px solid #444; width: fit-content; min-width: 220px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 60px; width: 100vw; height: 100vh; padding-bottom: 50px; box-sizing: border-box; }
@@ -19,31 +19,27 @@
         .count { font-size: 72px; font-weight: 900; margin-top: 10px; text-shadow: 6px 6px 0 var(--p), -2px -2px 0 #000; }
         #control { position: absolute; top: 0; right: 0; width: 320px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 25px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
-        label { font-size: 11px; color: var(--p); font-weight: bold; display: block; margin-top: 15px; }
-        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; font-size: 13px; box-sizing: border-box; font-family: monospace; }
-        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 22px; font-weight: bold; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; font-family: monospace; }
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; border-radius: 50%; z-index: 201; cursor: pointer; font-size: 22px; }
         .pop { transform: scale(1.15); transition: 0.05s; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div id="stat-7tv" class="indicator">7TV: STANDBY</div>
-    <div id="stat-set" class="indicator">SET: NONE</div>
-    <div id="stat-total" class="indicator">TOTAL: 0 LOADED</div>
+    <div id="stat-7tv" class="indicator">7TV: CONNECTING</div>
+    <div id="stat-total" class="indicator">TOTAL: 0 EMOTES</div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_FULL v11.5</h3>
-    <label>Twitch Channel Name</label>
-    <input type="text" id="inp-ch" placeholder="CrazyJapanese">
-    <label>7TV User ID</label>
-    <input type="text" id="inp-7id" placeholder="01GHNFF8W80001ZXYW7QBBPA9X">
-    <label>Drain Rate (Decay)</label>
-    <input type="number" id="inp-decay" value="0.2" step="0.1">
-    <button style="width:100%; padding:18px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; border-radius:6px; margin-top: 25px;" onclick="reboot()">START ENGINE</button>
+    <h3 style="margin:0; color:var(--p);">MUGI_353 v11.6</h3>
+    <label style="font-size:11px;">Twitch Channel</label>
+    <input type="text" id="inp-ch" value="CrazyJapanese">
+    <label style="font-size:11px; margin-top:10px; display:block;">7TV User ID</label>
+    <input type="text" id="inp-7id" value="01GHNFF8W80001ZXYW7QBBPA9X">
+    <button style="width:100%; padding:18px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 20px;" onclick="reboot()">START ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -67,53 +63,50 @@
 
     async function loadAssets(userId) {
         emoteMap = {};
-        let count7tv = 0;
-
+        let count = 0;
         try {
-            setStat('7tv', "FETCHING USER...", 'on');
+            // STEP 1: Force User Object fetch
             const userRes = await fetch(`https://7tv.io/v3/users/${userId}`);
-            const userData = await userRes.json();
+            const user = await userRes.json();
+            
+            // STEP 2: Use specific emote_set.id to avoid truncation
+            const setId = user.emote_set?.id || user.active_emote_set?.id;
+            if(!setId) throw "No Set ID Found";
 
-            // v11.5: FORCING THE FULL SET LOOKUP
-            const setId = userData.emote_set?.id || userData.active_emote_set?.id || (userData.emote_sets && userData.emote_sets[0]?.id);
-
-            if (setId) {
-                setStat('set', `SET ID: ${setId.substring(0,10)}...`, 'on');
-                const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
-                const setData = await setRes.json();
-                
-                if (setData.emotes) {
-                    setData.emotes.forEach(e => {
-                        // Using high-quality 4x webp
-                        emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
-                        count7tv++;
-                    });
-                }
+            // STEP 3: Fetch RAW SET (The 353 source)
+            const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+            const setData = await setRes.json();
+            
+            if(setData.emotes) {
+                setData.emotes.forEach(e => {
+                    // Using 2x for better performance with large sets
+                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+                    count++;
+                });
             }
 
-            // Global Emotes
+            // STEP 4: Global fallback
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
-            gData.emotes?.forEach(e => {
+            gData.emotes.forEach(e => {
                 if(!emoteMap[e.name]) {
-                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
-                    count7tv++;
+                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
+                    count++;
                 }
             });
 
-            setStat('7tv', `7TV: ${count7tv} LOADED`, 'on');
-            setStat('total', `TOTAL: ${Object.keys(emoteMap).length} LOADED`, 'on');
-        } catch (err) {
-            setStat('7tv', "FETCH FAILED", 'err');
+            setStat('7tv', `7TV: ${count} LOADED`, 'on');
+            setStat('total', `TOTAL: ${Object.keys(emoteMap).length} ACTIVE`, 'on');
+        } catch(e) {
+            setStat('7tv', "LOAD ERROR", 'err');
         }
     }
 
     function startEngine() {
         if(mainLoop) clearInterval(mainLoop);
         mainLoop = setInterval(() => {
-            const drain = parseFloat(document.getElementById('inp-decay').value) || 0.2;
             Object.keys(emoteCounts).forEach(k => {
-                emoteCounts[k] -= drain;
+                emoteCounts[k] -= 0.2;
                 if(emoteCounts[k] <= 0) delete emoteCounts[k];
             });
             updateLeaderboard(false);
@@ -123,12 +116,8 @@
     async function reboot() {
         const CH = document.getElementById('inp-ch').value.trim();
         const ID = document.getElementById('inp-7id').value.trim();
-        localStorage.setItem('mugi_ch', CH);
-        localStorage.setItem('mugi_id', ID);
-
-        if (client) { try { await client.disconnect(); } catch(e){} }
+        if(client) await client.disconnect();
         emoteCounts = {};
-        
         await loadAssets(ID);
         startEngine();
 
@@ -141,49 +130,40 @@
             });
             if (tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
-                    tags.emotes[id].forEach(range => {
-                        const r = range.split('-');
-                        const name = msg.substring(parseInt(r[0]), parseInt(r[1]) + 1);
+                    tags.emotes[id].forEach(r => {
+                        const b = r.split('-');
+                        const name = msg.substring(parseInt(b[0]), parseInt(b[1]) + 1);
                         if(!emoteMap[name]) emoteMap[name] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
                         found.add(name);
                     });
                 });
             }
             found.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
-            if (found.size > 0) updateLeaderboard(true);
+            if(found.size > 0) updateLeaderboard(true);
         });
         client.connect();
         document.getElementById('control').classList.remove('active');
     }
 
     function updateLeaderboard(isChat) {
-        const sorted = Object.entries(emoteCounts).sort((a,b) => b[1] - a[1]).slice(0,5);
-        for(let i=0; i<5; i++) {
+        const sorted = Object.entries(emoteCounts).sort((a,b) => b[1]-a[1]).slice(0,5);
+        for(let i=0; i<5; i++){
             const slot = document.getElementById(`slot-${i}`);
-            if(sorted[i]) {
+            if(sorted[i]){
                 const [n, c] = sorted[i];
-                const cur = Math.floor(c);
-                const last = parseInt(slot.getAttribute('data-lastcount') || 0);
                 const wrap = slot.querySelector('.img-wrap');
-                if (wrap.getAttribute('data-name') !== n) {
+                if(wrap.getAttribute('data-name') !== n){
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
-                if (isChat && cur > last) {
-                    slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
-                }
-                slot.querySelector('.count').innerText = cur;
-                slot.setAttribute('data-lastcount', cur);
+                slot.querySelector('.count').innerText = Math.floor(c);
+                if(isChat) { slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop'); }
                 slot.style.display = "flex";
             } else { slot.style.display = "none"; }
         }
     }
 
-    window.onload = () => {
-        document.getElementById('inp-ch').value = localStorage.getItem('mugi_ch') || "CrazyJapanese";
-        document.getElementById('inp-7id').value = localStorage.getItem('mugi_id') || "";
-        if(document.getElementById('inp-7id').value) setTimeout(reboot, 500);
-    };
+    window.onload = () => setTimeout(reboot, 500);
 </script>
 </body>
 </html>
