@@ -2,22 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Local-Fix v12.5</title>
+    <title>Mugi Co. | Engine v12.6</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
         body { margin: 0; background-color: var(--chroma); color: white; font-family: sans-serif; overflow: hidden; }
+        
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
         .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 1px; margin-bottom: 5px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
         .indicator.wait { border-left-color: var(--g); color: var(--g); }
+        
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 60px; width: 100vw; height: 100vh; padding-bottom: 50px; box-sizing: border-box; }
         .emote-slot { display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.9)); }
         .rank-tag { font-size: 20px; font-weight: 900; background: var(--g); color: #000; padding: 4px 15px; border-radius: 6px; margin-bottom: 15px; }
         .img-wrap { height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; }
         .emote-img { max-height: 220px; max-width: 220px; object-fit: contain; }
         .count { font-size: 72px; font-weight: 900; margin-top: 10px; text-shadow: 6px 6px 0 var(--p), -2px -2px 0 #000; }
+        
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; border-radius: 4px; font-family: monospace; }
@@ -27,6 +31,7 @@
 <body>
 
 <div id="hud">
+    <div class="indicator version">MUGI ENGINE v12.6</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
@@ -36,12 +41,12 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">MUGI_LOCAL v12.5</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v12.6 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="cdawg">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="01GHNFF8W80001ZXYW7QBBPA9X">
-    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -74,10 +79,9 @@
                 const twData = await twRes.json();
                 tId = twData[0]?.id;
             }
-            // Hardcoded fallback for CDawg if API flinches
             if(!tId && (channel.toLowerCase() === 'cdawg' || channel.toLowerCase() === 'cdawgva')) tId = '45098797';
 
-            // STEP 2: BTTV FETCH VIA ID
+            // STEP 2: BTTV FETCH VIA NUMERIC TWITCH ID
             if(tId) {
                 const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`);
                 if(bttvRes.ok) {
@@ -86,8 +90,8 @@
                         emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`;
                         cB++;
                     });
-                    setStat('bttv', `BTTV: ${cB} Loaded`, 'on');
-                }
+                    setStat('bttv', `BTTV: ${cB} Loaded (ID: ${tId})`, 'on');
+                } else { setStat('bttv', "BTTV: 404 (ID Not Found)", 'err'); }
             }
 
             // STEP 3: 7TV CUSTOM SET FETCH
@@ -104,7 +108,7 @@
                             emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
                             c7++;
                         });
-                        setStat('7tv', `7TV: ${c7} Loaded`, 'on');
+                        setStat('7tv', `7TV: ${c7} Loaded (Set: ${setId.substring(0,8)})`, 'on');
                     }
                 }
             }
@@ -115,7 +119,7 @@
             gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; c7++; } });
 
             setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
-        } catch(e) { console.error(e); setStat('total', "Asset Load Error", 'err'); }
+        } catch(e) { console.error(e); setStat('total', "Fetch Error", 'err'); }
     }
 
     async function reboot() {
@@ -137,7 +141,6 @@
             updateLeaderboard(false);
         }, 1000);
 
-        // Check if TMI exists locally
         if (typeof tmi === 'undefined') {
             setStat('tmi', "LOCAL TMI.MIN.JS MISSING", 'err');
             return;
