@@ -2,35 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v14.8 [RETRO-4]</title>
+    <title>Mugi Co. | Engine v14.9 [FIXED RISERS]</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { 
             --p: #9146ff; 
-            --p-glow: rgba(145, 70, 255, 0.8);
-            --g: #ffd700; 
-            --g-glow: rgba(255, 215, 0, 0.8);
             --cyan: #00ffff;
+            --g: #ffd700;
             --chroma: #00FF00; 
             --ui-bg: rgba(0, 0, 0, 0.95);
-            /* Retro Font Stack */
             --font-retro: 'Courier New', Courier, monospace; 
         }
         
         body { margin: 0; background-color: var(--chroma); color: white; font-family: var(--font-retro); overflow: hidden; user-select: none; }
         
-        /* HUD - FULL STATUS RESTORED */
+        /* HUD */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 5px; }
-        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 2px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; box-shadow: 0 4px 0px rgba(0,0,0,0.5); }
-        .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 2px; margin-bottom: 5px; }
+        .indicator { font-size: 11px; font-weight: bold; padding: 6px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; }
+        .indicator.version { background: var(--p); border-left: none; text-align: center; letter-spacing: 2px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
-        .indicator.err { border-left-color: #ff4d4d; color: #ff4d4d; }
-        .indicator.wait { border-left-color: var(--g); color: var(--g); }
-        
-        #activity-log { font-size: 10px; color: #aaa; background: rgba(0,0,0,0.95); padding: 10px; border-radius: 2px; margin-top: 5px; max-width: 280px; border: 1px solid #333; }
-        .log-entry { border-bottom: 1px solid #222; padding: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* LEADERBOARD - TOP 4 REDUCTION */
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 40px; width: 100vw; height: 100vh; padding-bottom: 100px; box-sizing: border-box; }
         
         .emote-slot { 
@@ -42,7 +33,6 @@
             opacity: 0;
             transform: translateY(50px);
         }
-
         .emote-slot.active { opacity: 1; transform: translateY(0); }
 
         .img-wrap { 
@@ -53,66 +43,71 @@
             box-shadow: 8px 8px 0px #000;
             margin-bottom: 20px;
             position: relative;
+            z-index: 5;
         }
-
-        .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; image-rendering: pixelated; }
+        .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; }
         
         .count { 
             font-size: 64px; 
             font-weight: 900; 
-            color: #fff;
             text-shadow: 4px 4px 0px var(--p);
-            letter-spacing: -2px;
         }
 
-        /* JUICE */
-        .pop { animation: retroHit 0.2s steps(2); }
+        /* HIT ANIMATION - Removed Invert Flash */
+        .pop { animation: retroHit 0.2s ease-out; }
         @keyframes retroHit { 
-            0% { transform: scale(1); filter: invert(0); } 
-            50% { transform: scale(1.1); filter: invert(1); } 
-            100% { transform: scale(1); filter: invert(0); } 
+            0% { transform: scale(1); filter: brightness(1); } 
+            50% { transform: scale(1.1); filter: brightness(1.8); } 
+            100% { transform: scale(1); filter: brightness(1); } 
         }
 
-        /* RISER SYSTEM */
+        /* RISER SYSTEM - Forced Visibility */
         .combo-container {
             position: absolute;
-            bottom: 260px;
+            top: 0; 
+            left: 0;
             width: 100%;
-            text-align: center;
+            height: 100%;
             pointer-events: none;
+            z-index: 20; /* Ensure it is above the image */
         }
 
         .riser {
             position: absolute;
             left: 50%;
-            transform: translateX(-50%);
+            top: 50%;
             font-weight: 900;
-            font-size: 32px;
-            animation: retroRise 0.8s ease-out forwards;
+            font-size: 48px; /* Larger */
+            color: #fff;
+            /* Thick stroke to ensure it's never lost against the background */
+            text-shadow: 
+                -2px -2px 0 #000, 2px -2px 0 #000, 
+                -2px 2px 0 #000, 2px 2px 0 #000,
+                0px 0px 10px var(--cyan);
+            animation: retroRise 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
             white-space: nowrap;
         }
 
         @keyframes retroRise {
-            0% { transform: translate(-50%, 0); opacity: 1; color: #fff; }
-            100% { transform: translate(-50%, -100px); opacity: 0; color: var(--cyan); }
+            0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; }
+            100% { transform: translate(var(--x-offset), -150px) scale(1.2); opacity: 0; }
         }
 
-        /* MILESTONE SPLASH */
         .milestone {
             position: absolute;
             left: 50%;
-            transform: translateX(-50%);
-            font-size: 40px;
+            bottom: 250px;
+            font-size: 42px;
             color: var(--g);
-            text-shadow: 4px 4px 0 #000;
-            animation: milestonePop 1.5s steps(8) forwards;
+            text-shadow: 4px 4px 0 #000, -2px -2px 0 #000;
+            z-index: 30;
+            animation: milestonePop 1.5s steps(10) forwards;
         }
 
         @keyframes milestonePop {
-            0% { transform: translate(-50%, -20px) scale(0); opacity: 1; }
-            20% { transform: translate(-50%, -50px) scale(1.5); }
-            80% { opacity: 1; }
-            100% { transform: translate(-50%, -150px) scale(1); opacity: 0; }
+            0% { transform: translate(-50%, 0) scale(0); }
+            10% { transform: translate(-50%, -20px) scale(1.5); }
+            100% { transform: translate(-50%, -180px) scale(1); opacity: 0; }
         }
 
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
@@ -124,7 +119,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v14.8 [RETRO-4]</div>
+    <div class="indicator version">MUGI ENGINE v14.9 [FIXED RISERS]</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
@@ -138,7 +133,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">CONFIG_v14.8</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">CONFIG_v14.9</h2>
     <label style="font-size:11px;">CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="Channel">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV ID</label>
@@ -234,7 +229,8 @@
             msg.split(' ').forEach(w => { if(emoteMap[w]) found.add(w); });
             if(tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
-                    const name = msg.substring(parseInt(tags.emotes[id][0].split('-')[0]), parseInt(tags.emotes[id][0].split('-')[1]) + 1);
+                    const firstMatch = tags.emotes[id][0].split('-');
+                    const name = msg.substring(parseInt(firstMatch[0]), parseInt(firstMatch[1]) + 1);
                     if(!emoteMap[name]) emoteMap[name] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
                     found.add(name);
                 });
@@ -249,10 +245,15 @@
         const el = document.createElement('div');
         el.className = 'riser';
         el.innerText = '+1';
+        
+        // Randomize the horizontal drift so they don't stack
+        const drift = (Math.random() * 100 - 50); // -50 to +50
+        el.style.setProperty('--x-offset', `${drift}px`);
+
         container.appendChild(el);
         setTimeout(() => el.remove(), 800);
 
-        // Milestone logic
+        // Milestone check
         const val = Math.floor(count);
         if([10, 25, 50, 100].includes(val)) {
             const m = document.createElement('div');
