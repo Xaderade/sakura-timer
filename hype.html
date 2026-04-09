@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v12.8</title>
+    <title>Mugi Co. | Engine v13.0</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -28,7 +28,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v12.8</div>
+    <div class="indicator version">MUGI ENGINE v13.0</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
@@ -38,12 +38,12 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v12.8 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.0 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="cdawg">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
     <input type="text" id="inp-7id" placeholder="01GHNFF8W80001ZXYW7QBBPA9X">
-    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">START MUGI ENGINE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px; border-radius: 8px;" onclick="reboot()">INITIALIZE ENGINE</button>
 </div>
 
 <div id="leaderboard">
@@ -70,15 +70,15 @@
         let c7 = 0; let cB = 0; let tId = null;
 
         try {
-            // STEP 1: TWITCH ID
+            // 1. RESOLVE TWITCH ID
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
                 const twData = await twRes.json();
                 tId = twData[0]?.id;
             }
-            if(!tId && (channel.toLowerCase() === 'cdawg' || channel.toLowerCase() === 'cdawgva')) tId = '45098797';
+            if(!tId && (channel.toLowerCase() === 'cdawg')) tId = '45098797';
 
-            // STEP 2: BTTV
+            // 2. BTTV (ACTIVE CHANNEL SET)
             if(tId) {
                 const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`);
                 if(bttvRes.ok) {
@@ -91,14 +91,21 @@
                 }
             }
 
-            // STEP 3: 7TV AGGRESSIVE RESOLUTION
-            setStat('7tv', "7TV: Searching Set...", 'wait');
+            // 3. 7TV (STRICTLY ACTIVE SET)
+            setStat('7tv', "7TV: Fetching Active Set...", 'wait');
             const uRes = await fetch(`https://7tv.io/v3/users/${userId}`);
             if(uRes.ok) {
                 const uData = await uRes.json();
-                // 01GHNFF8W80001ZXYW7QBBPA9X stores its ID in 'emote_set' object or 'emote_set_id'
-                const setId = uData.emote_set?.id || uData.active_emote_set?.id || uData.emote_set_id;
                 
+                // Prioritize the top-level 'emote_set' which is the currently active one
+                let setId = uData.emote_set?.id;
+
+                // Fallback to checking Twitch connection for the active set ID if the user object is sparse
+                if(!setId && uData.connections) {
+                    const twitch = uData.connections.find(c => c.platform === 'TWITCH');
+                    setId = twitch?.emote_set?.id;
+                }
+
                 if(setId) {
                     const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                     if(sRes.ok) {
@@ -107,22 +114,18 @@
                             emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
                             c7++;
                         });
-                        setStat('7tv', `7TV: ${c7} Loaded (Set: ${setId.substring(0,6)})`, 'on');
+                        setStat('7tv', `7TV: ${c7} Active Emotes`, 'on');
                     }
-                } else {
-                    setStat('7tv', "7TV: No Active Set", 'err');
-                }
-            } else {
-                setStat('7tv', "7TV: User ID Error", 'err');
-            }
+                } else { setStat('7tv', "7TV: No Active Set Found", 'err'); }
+            } else { setStat('7tv', "7TV: Profile Error", 'err'); }
 
-            // STEP 4: GLOBAL 7TV
+            // 4. GLOBAL 7TV (REQUIRED FALLBACK)
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
             gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; c7++; } });
 
             setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
-        } catch(e) { console.error(e); setStat('total', "Fetch Error", 'err'); }
+        } catch(e) { console.error(e); setStat('total', "Fetch Failed", 'err'); }
     }
 
     async function reboot() {
@@ -134,7 +137,7 @@
         localStorage.setItem('mugi_id7', ID7);
 
         if(client) { try { await client.disconnect(); } catch(e){} }
-        setStat('tmi', `Twitch: Handshaking...`, 'wait');
+        setStat('tmi', `Twitch: Connecting...`, 'wait');
         
         await loadAssets(ID7, CH);
         
@@ -145,12 +148,11 @@
         }, 1000);
 
         if (typeof tmi === 'undefined') {
-            setStat('tmi', "LOCAL TMI.MIN.JS MISSING", 'err');
+            setStat('tmi', "LOCAL TMI MISSING", 'err');
             return;
         }
 
         client = new tmi.Client({ connection: { reconnect: true, secure: true }, channels: [CH] });
-        
         client.on('message', (chan, tags, msg) => {
             let found = new Set();
             msg.split(' ').forEach(w => {
@@ -173,7 +175,7 @@
 
         client.connect()
             .then(() => setStat('tmi', `Twitch: Connected`, 'on'))
-            .catch(() => setStat('tmi', "Twitch: Handshake Fail", 'err'));
+            .catch(() => setStat('tmi', "Twitch: Connection Fail", 'err'));
             
         document.getElementById('control').classList.remove('active');
     }
