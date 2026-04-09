@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v13.4</title>
+    <title>Mugi Co. | Engine v13.5</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -28,7 +28,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v13.4</div>
+    <div class="indicator version">MUGI ENGINE v13.5</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
@@ -38,7 +38,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.4 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.5 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="cdawg">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
@@ -69,18 +69,17 @@
         emoteMap = {};
         let c7 = 0; let cB = 0; let tId = null;
 
-        // 1. RESOLVE TWITCH ID
+        // 1. RESOLVE TWITCH ID (Essential for BTTV)
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
                 const twData = await twRes.json();
                 tId = twData[0]?.id;
             }
-        } catch(e) { console.warn("Twitch ID Lookup Failed, using fallback"); }
-        
-        if(!tId && (channel.toLowerCase() === 'cdawg')) tId = '45098797';
+            if(!tId && channel.toLowerCase().includes('cdawg')) tId = '45098797';
+        } catch(e) { console.error("ID Lookup Error"); }
 
-        // 2. BTTV (DIRECT FETCH)
+        // 2. BTTV FETCH (STRICT)
         if(tId) {
             try {
                 const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`);
@@ -91,22 +90,19 @@
                         cB++;
                     });
                     setStat('bttv', `BTTV: ${cB} Loaded`, 'on');
-                } else {
-                    setStat('bttv', `BTTV: Error ${bttvRes.status}`, 'err');
-                }
-            } catch(e) { setStat('bttv', "BTTV: Fetch Failed", 'err'); }
-        }
+                } else { setStat('bttv', "BTTV: API Offline/404", 'err'); }
+            } catch(e) { setStat('bttv', "BTTV: Network Error", 'err'); }
+        } else { setStat('bttv', "BTTV: Missing Twitch ID", 'err'); }
 
-        // 3. 7TV (ACTIVE SET)
+        // 3. 7TV ACTIVE SET (MAPPED VIA TWITCH CONNECTION)
         try {
             const uRes = await fetch(`https://7tv.io/v3/users/${userId}`);
             if(uRes.ok) {
                 const uData = await uRes.json();
-                let setId = uData.emote_set?.id || uData.active_emote_set?.id;
-                if(!setId && uData.connections) {
-                    const tw = uData.connections.find(c => c.platform === 'TWITCH');
-                    setId = tw?.emote_set_id || tw?.emote_set?.id;
-                }
+                // We strictly find the Twitch connection to get the active set
+                const conn = uData.connections?.find(c => c.platform === 'TWITCH');
+                const setId = uData.emote_set?.id || conn?.emote_set?.id;
+
                 if(setId) {
                     const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                     const sData = await sRes.json();
@@ -117,9 +113,9 @@
                     setStat('7tv', `7TV: ${c7} Loaded`, 'on');
                 }
             }
-        } catch(e) { setStat('7tv', "7TV: Failed", 'err'); }
+        } catch(e) { setStat('7tv', "7TV: Fetch Error", 'err'); }
 
-        // 4. GLOBAL 7TV
+        // 4. GLOBAL 7TV (FALLBACK)
         try {
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             const gData = await gRes.json();
@@ -148,11 +144,6 @@
             updateLeaderboard(false);
         }, 1000);
 
-        if (typeof tmi === 'undefined') {
-            setStat('tmi', "LOCAL TMI MISSING", 'err');
-            return;
-        }
-
         client = new tmi.Client({ connection: { reconnect: true, secure: true }, channels: [CH] });
         client.on('message', (chan, tags, msg) => {
             let found = new Set();
@@ -174,7 +165,7 @@
             if(found.size > 0) updateLeaderboard(true);
         });
 
-        client.connect().then(() => setStat('tmi', `Twitch: Connected`, 'on')).catch(() => setStat('tmi', "Twitch: Error", 'err'));
+        client.connect().then(() => setStat('tmi', `Twitch: Connected`, 'on')).catch(() => setStat('tmi', "Twitch: Failed", 'err'));
         document.getElementById('control').classList.remove('active');
     }
 
