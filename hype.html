@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v13.1</title>
+    <title>Mugi Co. | Engine v13.3</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -28,7 +28,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v13.1</div>
+    <div class="indicator version">MUGI ENGINE v13.3</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-7tv" class="indicator">7TV: 0 LOADED</div>
     <div id="stat-bttv" class="indicator">BTTV: 0 LOADED</div>
@@ -38,7 +38,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">⚙</button>
 
 <div id="control">
-    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.1 CONFIG</h2>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">v13.3 CONFIG</h2>
     <label style="font-size:11px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="cdawg">
     <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
@@ -70,7 +70,7 @@
         let c7 = 0; let cB = 0; let tId = null;
 
         try {
-            // STEP 1: RESOLVE TWITCH ID (Essential for BTTV)
+            // STEP 1: RESOLVE TWITCH ID
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel.toLowerCase()}`);
             if(twRes.ok) {
                 const twData = await twRes.json();
@@ -78,7 +78,7 @@
             }
             if(!tId && (channel.toLowerCase() === 'cdawg')) tId = '45098797';
 
-            // STEP 2: BTTV FETCH (STABLE REVERSION)
+            // STEP 2: BTTV FETCH
             if(tId) {
                 const bttvRes = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`);
                 if(bttvRes.ok) {
@@ -91,7 +91,7 @@
                 }
             }
 
-            // STEP 3: 7TV ACTIVE SET
+            // STEP 3: 7TV ACTIVE SET ONLY
             const uRes = await fetch(`https://7tv.io/v3/users/${userId}`);
             if(uRes.ok) {
                 const uData = await uRes.json();
@@ -121,7 +121,7 @@
             gData.emotes?.forEach(e => { if(!emoteMap[e.name]) { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`; c7++; } });
 
             setStat('total', `TOTAL ACTIVE: ${Object.keys(emoteMap).length}`, 'on');
-        } catch(e) { console.error(e); setStat('total', "Asset Fetch Error", 'err'); }
+        } catch(e) { console.error(e); setStat('total', "Fetch Error", 'err'); }
     }
 
     async function reboot() {
