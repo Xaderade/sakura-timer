@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Deep-Scan v10.5</title>
+    <title>Mugi Co. | Recursive v10.6</title>
     <script src="tmi.min.js"></script>
     <style>
         :root { --p: #9146ff; --g: #ffd700; --chroma: #00FF00; }
@@ -39,7 +39,7 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">M</button>
 
 <div id="control">
-    <h3 style="margin:0; color:var(--p);">MUGI_DEEPSCAN v10.5</h3>
+    <h3 style="margin:0; color:var(--p);">MUGI_RECURSIVE v10.6</h3>
     <label>Twitch Channel</label>
     <input type="text" id="inp-ch" value="CrazyJapanese">
     <label>7TV User ID</label>
@@ -73,16 +73,20 @@
         let count7tv = 0;
 
         try {
-            // 1. Fetch User Data to find the active Set ID
+            // STEP 1: DRILL INTO THE USER PROFILE
             const userRes = await fetch(`https://7tv.io/v3/users/${userId}`);
-            if (!userRes.ok) throw new Error("7TV User not found");
             const userData = await userRes.json();
             
-            // Look for the set ID in both common locations
-            const setId = userData.emote_set?.id || userData.active_emote_set?.id;
+            // Check for potential emote set locations
+            let setId = userData.active_emote_set?.id || userData.emote_set?.id;
             
+            // Special Case: User has an array of sets
+            if (!setId && userData.emote_sets && userData.emote_sets.length > 0) {
+                setId = userData.emote_sets[0].id;
+            }
+
+            // STEP 2: IF SET ID FOUND, FETCH THE FULL EMOTE LIST
             if (setId) {
-                // 2. Fetch the specific Emote Set for full list
                 const setRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                 const setData = await setRes.json();
                 if (setData.emotes) {
@@ -92,14 +96,14 @@
                     });
                 }
             } else if (userData.emote_set?.emotes) {
-                // Fallback: use inline emotes if found
+                // Fallback for direct nesting
                 userData.emote_set.emotes.forEach(emote => {
                     emoteMap[emote.name] = `https://cdn.7tv.app/emote/${emote.id}/4x.webp`;
                     count7tv++;
                 });
             }
 
-            // 3. GLOBAL EMOTES
+            // STEP 3: ADD GLOBAL EMOTES
             const gRes = await fetch('https://7tv.io/v3/emote-sets/global');
             if (gRes.ok) {
                 const gData = await gRes.json();
@@ -117,7 +121,7 @@
             setStat('total', `TOTAL: ${Object.keys(emoteMap).length} LOADED`, 'on');
         } catch (err) {
             console.error("7TV Asset Load Failed:", err);
-            setStat('7tv', "7TV FETCH FAILED", 'err');
+            setStat('7tv', "FETCH FAILED", 'err');
         }
     }
 
