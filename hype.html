@@ -32,14 +32,15 @@
             margin-bottom: 20px; position: relative; z-index: 5;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; }
+        
+        /* UPDATED: Emote is now larger (max 210px vs old 190px) */
+        .emote-img { max-height: 210px; max-width: 210px; object-fit: contain; }
         
         .flash-1 { border-color: var(--p) !important; box-shadow: 0 0 20px var(--p), 10px 10px 0px #000 !important; }
         .flash-2 { border-color: var(--cyan) !important; box-shadow: 0 0 30px var(--cyan), 10px 10px 0px #000 !important; }
         .flash-3 { border-color: var(--g) !important; box-shadow: 0 0 40px var(--g), 10px 10px 0px #000 !important; }
         .flash-4 { border-color: var(--red) !important; box-shadow: 0 0 60px var(--red), 10px 10px 0px #000 !important; }
 
-        /* Updated Count Styling: Bigger, Overlapping, Black Thick Outline */
         .count { 
             font-size: 92px; 
             font-weight: 900; 
@@ -47,7 +48,6 @@
             position: relative; 
             z-index: 10;
             letter-spacing: -4px;
-            /* Thick Black Outline effect */
             text-shadow: 
                 -4px -4px 0 #000,  
                  4px -4px 0 #000,
@@ -56,9 +56,9 @@
                  8px  8px 0 #000; 
         }
 
-        /* Animation restricted to the image wrap only */
+        /* UPDATED: Decreased hitPop scale so larger image doesn't clip */
         .pop { animation: hitPop 0.1s ease-out; }
-        @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
         .combo-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
@@ -135,10 +135,10 @@
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-0" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">x0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">x0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">x0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">x0</div></div>
 </div>
 
 <script>
@@ -282,12 +282,10 @@
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
-                // Added "x" prefix to the counter
                 countEl.innerText = 'x' + Math.ceil(c);
                 slot.classList.add('active');
                 
                 if(triggeredEmoteName === n) {
-                    // Pop animation now only triggers on the image wrap
                     wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
                     spawnComboEffect(slot, c);
                 }
