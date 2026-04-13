@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.4 [ASSET FIX]</title>
+    <title>Mugi Co. | Engine v16.6 [RESTORED]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -75,7 +75,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator" style="background:var(--p); border:none; text-align:center;">MUGI ENGINE v16.4</div>
+    <div class="indicator" style="background:var(--p); border:none; text-align:center;">MUGI ENGINE v16.6</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-assets" class="indicator">ASSETS: 0</div>
 </div>
@@ -86,7 +86,7 @@
     <h2 style="margin:0 0 5px 0; color:var(--p);">SYSTEM CONTROL</h2>
     <label style="font-size:10px;">TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="Username">
-    <label style="font-size:10px; margin-top:15px; display:block;">7TV ID (Hex Code)</label>
+    <label style="font-size:10px; margin-top:15px; display:block;">7TV ID</label>
     <input type="text" id="inp-7id" placeholder="Optional">
     <button id="btn-boot" style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:900; margin-top: 25px;" onclick="reboot()">UPDATE ENGINE</button>
 
@@ -115,29 +115,27 @@
     let emoteCounts = {};
     let client = null;
     let mainLoop = null;
-    let counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
+    let c7 = 0, cb = 0, cf = 0, ct = 0;
 
     function syncUI() {
         const total = Object.keys(emoteMap).length;
         document.getElementById('stat-assets').innerText = `ASSETS: ${total}`;
-        document.getElementById('cnt-7tv').innerText = counts.s7;
-        document.getElementById('cnt-bttv').innerText = counts.bttv;
-        document.getElementById('cnt-ffz').innerText = counts.ffz;
-        document.getElementById('cnt-tw').innerText = counts.tw;
+        document.getElementById('cnt-7tv').innerText = c7;
+        document.getElementById('cnt-bttv').innerText = cb;
+        document.getElementById('cnt-ffz').innerText = cf;
+        document.getElementById('cnt-tw').innerText = ct;
     }
 
+    // RESTORED: Original working fetch logic
     async function loadAssets(userId, channel) {
-        emoteMap = {}; 
-        counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
-        syncUI();
-
-        // 1. 7TV Global (Always load)
+        emoteMap = {}; c7 = 0; cb = 0; cf = 0; ct = 0;
+        
+        // 7TV Global
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
-            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; });
+            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7++; });
             syncUI();
-        }).catch(e => console.log("7TV Global Fail"));
+        });
 
-        // 2. Resolve Twitch ID for BTTV/FFZ
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
             const twData = await twRes.json();
@@ -146,35 +144,28 @@
             if(tId) {
                 // BTTV
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { 
-                        emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; counts.bttv++; 
-                    });
+                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; cb++; });
                     syncUI();
-                }).catch(() => {});
-
+                });
                 // FFZ
                 fetch(`https://api.betterttv.net/3/cached/frankerfacez/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    d.forEach(e => { 
-                        emoteMap[e.code] = e.images['4x'] || e.images['2x'] || e.images['1x']; counts.ffz++; 
-                    });
+                    d.forEach(e => { emoteMap[e.code] = e.images['4x'] || e.images['1x']; cf++; });
                     syncUI();
-                }).catch(() => {});
-            }
-        } catch(e) { console.log("Twitch ID Lookup Fail"); }
-
-        // 3. 7TV Personal (Using User ID or Channel Name)
-        const target7 = userId || channel;
-        fetch(`https://7tv.io/v3/users/${target7}`).then(r => r.json()).then(async d => {
-            const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
-            if(setId) {
-                const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
-                const sData = await sRes.json();
-                sData.emotes?.forEach(e => { 
-                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; 
                 });
-                syncUI();
             }
-        }).catch(() => {});
+            if(userId) {
+                // 7TV Personal
+                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
+                    const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
+                    if(setId) {
+                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+                        const sData = await sRes.json();
+                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; c7++; });
+                        syncUI();
+                    }
+                });
+            }
+        } catch(e) {}
     }
 
     function reboot(isInternal = false) {
@@ -185,21 +176,20 @@
         if(isRemote && !isInternal) {
             if(remoteConn && remoteConn.open) {
                 remoteConn.send({ type: 'BOOT', ch: CH, id7: ID7 });
-                document.getElementById('btn-boot').innerText = "SENT!";
+                document.getElementById('btn-boot').innerText = "PUSHED!";
                 setTimeout(() => document.getElementById('btn-boot').innerText = "UPDATE ENGINE", 2000);
             }
             return;
         }
 
-        // --- OBS ENGINE SIDE ---
         localStorage.setItem('mugi_ch', CH);
         localStorage.setItem('mugi_id7', ID7);
-        
         loadAssets(ID7, CH);
+
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
         emoteCounts = {};
-        
+
         mainLoop = setInterval(() => {
             Object.keys(emoteCounts).forEach(k => { 
                 emoteCounts[k] -= (0.15 + (emoteCounts[k] * 0.02)); 
@@ -210,9 +200,9 @@
 
         client = new tmi.Client({ channels: [CH] });
         client.on('connected', () => {
+            updateCtrlStatus('tmi', 'LIVE', 'on');
             document.getElementById('stat-tmi').innerText = `TWITCH: ${CH.toUpperCase()}`;
             document.getElementById('stat-tmi').className = 'indicator on';
-            updateCtrlStatus('tmi', 'LIVE', 'on');
             document.getElementById('ctrl-chan').innerText = CH.toUpperCase();
         });
 
@@ -221,17 +211,18 @@
             msg.split(' ').forEach(w => { if(emoteMap[w]) found.push(w); });
             if(tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
-                    const parts = tags.emotes[id][0].split('-');
-                    const n = msg.substring(parseInt(parts[0]), parseInt(parts[1]) + 1);
+                    const range = tags.emotes[id][0].split('-');
+                    const n = msg.substring(parseInt(range[0]), parseInt(range[1]) + 1);
                     if(!emoteMap[n]) { 
-                        emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`; 
-                        counts.tw++; syncUI(); 
+                        emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
+                        ct++; syncUI();
                     }
                     tags.emotes[id].forEach(() => found.push(n));
                 });
             }
             [...new Set(found)].forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; });
         });
+
         client.connect();
         document.getElementById('control').classList.remove('active');
     }
@@ -254,9 +245,9 @@
     }
 
     window.onload = () => {
-        const savedCh = localStorage.getItem('mugi_ch');
-        if(savedCh) {
-            document.getElementById('inp-ch').value = savedCh;
+        const sc = localStorage.getItem('mugi_ch');
+        if(sc) {
+            document.getElementById('inp-ch').value = sc;
             document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
             if(!isRemote) reboot(true);
         }
