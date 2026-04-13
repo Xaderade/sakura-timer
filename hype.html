@@ -78,6 +78,9 @@
         .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; background: #222; padding: 10px; border-radius: 4px; }
         .slider-label { display: flex; justify-content: space-between; font-size: 11px; margin-top: 15px; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; cursor: pointer; font-weight: 900; z-index: 210; }
+
+        /* ADDED: Hide UI elements by default */
+        #hud, #m-toggle, #control { display: none; }
     </style>
 </head>
 <body>
@@ -272,6 +275,13 @@
     }
 
     window.onload = () => {
+        /* ADDED: Show UI only if #control is in the URL */
+        if (window.location.hash === "#control") {
+            document.getElementById('hud').style.display = 'flex';
+            document.getElementById('m-toggle').style.display = 'block';
+            document.getElementById('control').style.display = 'block';
+        }
+
         const savedCh = localStorage.getItem('mugi_ch');
         if(savedCh) {
             document.getElementById('inp-ch').value = savedCh;
