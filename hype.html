@@ -2,30 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.8 [SYNCED FLASH]</title>
+    <title>Mugi Co. | Engine v16.7.9 [STAY-TINT]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
 
-    <script>
-        const PEER_ID = 'mugi-link-123'; 
-        const urlParams = new URLSearchParams(window.location.search);
-        const isRemote = urlParams.has('control');
-        const peer = new Peer(isRemote ? null : PEER_ID);
-
-        if (!isRemote) {
-            peer.on('connection', (conn) => {
-                conn.on('data', (data) => {
-                    if (data.type === 'BOOT') {
-                        document.getElementById('inp-ch').value = data.ch;
-                        if(data.id7) document.getElementById('inp-7id').value = data.id7;
-                        reboot(); 
-                    }
-                });
-            });
-        }
-    </script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
         :root { 
@@ -43,15 +24,14 @@
         .img-wrap { 
             height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; 
             background: var(--ui-bg); border: 8px solid #fff; box-shadow: 10px 10px 0px #000; 
-            margin-bottom: -15px; position: relative; z-index: 5; transition: border-color 0.2s;
+            margin-bottom: -15px; position: relative; z-index: 5; transition: all 0.2s ease;
         }
         
-        /* Rank Border & Background Sync */
-        .rank-10 { border-color: var(--cyan) !important; --flash-color: var(--cyan); }
-        .rank-25 { border-color: var(--g) !important; --flash-color: var(--g); }
-        .rank-50 { border-color: var(--red) !important; --flash-color: var(--red); }
-        .rank-100 { border-color: var(--magenta) !important; --flash-color: var(--magenta); }
-        .rank-200 { border-color: #fff !important; --flash-color: #fff; }
+        /* RANK STATES: Background stays tinted for 2 seconds */
+        .rank-10 { border-color: var(--cyan) !important; background: rgba(0, 255, 255, 0.2) !important; --flash-color: var(--cyan); }
+        .rank-25 { border-color: var(--g) !important; background: rgba(255, 215, 0, 0.2) !important; --flash-color: var(--g); }
+        .rank-50 { border-color: var(--red) !important; background: rgba(255, 77, 77, 0.2) !important; --flash-color: var(--red); }
+        .rank-100 { border-color: var(--magenta) !important; background: rgba(255, 0, 255, 0.2) !important; --flash-color: var(--magenta); }
 
         .count { 
             font-size: 80px; font-weight: 900; position: relative; z-index: 10;
@@ -63,7 +43,6 @@
         .riser {
             position: absolute; font-weight: 900; font-size: 48px; color: #fff;
             text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100;
-            white-space: nowrap;
             animation: riseAndFade 0.7s ease-out forwards;
         }
         
@@ -74,12 +53,12 @@
             100% { transform: translateY(-160px) scale(1.4); opacity: 0; }
         }
 
-        /* UPDATED IMPACT FLASH: Uses the --flash-color variable */
-        @keyframes impactFlash {
-            0% { background: var(--flash-color, white); filter: brightness(1.5); }
-            100% { background: var(--ui-bg); filter: brightness(1); }
+        /* HARD FLASH ANIMATION */
+        @keyframes hardFlash {
+            0% { filter: brightness(5) saturate(2); }
+            100% { filter: brightness(1) saturate(1); }
         }
-        .flash { animation: impactFlash 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+        .flash { animation: hardFlash 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 
         .emote-img { max-height: 170px; max-width: 170px; object-fit: contain; }
         .pop { animation: hitPop 0.12s ease-out; }
@@ -115,26 +94,15 @@
     let client = null;
     let mainLoop = null;
 
-    const rankNames = {
-        10: "COMBO",
-        25: "GREAT",
-        50: "ULTRA",
-        100: "GODLIKE",
-        200: "MUGI MODE"
-    };
+    const rankNames = { 10: "COMBO", 25: "GREAT", 50: "ULTRA", 100: "GODLIKE", 200: "MUGI MODE" };
 
     function spawnRiser(slot, milestoneValue = null) {
         const riser = document.createElement('div');
         riser.className = 'riser';
-        
         if (milestoneValue) {
-            const name = rankNames[milestoneValue] || "COMBO";
-            riser.innerText = name; // REMOVED trailing number
+            riser.innerText = rankNames[milestoneValue] || "COMBO";
             riser.classList.add('milestone');
-            riser.style.left = '0';
-            riser.style.width = '100%';
-            riser.style.textAlign = 'center';
-            
+            riser.style.left = '0'; riser.style.width = '100%'; riser.style.textAlign = 'center';
             if(milestoneValue >= 100) riser.style.color = 'var(--magenta)';
             else if(milestoneValue >= 50) riser.style.color = 'var(--red)';
             else if(milestoneValue >= 25) riser.style.color = 'var(--g)';
@@ -144,7 +112,6 @@
             riser.style.left = (Math.random() * 40 + 30) + '%'; 
             riser.style.color = '#fff';
         }
-        
         slot.appendChild(riser);
         riser.addEventListener('animationend', () => riser.remove());
     }
@@ -163,16 +130,6 @@
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; });
                 });
             }
-            if(userId) {
-                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
-                    const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
-                    if(setId) {
-                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
-                        const sData = await sRes.json();
-                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
-                    }
-                });
-            }
         } catch(e) { console.error(e); }
     }
 
@@ -183,8 +140,7 @@
         loadAssets(ID7, CH);
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
-        emoteCounts = {};
-        lastMilestone = [0, 0, 0, 0];
+        emoteCounts = {}; lastMilestone = [0, 0, 0, 0];
         
         mainLoop = setInterval(() => {
             Object.keys(emoteCounts).forEach(k => { 
@@ -196,12 +152,8 @@
 
         client = new tmi.Client({ channels: [CH] });
         client.on('message', (chan, tags, msg) => {
-            let words = msg.split(' ');
-            let uniqueFound = [...new Set(words.filter(w => emoteMap[w]))];
-            uniqueFound.forEach(e => { 
-                emoteCounts[e] = (emoteCounts[e] || 0) + 1; 
-                updateLeaderboard(e); 
-            });
+            let uniqueFound = [...new Set(msg.split(' ').filter(w => emoteMap[w]))];
+            uniqueFound.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; updateLeaderboard(e); });
         });
         client.connect();
     }
@@ -218,40 +170,30 @@
             if(sorted[i]){
                 const [n, c] = sorted[i];
                 const roundedC = Math.ceil(c);
-                
                 if(wrap.getAttribute('data-name') !== n){
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                     lastMilestone[i] = 0; 
                 }
-                
                 countEl.innerText = roundedC;
                 slot.classList.add('active');
 
                 if(trig === n) {
                     wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
-                    
                     const currentM = milestoneCheck.filter(m => roundedC >= m).pop() || 0;
                     if(currentM > lastMilestone[i]) {
                         spawnRiser(slot, currentM);
-                        
-                        // Flash Rank Border & Sync Background
-                        const rankClass = `rank-${currentM}`;
-                        wrap.classList.add(rankClass);
-                        setTimeout(() => wrap.classList.remove(rankClass), 2000);
-                        
-                        // Trigger Flash with synced color
-                        wrap.classList.remove('flash'); void wrap.offsetWidth; wrap.classList.add('flash');
-                        
+                        const rCls = `rank-${currentM}`;
+                        wrap.classList.add(rCls);
+                        wrap.classList.add('flash'); 
+                        setTimeout(() => {
+                            wrap.classList.remove(rCls);
+                            wrap.classList.remove('flash');
+                        }, 2000);
                         lastMilestone[i] = currentM;
-                    } else {
-                        spawnRiser(slot);
-                    }
+                    } else { spawnRiser(slot); }
                 }
-            } else { 
-                slot.classList.remove('active'); 
-                lastMilestone[i] = 0;
-            }
+            } else { slot.classList.remove('active'); lastMilestone[i] = 0; }
         }
     }
 </script>
