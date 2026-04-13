@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.3 [PRO CONTROL]</title>
+    <title>Mugi Co. | Engine v16.3 [STABLE]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -11,13 +11,11 @@
         const PEER_ID = 'mugi-link-123'; 
         const urlParams = new URLSearchParams(window.location.search);
         const isRemote = urlParams.has('control');
-        
-        // If remote, we don't claim the ID, we connect to it.
         const peer = new Peer(isRemote ? null : PEER_ID);
+
         let activeConn = null;
 
         if (!isRemote) {
-            // ENGINE SIDE (OBS)
             peer.on('connection', (conn) => {
                 activeConn = conn;
                 updateCtrlStatus('obs', 'CONNECTED', 'on');
@@ -25,12 +23,12 @@
                     if (data.type === 'BOOT') {
                         document.getElementById('inp-ch').value = data.ch;
                         if(data.id7) document.getElementById('inp-7id').value = data.id7;
-                        reboot(true); // Internal reboot triggered by remote
+                        reboot(true); 
                     }
                 });
             });
         } else {
-            // REMOTE SIDE (Phone/Browser)
+            // Logic for the phone to link to OBS
             peer.on('open', () => {
                 const conn = peer.connect(PEER_ID);
                 conn.on('open', () => {
@@ -84,20 +82,16 @@
 <div id="control">
     <h2 style="margin:0 0 5px 0; color:var(--p);">SYSTEM CONTROL</h2>
     <p style="font-size:10px; color:#555; margin-bottom:20px;">ENGINE & EMOTE MANAGEMENT</p>
-    
     <label style="font-size:10px; font-weight:900;">TARGET TWITCH CHANNEL</label>
     <input type="text" id="inp-ch" placeholder="Username">
-    
     <label style="font-size:10px; font-weight:900; margin-top:15px; display:block;">7TV USER ID (OPTIONAL)</label>
     <input type="text" id="inp-7id" placeholder="e.g. 60af...">
-    
-    <button id="btn-boot" style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:900; margin-top: 25px; letter-spacing:2px;" onclick="reboot()">BOOT ENGINE</button>
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:900; margin-top: 25px; letter-spacing:2px;" onclick="reboot()">BOOT ENGINE</button>
 
     <div class="monitor">
         <div class="mon-item">OBS Connection: <span id="ctrl-obs" class="wait">WAITING</span></div>
         <div class="mon-item">Twitch Status: <span id="ctrl-tmi" class="wait">OFFLINE</span></div>
         <div class="mon-item">Active Channel: <span id="ctrl-chan">-</span></div>
-        
         <div class="asset-grid">
             <div class="asset-tag">7TV: <b id="cnt-7tv">0</b></div>
             <div class="asset-tag">BTTV: <b id="cnt-bttv">0</b></div>
@@ -130,20 +124,18 @@
         }
     }
 
+    // ORIGINAL WORKING FETCH LOGIC
     async function loadAssets(userId, channel) {
         emoteMap = {}; assetCount = 0;
         counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
-
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
             g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; });
             syncAssetUI();
         });
-
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
             const twData = await twRes.json();
             const tId = twData[0]?.id;
-
             if(tId) {
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; counts.bttv++; });
@@ -177,26 +169,19 @@
         document.getElementById('cnt-tw').innerText = counts.tw;
     }
 
-    function reboot(isFromRemote = false) {
+    function reboot(isInternal = false) {
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         const ID7 = document.getElementById('inp-7id').value.trim();
         if(!CH) return;
 
-        // NEW: Send to OBS if we are on the phone
-        if(isRemote && !isFromRemote) {
+        // If we are on the phone, send data to OBS and stop here.
+        if(isRemote && !isInternal) {
             if(activeConn && activeConn.open) {
                 activeConn.send({ type: 'BOOT', ch: CH, id7: ID7 });
-                const btn = document.getElementById('btn-boot');
-                btn.innerText = "SENT TO OBS";
-                btn.style.background = "#00ffcc";
-                setTimeout(() => { btn.innerText = "BOOT ENGINE"; btn.style.background = "var(--p)"; }, 2000);
-            } else {
-                alert("Not linked to OBS Engine!");
             }
             return;
         }
 
-        // Standard Reboot Logic (Runs in OBS)
         localStorage.setItem('mugi_ch', CH);
         localStorage.setItem('mugi_id7', ID7);
 
