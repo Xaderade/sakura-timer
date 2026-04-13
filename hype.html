@@ -39,9 +39,26 @@
         .flash-3 { border-color: var(--g) !important; box-shadow: 0 0 40px var(--g), 10px 10px 0px #000 !important; }
         .flash-4 { border-color: var(--red) !important; box-shadow: 0 0 60px var(--red), 10px 10px 0px #000 !important; }
 
-        .count { font-size: 72px; font-weight: 900; text-shadow: 5px 5px 0px var(--p), -2px -2px 0px #000; letter-spacing: -3px; }
+        /* Updated Count Styling: Bigger, Overlapping, Black Thick Outline */
+        .count { 
+            font-size: 92px; 
+            font-weight: 900; 
+            margin-top: -70px; 
+            position: relative; 
+            z-index: 10;
+            letter-spacing: -4px;
+            /* Thick Black Outline effect */
+            text-shadow: 
+                -4px -4px 0 #000,  
+                 4px -4px 0 #000,
+                -4px  4px 0 #000,
+                 4px  4px 0 #000,
+                 8px  8px 0 #000; 
+        }
+
+        /* Animation restricted to the image wrap only */
         .pop { animation: hitPop 0.1s ease-out; }
-        @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
 
         .combo-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
@@ -79,7 +96,7 @@
         .slider-label { display: flex; justify-content: space-between; font-size: 11px; margin-top: 15px; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; cursor: pointer; font-weight: 900; z-index: 210; }
 
-        /* ADDED: Hide UI elements by default */
+        /* Hide UI elements by default */
         #hud, #m-toggle, #control { display: none; }
     </style>
 </head>
@@ -199,7 +216,6 @@
         
         mainLoop = setInterval(() => {
             Object.keys(emoteCounts).forEach(k => { 
-                // PRESSURE DECAY LOGIC: Base + 2% of current count
                 const pressure = emoteCounts[k] * 0.02;
                 emoteCounts[k] -= (decayRate + pressure); 
                 if(emoteCounts[k] <= 0) delete emoteCounts[k]; 
@@ -258,16 +274,21 @@
         for(let i=0; i<4; i++){
             const slot = document.getElementById(`slot-${i}`);
             const wrap = slot.querySelector('.img-wrap');
+            const countEl = slot.querySelector('.count');
+            
             if(sorted[i]){
                 const [n, c] = sorted[i];
                 if(wrap.getAttribute('data-name') !== n){
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
-                slot.querySelector('.count').innerText = Math.ceil(c);
+                // Added "x" prefix to the counter
+                countEl.innerText = 'x' + Math.ceil(c);
                 slot.classList.add('active');
+                
                 if(triggeredEmoteName === n) {
-                    slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
+                    // Pop animation now only triggers on the image wrap
+                    wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
                     spawnComboEffect(slot, c);
                 }
             } else { slot.classList.remove('active'); }
@@ -275,7 +296,6 @@
     }
 
     window.onload = () => {
-        /* ADDED: Show UI only if #control is in the URL */
         if (window.location.hash === "#control") {
             document.getElementById('hud').style.display = 'flex';
             document.getElementById('m-toggle').style.display = 'block';
