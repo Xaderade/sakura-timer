@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.5 [FIXED COMBO RISERS]</title>
+    <title>Mugi Co. | Engine v16.7.6 [UI CLEANUP]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -48,11 +48,34 @@
             margin-bottom: -15px; position: relative; z-index: 5; transition: border-color 0.3s;
         }
         
-        /* Combo Tiers */
         .tier-low .img-wrap { border-color: #fff; }
         .tier-mid .img-wrap { border-color: var(--cyan); }
         .tier-high .img-wrap { border-color: var(--g); }
         .tier-ultra .img-wrap { border-color: var(--red); }
+
+        /* FIXED: Number styling to prevent the "crossed out" look */
+        .count { 
+            font-size: 80px; font-weight: 900; position: relative; z-index: 10;
+            color: #fff; 
+            text-shadow: 6px 6px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 2px 2px 0px #000;
+            letter-spacing: -2px; margin-top: -10px;
+        }
+
+        /* UNIFIED RISER SYSTEM */
+        .riser {
+            position: absolute; font-weight: 900; font-size: 48px; color: #fff;
+            text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100;
+            white-space: nowrap;
+            animation: riseAndFade 0.7s ease-out forwards;
+        }
+        
+        /* Combo specific riser states */
+        .riser.milestone { font-size: 64px; text-shadow: 6px 6px 0 #000; z-index: 110; }
+
+        @keyframes riseAndFade {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-160px) scale(1.4); opacity: 0; }
+        }
 
         @keyframes impactFlash {
             0% { background: white; filter: brightness(2); }
@@ -61,48 +84,6 @@
         .flash { animation: impactFlash 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 
         .emote-img { max-height: 170px; max-width: 170px; object-fit: contain; }
-        
-        .count { 
-            font-size: 84px; font-weight: 900; position: relative; z-index: 10;
-            color: #fff; -webkit-text-stroke: 6px #000;
-            letter-spacing: -4px; margin-top: -10px;
-        }
-
-        /* Standard Riser */
-        .riser {
-            position: absolute; font-weight: 900; font-size: 48px; color: #fff;
-            text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100;
-            animation: riseAndFade 0.6s ease-out forwards;
-        }
-
-        /* --- FIXED COMBO MILESTONE RISER CSS --- */
-        .combo-riser {
-            position: absolute; 
-            font-weight: 900 !important; 
-            font-size: 60px !important; 
-            color: var(--cyan);
-            text-shadow: 8px 8px 0 #000; 
-            pointer-events: none; 
-            z-index: 999 !important; 
-            white-space: nowrap;
-            text-align: center;
-            width: 100%;
-            top: 50px;
-            left: 0;
-            animation: riseAndFadeCombo 1s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
-        }
-
-        @keyframes riseAndFadeCombo {
-            0% { transform: scale(0.5) translateY(50px); opacity: 0; }
-            30% { transform: scale(1.1) translateY(0); opacity: 1; }
-            100% { transform: scale(1.3) translateY(-250px); opacity: 0; }
-        }
-
-        @keyframes riseAndFade {
-            0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-140px) scale(1.5); opacity: 0; }
-        }
-
         .pop { animation: hitPop 0.12s ease-out; }
         @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
@@ -124,7 +105,6 @@
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
 
 <div id="control">
-    <h2 style="margin:0 0 5px 0; color:var(--p);">SYSTEM CONTROL</h2>
     <input type="text" id="inp-ch" placeholder="Username">
     <input type="text" id="inp-7id" placeholder="7TV ID">
     <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:900; margin-top: 25px;" onclick="reboot()">BOOT ENGINE</button>
@@ -137,23 +117,26 @@
     let client = null;
     let mainLoop = null;
 
-    function spawnRiser(slot) {
+    // UNIFIED RISER LOGIC: Replaces the +1 when a milestone is hit
+    function spawnRiser(slot, milestoneValue = null) {
         const riser = document.createElement('div');
         riser.className = 'riser';
-        riser.innerText = '+1';
-        riser.style.left = (Math.random() * 40 + 30) + '%'; 
-        slot.appendChild(riser);
-        riser.addEventListener('animationend', () => riser.remove());
-    }
-
-    function spawnComboRiser(slot, val) {
-        const riser = document.createElement('div');
-        riser.className = 'combo-riser';
-        riser.innerText = `COMBO ${val}`;
         
-        if(val >= 100) riser.style.color = 'var(--red)';
-        else if(val >= 50) riser.style.color = 'var(--g)';
-        else riser.style.color = 'var(--cyan)';
+        if (milestoneValue) {
+            riser.innerText = `COMBO ${milestoneValue}`;
+            riser.classList.add('milestone');
+            riser.style.left = '10%'; // Centered approach for big milestones
+            riser.style.width = '80%';
+            riser.style.textAlign = 'center';
+            
+            if(milestoneValue >= 100) riser.style.color = 'var(--red)';
+            else if(milestoneValue >= 50) riser.style.color = 'var(--g)';
+            else riser.style.color = 'var(--cyan)';
+        } else {
+            riser.innerText = '+1';
+            riser.style.left = (Math.random() * 40 + 30) + '%'; 
+            riser.style.color = '#fff';
+        }
         
         slot.appendChild(riser);
         riser.addEventListener('animationend', () => riser.remove());
@@ -238,14 +221,6 @@
                 countEl.innerText = `x${roundedC}`;
                 slot.classList.add('active');
 
-                // Logic check: Did we cross a new milestone?
-                const currentM = milestones.filter(m => roundedC >= m).pop() || 0;
-                if(currentM > lastMilestone[i]) {
-                    spawnComboRiser(slot, currentM);
-                    wrap.classList.remove('flash'); void wrap.offsetWidth; wrap.classList.add('flash');
-                    lastMilestone[i] = currentM;
-                }
-
                 slot.classList.remove('tier-low', 'tier-mid', 'tier-high', 'tier-ultra');
                 if(roundedC >= 50) slot.classList.add('tier-ultra');
                 else if(roundedC >= 20) slot.classList.add('tier-high');
@@ -254,7 +229,16 @@
 
                 if(trig === n) {
                     wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
-                    spawnRiser(slot);
+                    
+                    // Unified Riser Trigger
+                    const currentM = milestones.filter(m => roundedC >= m).pop() || 0;
+                    if(currentM > lastMilestone[i]) {
+                        spawnRiser(slot, currentM); // Spawns COMBO riser instead of +1
+                        wrap.classList.remove('flash'); void wrap.offsetWidth; wrap.classList.add('flash');
+                        lastMilestone[i] = currentM;
+                    } else {
+                        spawnRiser(slot); // Spawns standard +1
+                    }
                 }
             } else { 
                 slot.classList.remove('active'); 
@@ -264,13 +248,11 @@
     }
 
     window.onload = () => {
-        if(!isRemote) {
-            const savedCh = localStorage.getItem('mugi_ch');
-            if(savedCh) {
-                document.getElementById('inp-ch').value = savedCh;
-                document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
-                setTimeout(reboot, 500);
-            }
+        const savedCh = localStorage.getItem('mugi_ch');
+        if(savedCh && !isRemote) {
+            document.getElementById('inp-ch').value = savedCh;
+            document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
+            setTimeout(reboot, 500);
         }
     };
 </script>
