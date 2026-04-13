@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.4 [PRO CONTROL]</title>
+    <title>Mugi Co. | Engine v16.5 [PRO CONTROL]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -11,15 +11,27 @@
         const PEER_ID = 'mugi-link-123'; 
         const urlParams = new URLSearchParams(window.location.search);
         const isRemote = urlParams.has('control');
+        
+        // v16.5 Logic: Ensure OBS always owns the PEER_ID
         const peer = new Peer(isRemote ? null : PEER_ID);
-
         let activeConn = null;
+
+        peer.on('error', (err) => {
+            console.error('PeerJS Error:', err.type);
+            if(err.type === 'unavailable-id' && !isRemote) {
+                console.warn('ID taken, retrying in 2s...');
+                setTimeout(() => window.location.reload(), 2000);
+            }
+        });
 
         if (!isRemote) {
             peer.on('connection', (conn) => {
+                console.log('Remote Connected to OBS');
                 activeConn = conn;
-                updateCtrlStatus('obs', 'CONNECTED', 'on');
+                updateCtrlStatus('obs', 'REMOTE ACTIVE', 'on');
+                
                 conn.on('data', (data) => {
+                    console.log('Data received from remote:', data);
                     if (data.type === 'BOOT') {
                         document.getElementById('inp-ch').value = data.ch;
                         if(data.id7) document.getElementById('inp-7id').value = data.id7;
@@ -28,7 +40,8 @@
                 });
             });
         } else {
-            peer.on('open', () => {
+            peer.on('open', (id) => {
+                console.log('Remote Peer Open. Connecting to:', PEER_ID);
                 const conn = peer.connect(PEER_ID);
                 conn.on('open', () => {
                     activeConn = conn;
@@ -71,7 +84,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v16.4</div>
+    <div class="indicator version">MUGI ENGINE v16.5</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-assets" class="indicator">ASSETS: 0</div>
 </div>
