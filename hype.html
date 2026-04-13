@@ -2,207 +2,226 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Hype Engine v16.5 [PEER-CORE]</title>
+    <title>Mugi Co. | Engine v16.2 [PRESSURE DECAY]</title>
     <script src="tmi.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
 
         :root { 
             --p: #9146ff; --cyan: #00ffff; --g: #ffd700; --red: #ff4d4d; --chroma: #00FF00; 
             --ui-bg: rgba(0, 0, 0, 0.95);
-            --font-main: 'Inter', sans-serif; 
+            --font-main: 'Inter', 'Arial Black', sans-serif; 
         }
         
-        body { margin: 0; background-color: transparent; color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
+        body { margin: 0; background-color: var(--chroma); color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
-        /* HUD & Indicators */
-        #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 3px; display: none; }
-        .indicator { font-size: 10px; font-weight: 900; padding: 4px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 250px; text-transform: uppercase; }
+        #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 3px; }
+        .indicator { font-size: 10px; font-weight: 900; padding: 4px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; }
+        .indicator.version { background: var(--p); border-left: none; text-align: center; font-size: 11px; margin-bottom: 2px; }
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
+        .indicator.warn { border-left-color: var(--red); color: var(--red); }
 
-        /* Leaderboard */
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 50px; width: 100vw; height: 100vh; padding-bottom: 100px; box-sizing: border-box; }
+        
         .emote-slot { position: relative; display: flex; flex-direction: column; align-items: center; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4); opacity: 0; transform: translateY(50px); }
         .emote-slot.active { opacity: 1; transform: translateY(0); }
 
         .img-wrap { 
             height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; 
             background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000; 
-            margin-bottom: 20px; position: relative; z-index: 5; transition: 0.2s;
+            margin-bottom: 20px; position: relative; z-index: 5;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .emote-img { max-height: 210px; max-width: 210px; object-fit: contain; }
+        .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; }
         
-        .flash-1 { background-color: rgba(145, 70, 255, 0.5) !important; border-color: var(--p) !important; box-shadow: 0 0 20px var(--p), 10px 10px 0px #000 !important; }
-        .flash-2 { background-color: rgba(0, 255, 255, 0.5) !important; border-color: var(--cyan) !important; box-shadow: 0 0 30px var(--cyan), 10px 10px 0px #000 !important; }
-        .flash-3 { background-color: rgba(255, 215, 0, 0.5) !important; border-color: var(--g) !important; box-shadow: 0 0 40px var(--g), 10px 10px 0px #000 !important; }
-        .flash-4 { background-color: rgba(255, 77, 77, 0.5) !important; border-color: var(--red) !important; box-shadow: 0 0 60px var(--red), 10px 10px 0px #000 !important; }
+        .flash-1 { border-color: var(--p) !important; box-shadow: 0 0 20px var(--p), 10px 10px 0px #000 !important; }
+        .flash-2 { border-color: var(--cyan) !important; box-shadow: 0 0 30px var(--cyan), 10px 10px 0px #000 !important; }
+        .flash-3 { border-color: var(--g) !important; box-shadow: 0 0 40px var(--g), 10px 10px 0px #000 !important; }
+        .flash-4 { border-color: var(--red) !important; box-shadow: 0 0 60px var(--red), 10px 10px 0px #000 !important; }
 
-        .count { 
-            font-size: 92px; font-weight: 900; margin-top: -70px; position: relative; z-index: 10;
-            text-shadow: -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000, 8px 8px 0 #000; 
-        }
+        .count { font-size: 72px; font-weight: 900; text-shadow: 5px 5px 0px var(--p), -2px -2px 0px #000; letter-spacing: -3px; }
+        .pop { animation: hitPop 0.1s ease-out; }
+        @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-        /* Animations */
-        .count-pop { animation: countBump 0.15s ease-out; }
-        @keyframes countBump { 0% { transform: scale(1.2); } 100% { transform: scale(1); } }
-        
         .combo-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+
         .riser {
             position: absolute; left: 50%; top: 40%; font-weight: 900; font-size: 56px; color: #fff;
             text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000;
-            animation: interRise 1.2s forwards; white-space: nowrap;
+            animation: interRise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; white-space: nowrap;
         }
-        @keyframes interRise { 0% { transform: translate(-50%, 0) scale(0.4); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(-50%, -200px); opacity: 0; } }
+        @keyframes interRise {
+            0% { transform: translate(-50%, 0) scale(0.4); opacity: 0; }
+            20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); }
+            100% { transform: translate(var(--x-offset), -180px) scale(1); opacity: 0; }
+        }
 
         .milestone {
-            position: absolute; left: 50%; bottom: 250px; font-weight: 900; white-space: nowrap; z-index: 100;
-            animation: milestoneSplash 2.0s forwards;
+            position: absolute; left: 50%; bottom: 250px; font-weight: 900; 
+            white-space: nowrap; pointer-events: none; z-index: 100;
+            animation: milestoneSplash 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
-        .m-tier-4 { font-size: 65px; color: #fff; text-shadow: 0 0 50px var(--red); animation: glitch 0.1s infinite; }
-        @keyframes glitch { 0% { transform: translate(-50.5%, 0); } 100% { transform: translate(-49.5%, 0); } }
-        @keyframes milestoneSplash { 0% { transform: translate(-50%, 50px); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(-50%, -150px); opacity: 0; } }
 
-        /* Control UI */
-        #control { 
-            position: fixed; inset: 0; background: #111; z-index: 200; padding: 40px; 
-            display: none; flex-direction: column; gap: 15px; overflow-y: auto;
-        }
-        .card { background: #1a1a1a; padding: 20px; border-radius: 8px; border-left: 5px solid var(--p); }
-        input { width: 100%; padding: 15px; background: #000; border: 1px solid #333; color: #fff; margin-top: 10px; box-sizing: border-box; font-weight: bold; }
-        button { width: 100%; padding: 20px; background: var(--p); color: #fff; border: none; font-weight: 900; cursor: pointer; margin-top: 10px; }
+        .m-tier-1 { color: var(--p); font-size: 50px; text-shadow: 0 0 20px var(--p), 4px 4px 0 #000; }
+        .m-tier-2 { color: var(--cyan); font-size: 55px; text-shadow: 0 0 30px var(--cyan), 5px 5px 0 #000; animation: neonPulse 0.5s infinite alternate, milestoneSplash 1.2s forwards; }
+        .m-tier-3 { font-size: 60px; background: linear-gradient(to right, #ffd700, #fff, #ffd700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px var(--g)); background-size: 200% auto; animation: chromaMove 1s linear infinite, milestoneSplash 1.2s forwards; }
+        .m-tier-4 { font-size: 65px; color: #fff; text-shadow: 4px 0 var(--red), -4px 0 var(--cyan), 0 0 50px var(--red); animation: glitchShake 0.1s infinite, milestoneSplash 1.2s forwards; font-style: italic; }
+
+        @keyframes neonPulse { from { filter: brightness(1); } to { filter: brightness(1.5); } }
+        @keyframes chromaMove { to { background-position: 200% center; } }
+        @keyframes glitchShake { 0% { transform: translate(-51%, 0); } 50% { transform: translate(-49%, 2px); } 100% { transform: translate(-50%, -1px); } }
+        @keyframes milestoneSplash { 0% { transform: translate(-50%, 80px) scale(0.2); opacity: 0; } 25% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 100% { transform: translate(-50%, -150px) scale(1); opacity: 0; } }
+
+        #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; overflow-y: auto; }
+        #control.active { transform: translateX(0); }
+        input, select { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; font-weight: bold; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: 15px; background: #222; padding: 10px; border-radius: 4px; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 11px; margin-top: 15px; }
+        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; cursor: pointer; font-weight: 900; z-index: 210; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div class="indicator on" id="stat-peer">PEER: INITIALIZING</div>
-    <div class="indicator" id="stat-tmi">TWITCH: IDLE</div>
-    <div class="indicator" id="stat-assets">ASSETS: 0</div>
+    <div class="indicator version">MUGI ENGINE v16.2</div>
+    <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
+    <div id="stat-spam" class="indicator">FILTER: ON</div>
+    <div id="stat-decay" class="indicator">BASE DECAY: 0.15</div>
+    <div id="stat-pressure" class="indicator">PRESSURE: ACTIVE</div>
+    <div id="stat-assets" class="indicator">ASSETS: 0</div>
 </div>
 
+<button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
+
 <div id="control">
-    <h1 style="color:var(--p); margin:0;">MUGI REMOTE CONTROL</h1>
-    <div class="card">
-        <label>TWITCH CHANNEL</label>
-        <input type="text" id="inp-ch" placeholder="Channel Name">
-        <label style="display:block; margin-top:15px;">7TV USER ID (OPTIONAL)</label>
-        <input type="text" id="inp-7id" placeholder="User ID">
-        <button onclick="peerBoot()">SEND BOOT COMMAND</button>
+    <h2 style="margin:0 0 20px 0; color:var(--p);">CONFIG</h2>
+    <label style="font-size:11px;">CHANNEL NAME</label>
+    <input type="text" id="inp-ch" placeholder="Channel">
+    <label style="font-size:11px; margin-top:15px; display:block;">7TV USER ID</label>
+    <input type="text" id="inp-7id" placeholder="User ID">
+    
+    <div class="slider-label">
+        <label>BASE DECAY SPEED</label>
+        <span id="val-decay">0.15</span>
     </div>
-    <button onclick="peerReset()" style="background:#444;">RESET ALL COUNTS</button>
-    <div id="status-msg" style="color:#666; font-size:12px; margin-top:10px;">Status: Waiting for Peer ID...</div>
+    <input type="range" id="inp-decay" min="0.05" max="1.0" step="0.05" value="0.15" oninput="document.getElementById('val-decay').innerText = this.value">
+
+    <div class="toggle-row">
+        <label style="font-size:11px;">SPAM MODE (NO FILTER)</label>
+        <input type="checkbox" id="inp-spam">
+    </div>
+
+    <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:bold; margin-top: 30px;" onclick="reboot()">BOOT ENGINE</button>
 </div>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">x0</div></div>
+    <div id="slot-0" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="combo-container"></div><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <script>
-    const PEER_ID = 'mugi-hype-engine-2026';
-    const isController = window.location.hash.includes('control');
     let emoteMap = {};
     let emoteCounts = {};
     let client = null;
     let mainLoop = null;
+    let spamMode = false;
     let decayRate = 0.15;
+    let assetCount = 0;
 
-    // --- PeerJS Setup ---
-    const peer = new Peer(isController ? null : PEER_ID);
-    
-    peer.on('open', (id) => {
-        if(isController) {
-            document.getElementById('control').style.display = 'flex';
-            document.getElementById('status-msg').innerText = "Status: Ready. Controller ID: " + id;
-        } else {
-            document.getElementById('hud').style.display = 'flex';
-            document.getElementById('stat-peer').innerText = "PEER: HOST READY";
-        }
-    });
+    const setStat = (id, text, state) => {
+        const el = document.getElementById(`stat-${id}`);
+        if(el) { el.innerText = text; el.className = `indicator ${state || ''}`; }
+    };
 
-    peer.on('connection', (conn) => {
-        conn.on('data', (data) => {
-            if(data.type === 'BOOT') reboot(data.ch, data.id7);
-            if(data.type === 'RESET') { emoteCounts = {}; updateLeaderboard(null); }
-        });
-    });
-
-    function peerBoot() {
-        const ch = document.getElementById('inp-ch').value.trim();
-        const id7 = document.getElementById('inp-7id').value.trim();
-        if(!ch) return;
-        const conn = peer.connect(PEER_ID);
-        conn.on('open', () => {
-            conn.send({ type: 'BOOT', ch, id7 });
-            document.getElementById('status-msg').innerText = "Status: Boot command sent to OBS!";
-        });
-    }
-
-    function peerReset() {
-        const conn = peer.connect(PEER_ID);
-        conn.on('open', () => conn.send({ type: 'RESET' }));
-    }
-
-    // --- Asset Loading ---
     async function loadAssets(userId, channel) {
-        let assetCount = 0;
-        const updateAssetStat = () => document.getElementById('stat-assets').innerText = `ASSETS: ${assetCount}`;
-
+        assetCount = 0;
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
             g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; assetCount++; });
-            updateAssetStat();
+            setStat('assets', `ASSETS: ${assetCount}`, 'on');
         });
 
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
             const twData = await twRes.json();
             const tId = twData[0]?.id;
+
             if(tId) {
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; assetCount++; });
-                    updateAssetStat();
+                    setStat('assets', `ASSETS: ${assetCount}`, 'on');
+                });
+                fetch(`https://api.frankerfacez.com/v1/room/id/${tId}`).then(r => r.json()).then(d => {
+                    Object.values(d.sets).forEach(set => { set.emoticons.forEach(e => { 
+                        const url = e.urls['4'] || e.urls['2'] || e.urls['1'];
+                        emoteMap[e.name] = url.startsWith('http') ? url : `https:${url}`; assetCount++;
+                    });});
+                    setStat('assets', `ASSETS: ${assetCount}`, 'on');
                 });
             }
-        } catch(e) {}
+            if(userId) {
+                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
+                    const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
+                    if(setId) {
+                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+                        const sData = await sRes.json();
+                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; assetCount++; });
+                        setStat('assets', `ASSETS: ${assetCount}`, 'on');
+                    }
+                });
+            }
+        } catch(e) { console.error(e); }
     }
 
-    // --- Core Engine ---
-    function reboot(CH, ID7) {
+    function reboot() {
+        const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
+        const ID7 = document.getElementById('inp-7id').value.trim();
+        spamMode = document.getElementById('inp-spam').checked;
+        decayRate = parseFloat(document.getElementById('inp-decay').value);
+        if(!CH) return;
+
+        localStorage.setItem('mugi_ch', CH);
+        localStorage.setItem('mugi_id7', ID7);
+        localStorage.setItem('mugi_spam', spamMode);
+        localStorage.setItem('mugi_decay', decayRate);
+
+        setStat('spam', spamMode ? 'FILTER: OFF (SPAM MODE)' : 'FILTER: ON', spamMode ? 'warn' : 'on');
+        setStat('decay', `BASE DECAY: ${decayRate.toFixed(2)}`);
+
         loadAssets(ID7, CH);
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
         emoteCounts = {};
-
+        
         mainLoop = setInterval(() => {
-            Object.keys(emoteCounts).forEach(k => {
+            Object.keys(emoteCounts).forEach(k => { 
+                // PRESSURE DECAY LOGIC: Base + 2% of current count
                 const pressure = emoteCounts[k] * 0.02;
-                emoteCounts[k] -= (decayRate + pressure);
-                if(emoteCounts[k] <= 0) delete emoteCounts[k];
+                emoteCounts[k] -= (decayRate + pressure); 
+                if(emoteCounts[k] <= 0) delete emoteCounts[k]; 
             });
             updateLeaderboard(null);
         }, 1000);
 
         client = new tmi.Client({ channels: [CH] });
-        client.on('connected', () => document.getElementById('stat-tmi').innerText = `CONNECTED: ${CH.toUpperCase()}`);
+        client.on('connected', () => setStat('tmi', `CONNECTED: ${CH.toUpperCase()}`, 'on'));
         client.on('message', (chan, tags, msg) => {
             let found = [];
             msg.split(' ').forEach(w => { if(emoteMap[w]) found.push(w); });
             if(tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
-                    const n = msg.substring(parseInt(tags.emotes[id][0].split('-')[0]), parseInt(tags.emotes[id][0].split('-')[1]) + 1);
+                    const range = tags.emotes[id][0].split('-');
+                    const n = msg.substring(parseInt(range[0]), parseInt(range[1]) + 1);
                     if(!emoteMap[n]) emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
                     tags.emotes[id].forEach(() => found.push(n));
                 });
             }
-            [...new Set(found)].forEach(e => { 
-                emoteCounts[e] = (emoteCounts[e] || 0) + 1; 
-                updateLeaderboard(e); 
-            });
+            const final = spamMode ? found : [...new Set(found)];
+            final.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; updateLeaderboard(e); });
         });
         client.connect();
+        document.getElementById('control').classList.remove('active');
     }
 
     function spawnComboEffect(slot, count) {
@@ -210,8 +229,9 @@
         const wrap = slot.querySelector('.img-wrap');
         const riser = document.createElement('div');
         riser.className = 'riser'; riser.innerText = '+1';
+        riser.style.setProperty('--x-offset', `${(Math.random() * 100 - 50)}px`);
         container.appendChild(riser);
-        setTimeout(() => riser.remove(), 1200);
+        setTimeout(() => riser.remove(), 700);
 
         const val = Math.floor(count);
         let tier = 0, text = "";
@@ -225,26 +245,26 @@
             m.className = `milestone m-tier-${tier}`; m.innerText = text;
             container.appendChild(m);
             wrap.className = `img-wrap flash-${tier}`;
-            setTimeout(() => { wrap.className = 'img-wrap'; m.remove(); }, 2000);
+            setTimeout(() => { wrap.className = 'img-wrap'; }, 1200);
+            setTimeout(() => m.remove(), 1200);
         }
     }
 
-    function updateLeaderboard(triggered) {
+    function updateLeaderboard(triggeredEmoteName) {
         const sorted = Object.entries(emoteCounts).sort((a,b) => b[1]-a[1]).slice(0,4);
         for(let i=0; i<4; i++){
             const slot = document.getElementById(`slot-${i}`);
             const wrap = slot.querySelector('.img-wrap');
-            const countEl = slot.querySelector('.count');
             if(sorted[i]){
                 const [n, c] = sorted[i];
                 if(wrap.getAttribute('data-name') !== n){
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
-                countEl.innerText = 'x' + Math.ceil(c);
+                slot.querySelector('.count').innerText = Math.ceil(c);
                 slot.classList.add('active');
-                if(triggered === n) {
-                    countEl.classList.remove('count-pop'); void countEl.offsetWidth; countEl.classList.add('count-pop');
+                if(triggeredEmoteName === n) {
+                    slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
                     spawnComboEffect(slot, c);
                 }
             } else { slot.classList.remove('active'); }
@@ -252,9 +272,15 @@
     }
 
     window.onload = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const ch = urlParams.get('ch');
-        if(ch && !isController) setTimeout(() => reboot(ch, ""), 1500);
+        const savedCh = localStorage.getItem('mugi_ch');
+        if(savedCh) {
+            document.getElementById('inp-ch').value = savedCh;
+            document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
+            document.getElementById('inp-spam').checked = localStorage.getItem('mugi_spam') === 'true';
+            const sd = localStorage.getItem('mugi_decay');
+            if(sd) { document.getElementById('inp-decay').value = sd; document.getElementById('val-decay').innerText = sd; }
+            setTimeout(reboot, 500);
+        }
     };
 </script>
 </body>
