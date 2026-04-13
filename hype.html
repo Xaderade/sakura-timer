@@ -2,8 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.3 [OBS RENDER FIX]</title>
+    <title>Mugi Co. | Engine v16.3 [REMOTE READY]</title>
+    
     <script src="tmi.min.js"></script>
+    <script src="peerjs.min.js"></script>
+
+    <script>
+        // --- PEERJS CONFIG ---
+        const PEER_ID = 'mugi-link-123'; 
+        const urlParams = new URLSearchParams(window.location.search);
+        const isRemote = urlParams.has('control');
+
+        // OBS Source claims the ID; Remote gets a random one
+        const peer = new Peer(isRemote ? null : PEER_ID);
+
+        if (!isRemote) {
+            peer.on('open', () => console.log("Engine Peer ID:", PEER_ID));
+            peer.on('connection', (conn) => {
+                conn.on('data', (data) => {
+                    if (data.type === 'BOOT') {
+                        // Remote overrides local fields and reboots
+                        document.getElementById('inp-ch').value = data.ch;
+                        if(data.id7) document.getElementById('inp-7id').value = data.id7;
+                        reboot(); 
+                    }
+                });
+            });
+        }
+    </script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
 
@@ -21,30 +48,16 @@
         .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
         .indicator.warn { border-left-color: var(--red); color: var(--red); }
 
-        /* Fixed Container for OBS Rendering */
         #leaderboard { 
-            display: flex; 
-            justify-content: center; 
-            align-items: flex-end; 
-            gap: 50px; 
-            width: 100vw; 
-            height: 100vh; 
-            padding-bottom: 80px; 
-            box-sizing: border-box; 
-            position: absolute;
-            bottom: 0;
-            left: 0;
+            display: flex; justify-content: center; align-items: flex-end; 
+            gap: 50px; width: 100vw; height: 100vh; padding-bottom: 80px; 
+            box-sizing: border-box; position: absolute; bottom: 0; left: 0;
         }
         
-        /* Start with 0.01 opacity so OBS doesn't 'sleep' on the layer */
         .emote-slot { 
-            position: relative; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
+            position: relative; display: flex; flex-direction: column; align-items: center; 
             transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4); 
-            opacity: 0.01; 
-            transform: translateY(50px); 
+            opacity: 0.01; transform: translateY(50px); 
         }
         
         .emote-slot.active { opacity: 1 !important; transform: translateY(0) !important; }
@@ -101,7 +114,7 @@
 <body>
 
 <div id="hud">
-    <div class="indicator version">MUGI ENGINE v16.3 [OBS FIX]</div>
+    <div class="indicator version">MUGI ENGINE v16.3 [OBS SOURCE]</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-assets" class="indicator">ASSETS: 0</div>
 </div>
@@ -132,6 +145,33 @@
     let decayRate = 0.15;
     let assetCount = 0;
 
+    // --- REMOTE INTERFACE GEN ---
+    if (isRemote) {
+        const remoteUI = document.createElement('div');
+        remoteUI.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:#111; z-index:999; padding:20px; box-sizing:border-box; display:flex; flex-direction:column; gap:20px;";
+        remoteUI.innerHTML = `
+            <h1 style="color:var(--p); margin:0;">MUGI REMOTE</h1>
+            <div id="remote-status" style="font-size:12px; color:#888;">Connecting to Engine...</div>
+            <button id="btn-remote-boot" style="padding:40px; background:var(--p); color:white; border:none; font-size:24px; font-weight:bold; border-radius:10px;">FORCE BOOT OBS</button>
+            <p style="font-size:14px; color:#aaa;">Sending command to OBS Instance...</p>
+        `;
+        document.body.appendChild(remoteUI);
+
+        const conn = peer.connect(PEER_ID);
+        conn.on('open', () => {
+            document.getElementById('remote-status').innerText = "CONNECTED TO ENGINE";
+            document.getElementById('remote-status').style.color = "#00ffcc";
+        });
+
+        document.getElementById('btn-remote-boot').onclick = () => {
+            const ch = document.getElementById('inp-ch').value || localStorage.getItem('mugi_ch');
+            const id7 = document.getElementById('inp-7id').value || localStorage.getItem('mugi_id7');
+            conn.send({ type: 'BOOT', ch: ch, id7: id7 });
+            document.getElementById('btn-remote-boot').innerText = "COMMAND SENT!";
+            setTimeout(() => { document.getElementById('btn-remote-boot').innerText = "FORCE BOOT OBS"; }, 2000);
+        };
+    }
+
     const setStat = (id, text, state) => {
         const el = document.getElementById(`stat-${id}`);
         if(el) { el.innerText = text; el.className = `indicator ${state || ''}`; }
@@ -139,7 +179,6 @@
 
     async function loadAssets(userId, channel) {
         assetCount = 0;
-        // Global 7TV
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
             g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; assetCount++; });
             setStat('assets', `ASSETS: ${assetCount}`, 'on');
@@ -248,7 +287,6 @@
                 }
                 slot.querySelector('.count').innerText = Math.ceil(c);
                 
-                // FORCE RENDER FOR OBS
                 slot.style.opacity = "1";
                 slot.style.transform = "translateY(0)";
                 slot.classList.add('active');
@@ -270,7 +308,8 @@
         if(savedCh) {
             document.getElementById('inp-ch').value = savedCh;
             document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
-            setTimeout(reboot, 500);
+            // Only auto-boot in OBS, not on the Remote browser
+            if(!isRemote) setTimeout(reboot, 500);
         }
     };
 </script>
