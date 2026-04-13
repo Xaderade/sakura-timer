@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.3 [SYNC FIXED]</title>
+    <title>Mugi Co. | Engine v16.4 [ASSET FIX]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -11,8 +11,6 @@
         const PEER_ID = 'mugi-link-123'; 
         const urlParams = new URLSearchParams(window.location.search);
         const isRemote = urlParams.has('control');
-        
-        // If remote, we don't claim the ID, we connect to it.
         const peer = new Peer(isRemote ? null : PEER_ID);
         let remoteConn = null;
 
@@ -24,14 +22,12 @@
             }
         }
 
-        // ENGINE SIDE (OBS)
         if (!isRemote) {
             peer.on('open', () => updateCtrlStatus('obs', 'ENGINE LIVE', 'on'));
             peer.on('connection', (conn) => {
                 updateCtrlStatus('obs', 'REMOTE LINKED', 'on');
                 conn.on('data', (data) => {
                     if (data.type === 'BOOT') {
-                        // Apply remote changes to OBS fields and reboot
                         document.getElementById('inp-ch').value = data.ch;
                         document.getElementById('inp-7id').value = data.id7;
                         reboot(true); 
@@ -40,7 +36,6 @@
             });
         } 
         
-        // REMOTE SIDE (Browser/Phone)
         if (isRemote) {
             peer.on('open', () => {
                 const conn = peer.connect(PEER_ID);
@@ -48,14 +43,13 @@
                     remoteConn = conn;
                     updateCtrlStatus('obs', 'LINKED TO OBS', 'on');
                 });
-                conn.on('close', () => updateCtrlStatus('obs', 'DISCONNECTED', 'wait'));
             });
         }
     </script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
-        :root { --p: #9146ff; --cyan: #00ffff; --g: #ffd700; --red: #ff4d4d; --ui-bg: rgba(0, 0, 0, 0.95); --font-main: 'Inter', sans-serif; }
+        :root { --p: #9146ff; --cyan: #00ffff; --red: #ff4d4d; --ui-bg: rgba(0, 0, 0, 0.95); --font-main: 'Inter', sans-serif; }
         body { margin: 0; background-color: transparent; color: white; font-family: var(--font-main); overflow: hidden; }
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 3px; }
         .indicator { font-size: 10px; font-weight: 900; padding: 4px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; }
@@ -66,7 +60,7 @@
         .img-wrap { height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000; margin-bottom: 20px; }
         .emote-img { max-height: 190px; max-width: 190px; object-fit: contain; }
         .count { font-size: 72px; font-weight: 900; text-shadow: 5px 5px 0px var(--p); }
-        #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #0a0a0a; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; }
+        #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #0a0a0a; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; }
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; font-weight: bold; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; cursor: pointer; font-weight: 900; z-index: 210; }
@@ -75,13 +69,13 @@
         .mon-item span.live { color: #00ffcc; }
         .mon-item span.wait { color: var(--red); }
         .asset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
-        .asset-tag { font-size: 9px; background: #000; padding: 4px; border: 1px solid #333; color: #888; }
+        .asset-tag { font-size: 9px; background: #000; padding: 4px; border: 1px solid #333; color: #888; text-align: center; }
     </style>
 </head>
 <body>
 
-<div id="hud" style="display: var(--hud-display, flex);">
-    <div class="indicator" style="background:var(--p); border:none; text-align:center;">MUGI ENGINE v16.3</div>
+<div id="hud">
+    <div class="indicator" style="background:var(--p); border:none; text-align:center;">MUGI ENGINE v16.4</div>
     <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
     <div id="stat-assets" class="indicator">ASSETS: 0</div>
 </div>
@@ -90,16 +84,16 @@
 
 <div id="control">
     <h2 style="margin:0 0 5px 0; color:var(--p);">SYSTEM CONTROL</h2>
-    <label style="font-size:10px;">TARGET TWITCH CHANNEL</label>
-    <input type="text" id="inp-ch">
-    <label style="font-size:10px; margin-top:15px; display:block;">7TV USER ID</label>
-    <input type="text" id="inp-7id">
-    <button id="btn-boot" style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:900; margin-top: 25px;" onclick="reboot()">UPDATE & BOOT</button>
+    <label style="font-size:10px;">TWITCH CHANNEL</label>
+    <input type="text" id="inp-ch" placeholder="Username">
+    <label style="font-size:10px; margin-top:15px; display:block;">7TV ID (Hex Code)</label>
+    <input type="text" id="inp-7id" placeholder="Optional">
+    <button id="btn-boot" style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:900; margin-top: 25px;" onclick="reboot()">UPDATE ENGINE</button>
 
     <div class="monitor">
         <div class="mon-item">OBS Connection: <span id="ctrl-obs" class="wait">OFFLINE</span></div>
         <div class="mon-item">Twitch Status: <span id="ctrl-tmi" class="wait">OFFLINE</span></div>
-        <div class="mon-item">Active Channel: <span id="ctrl-chan">-</span></div>
+        <div class="mon-item">Active: <span id="ctrl-chan">-</span></div>
         <div class="asset-grid">
             <div class="asset-tag">7TV: <b id="cnt-7tv">0</b></div>
             <div class="asset-tag">BTTV: <b id="cnt-bttv">0</b></div>
@@ -123,40 +117,6 @@
     let mainLoop = null;
     let counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
 
-    async function loadAssets(userId, channel) {
-        emoteMap = {}; counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
-        fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
-            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; });
-            syncUI();
-        });
-        try {
-            const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
-            const twData = await twRes.json();
-            const tId = twData[0]?.id;
-            if(tId) {
-                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; counts.bttv++; });
-                    syncUI();
-                });
-                fetch(`https://api.betterttv.net/3/cached/frankerfacez/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    d.forEach(e => { emoteMap[e.code] = e.images['4x'] || e.images['1x']; counts.ffz++; });
-                    syncUI();
-                });
-            }
-            if(userId) {
-                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
-                    const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
-                    if(setId) {
-                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
-                        const sData = await sRes.json();
-                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; });
-                        syncUI();
-                    }
-                });
-            }
-        } catch(e) {}
-    }
-
     function syncUI() {
         const total = Object.keys(emoteMap).length;
         document.getElementById('stat-assets').innerText = `ASSETS: ${total}`;
@@ -166,26 +126,75 @@
         document.getElementById('cnt-tw').innerText = counts.tw;
     }
 
+    async function loadAssets(userId, channel) {
+        emoteMap = {}; 
+        counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
+        syncUI();
+
+        // 1. 7TV Global (Always load)
+        fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
+            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; });
+            syncUI();
+        }).catch(e => console.log("7TV Global Fail"));
+
+        // 2. Resolve Twitch ID for BTTV/FFZ
+        try {
+            const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
+            const twData = await twRes.json();
+            const tId = twData[0]?.id;
+
+            if(tId) {
+                // BTTV
+                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
+                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { 
+                        emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; counts.bttv++; 
+                    });
+                    syncUI();
+                }).catch(() => {});
+
+                // FFZ
+                fetch(`https://api.betterttv.net/3/cached/frankerfacez/users/twitch/${tId}`).then(r => r.json()).then(d => {
+                    d.forEach(e => { 
+                        emoteMap[e.code] = e.images['4x'] || e.images['2x'] || e.images['1x']; counts.ffz++; 
+                    });
+                    syncUI();
+                }).catch(() => {});
+            }
+        } catch(e) { console.log("Twitch ID Lookup Fail"); }
+
+        // 3. 7TV Personal (Using User ID or Channel Name)
+        const target7 = userId || channel;
+        fetch(`https://7tv.io/v3/users/${target7}`).then(r => r.json()).then(async d => {
+            const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
+            if(setId) {
+                const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+                const sData = await sRes.json();
+                sData.emotes?.forEach(e => { 
+                    emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; 
+                });
+                syncUI();
+            }
+        }).catch(() => {});
+    }
+
     function reboot(isInternal = false) {
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         const ID7 = document.getElementById('inp-7id').value.trim();
         if(!CH) return;
 
-        // If we are the REMOTE, send the command to OBS instead of booting locally
         if(isRemote && !isInternal) {
             if(remoteConn && remoteConn.open) {
                 remoteConn.send({ type: 'BOOT', ch: CH, id7: ID7 });
-                document.getElementById('btn-boot').innerText = "SENT TO OBS!";
-                setTimeout(() => document.getElementById('btn-boot').innerText = "UPDATE & BOOT", 2000);
-            } else {
-                alert("Not connected to OBS Engine!");
+                document.getElementById('btn-boot').innerText = "SENT!";
+                setTimeout(() => document.getElementById('btn-boot').innerText = "UPDATE ENGINE", 2000);
             }
             return;
         }
 
-        // --- INTERNAL BOOT LOGIC (Runs in OBS) ---
+        // --- OBS ENGINE SIDE ---
         localStorage.setItem('mugi_ch', CH);
         localStorage.setItem('mugi_id7', ID7);
+        
         loadAssets(ID7, CH);
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
@@ -201,18 +210,23 @@
 
         client = new tmi.Client({ channels: [CH] });
         client.on('connected', () => {
-            document.getElementById('stat-tmi').innerText = `CONNECTED: ${CH.toUpperCase()}`;
+            document.getElementById('stat-tmi').innerText = `TWITCH: ${CH.toUpperCase()}`;
             document.getElementById('stat-tmi').className = 'indicator on';
             updateCtrlStatus('tmi', 'LIVE', 'on');
             document.getElementById('ctrl-chan').innerText = CH.toUpperCase();
         });
+
         client.on('message', (chan, tags, msg) => {
             let found = [];
             msg.split(' ').forEach(w => { if(emoteMap[w]) found.push(w); });
             if(tags.emotes) {
                 Object.keys(tags.emotes).forEach(id => {
-                    const n = msg.substring(tags.emotes[id][0].split('-')[0], parseInt(tags.emotes[id][0].split('-')[1]) + 1);
-                    if(!emoteMap[n]) { emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`; counts.tw++; syncUI(); }
+                    const parts = tags.emotes[id][0].split('-');
+                    const n = msg.substring(parseInt(parts[0]), parseInt(parts[1]) + 1);
+                    if(!emoteMap[n]) { 
+                        emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`; 
+                        counts.tw++; syncUI(); 
+                    }
                     tags.emotes[id].forEach(() => found.push(n));
                 });
             }
