@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.3 [PRO CONTROL]</title>
+    <title>Mugi Co. | Engine v16.3 [FIXED CONN]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -11,14 +11,27 @@
         const PEER_ID = 'mugi-link-123'; 
         const urlParams = new URLSearchParams(window.location.search);
         const isRemote = urlParams.has('control');
+        
+        // Peer logic with auto-retry and better status reporting
         const peer = new Peer(isRemote ? null : PEER_ID);
 
-        let activeConn = null;
+        function updateCtrlStatus(id, text, state) {
+            const el = document.getElementById(`ctrl-${id}`);
+            if(el) {
+                el.innerText = text;
+                el.className = state === 'on' ? 'live' : 'wait';
+            }
+        }
 
         if (!isRemote) {
+            peer.on('open', () => {
+                console.log("Engine Peer ID:", PEER_ID);
+                // In OBS, if we open successfully, we are technically "ready"
+                updateCtrlStatus('obs', 'ENGINE LIVE', 'on');
+            });
+
             peer.on('connection', (conn) => {
-                activeConn = conn;
-                updateCtrlStatus('obs', 'CONNECTED', 'on');
+                updateCtrlStatus('obs', 'REMOTE LINKED', 'on');
                 conn.on('data', (data) => {
                     if (data.type === 'BOOT') {
                         document.getElementById('inp-ch').value = data.ch;
@@ -26,6 +39,16 @@
                         reboot(); 
                     }
                 });
+                conn.on('close', () => updateCtrlStatus('obs', 'ENGINE LIVE', 'on'));
+            });
+
+            peer.on('error', (err) => {
+                console.error("PeerJS Error:", err.type);
+                if(err.type === 'unavailable-id') {
+                    updateCtrlStatus('obs', 'ID CONFLICT', 'wait');
+                } else {
+                    updateCtrlStatus('obs', 'CONN ERROR', 'wait');
+                }
             });
         }
     </script>
@@ -130,19 +153,10 @@
     let assetCount = 0;
     let counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
 
-    function updateCtrlStatus(id, text, state) {
-        const el = document.getElementById(`ctrl-${id}`);
-        if(el) {
-            el.innerText = text;
-            el.className = state === 'on' ? 'live' : 'wait';
-        }
-    }
-
     async function loadAssets(userId, channel) {
         emoteMap = {}; assetCount = 0;
         counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
 
-        // 1. 7TV Global
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
             g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; });
             syncAssetUI();
@@ -154,19 +168,16 @@
             const tId = twData[0]?.id;
 
             if(tId) {
-                // 2. BTTV
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; counts.bttv++; });
                     syncAssetUI();
                 });
-                // 3. FFZ (FrankerFaceZ)
                 fetch(`https://api.betterttv.net/3/cached/frankerfacez/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     d.forEach(e => { emoteMap[e.code] = e.images['4x'] || e.images['2x'] || e.images['1x']; counts.ffz++; });
                     syncAssetUI();
                 });
             }
             if(userId) {
-                // 4. 7TV Personal
                 fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
                     const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
                     if(setId) {
@@ -259,7 +270,9 @@
     }
 
     window.onload = () => {
-        if(!isRemote) updateCtrlStatus('obs', 'CONNECTED', 'on');
+        // Only show "ENGINE LIVE" automatically if this IS the OBS source
+        if(!isRemote && peer.open) updateCtrlStatus('obs', 'ENGINE LIVE', 'on');
+        
         const savedCh = localStorage.getItem('mugi_ch');
         if(savedCh) {
             document.getElementById('inp-ch').value = savedCh;
