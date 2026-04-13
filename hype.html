@@ -30,16 +30,15 @@
             height: 220px; width: 220px; display: flex; align-items: center; justify-content: center; 
             background: var(--ui-bg); border: 6px solid #fff; box-shadow: 10px 10px 0px #000; 
             margin-bottom: 20px; position: relative; z-index: 5;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
         }
-        
-        /* UPDATED: Emote is now larger (max 210px vs old 190px) */
         .emote-img { max-height: 210px; max-width: 210px; object-fit: contain; }
         
-        .flash-1 { border-color: var(--p) !important; box-shadow: 0 0 20px var(--p), 10px 10px 0px #000 !important; }
-        .flash-2 { border-color: var(--cyan) !important; box-shadow: 0 0 30px var(--cyan), 10px 10px 0px #000 !important; }
-        .flash-3 { border-color: var(--g) !important; box-shadow: 0 0 40px var(--g), 10px 10px 0px #000 !important; }
-        .flash-4 { border-color: var(--red) !important; box-shadow: 0 0 60px var(--red), 10px 10px 0px #000 !important; }
+        /* Updated Flashes: Now changes the background color too */
+        .flash-1 { background-color: rgba(145, 70, 255, 0.5) !important; border-color: var(--p) !important; box-shadow: 0 0 20px var(--p), 10px 10px 0px #000 !important; }
+        .flash-2 { background-color: rgba(0, 255, 255, 0.5) !important; border-color: var(--cyan) !important; box-shadow: 0 0 30px var(--cyan), 10px 10px 0px #000 !important; }
+        .flash-3 { background-color: rgba(255, 215, 0, 0.5) !important; border-color: var(--g) !important; box-shadow: 0 0 40px var(--g), 10px 10px 0px #000 !important; }
+        .flash-4 { background-color: rgba(255, 77, 77, 0.5) !important; border-color: var(--red) !important; box-shadow: 0 0 60px var(--red), 10px 10px 0px #000 !important; }
 
         .count { 
             font-size: 92px; 
@@ -48,15 +47,18 @@
             position: relative; 
             z-index: 10;
             letter-spacing: -4px;
-            text-shadow: 
-                -4px -4px 0 #000,  
-                 4px -4px 0 #000,
-                -4px  4px 0 #000,
-                 4px  4px 0 #000,
-                 8px  8px 0 #000; 
+            text-shadow: -4px -4px 0 #000, 4px -4px 0 #000, -4px  4px 0 #000, 4px  4px 0 #000, 8px  8px 0 #000; 
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* UPDATED: Decreased hitPop scale so larger image doesn't clip */
+        /* Number update animation */
+        .count-pop { animation: countBump 0.15s ease-out; }
+        @keyframes countBump {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2) rotate(-5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
         .pop { animation: hitPop 0.1s ease-out; }
         @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
@@ -65,29 +67,29 @@
         .riser {
             position: absolute; left: 50%; top: 40%; font-weight: 900; font-size: 56px; color: #fff;
             text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000;
-            animation: interRise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; white-space: nowrap;
+            animation: interRise 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; white-space: nowrap;
         }
         @keyframes interRise {
             0% { transform: translate(-50%, 0) scale(0.4); opacity: 0; }
-            20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); }
-            100% { transform: translate(var(--x-offset), -180px) scale(1); opacity: 0; }
+            15% { opacity: 1; transform: translate(-50%, -30px) scale(1.3); }
+            100% { transform: translate(var(--x-offset), -220px) scale(1); opacity: 0; }
         }
 
         .milestone {
             position: absolute; left: 50%; bottom: 250px; font-weight: 900; 
             white-space: nowrap; pointer-events: none; z-index: 100;
-            animation: milestoneSplash 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            animation: milestoneSplash 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
         .m-tier-1 { color: var(--p); font-size: 50px; text-shadow: 0 0 20px var(--p), 4px 4px 0 #000; }
-        .m-tier-2 { color: var(--cyan); font-size: 55px; text-shadow: 0 0 30px var(--cyan), 5px 5px 0 #000; animation: neonPulse 0.5s infinite alternate, milestoneSplash 1.2s forwards; }
-        .m-tier-3 { font-size: 60px; background: linear-gradient(to right, #ffd700, #fff, #ffd700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px var(--g)); background-size: 200% auto; animation: chromaMove 1s linear infinite, milestoneSplash 1.2s forwards; }
-        .m-tier-4 { font-size: 65px; color: #fff; text-shadow: 4px 0 var(--red), -4px 0 var(--cyan), 0 0 50px var(--red); animation: glitchShake 0.1s infinite, milestoneSplash 1.2s forwards; font-style: italic; }
+        .m-tier-2 { color: var(--cyan); font-size: 55px; text-shadow: 0 0 30px var(--cyan), 5px 5px 0 #000; animation: neonPulse 0.5s infinite alternate, milestoneSplash 2.0s forwards; }
+        .m-tier-3 { font-size: 60px; background: linear-gradient(to right, #ffd700, #fff, #ffd700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 15px var(--g)); background-size: 200% auto; animation: chromaMove 1s linear infinite, milestoneSplash 2.0s forwards; }
+        .m-tier-4 { font-size: 65px; color: #fff; text-shadow: 4px 0 var(--red), -4px 0 var(--cyan), 0 0 50px var(--red); animation: glitchShake 0.1s infinite, milestoneSplash 2.0s forwards; font-style: italic; }
 
         @keyframes neonPulse { from { filter: brightness(1); } to { filter: brightness(1.5); } }
         @keyframes chromaMove { to { background-position: 200% center; } }
         @keyframes glitchShake { 0% { transform: translate(-51%, 0); } 50% { transform: translate(-49%, 2px); } 100% { transform: translate(-50%, -1px); } }
-        @keyframes milestoneSplash { 0% { transform: translate(-50%, 80px) scale(0.2); opacity: 0; } 25% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 100% { transform: translate(-50%, -150px) scale(1); opacity: 0; } }
+        @keyframes milestoneSplash { 0% { transform: translate(-50%, 80px) scale(0.2); opacity: 0; } 15% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(-50%, -200px) scale(1); opacity: 0; } }
 
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #111; border-left: 4px solid var(--p); padding: 30px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; overflow-y: auto; }
         #control.active { transform: translateX(0); }
@@ -96,7 +98,6 @@
         .slider-label { display: flex; justify-content: space-between; font-size: 11px; margin-top: 15px; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; cursor: pointer; font-weight: 900; z-index: 210; }
 
-        /* Hide UI elements by default */
         #hud, #m-toggle, #control { display: none; }
     </style>
 </head>
@@ -181,10 +182,10 @@
                 });
             }
             if(userId) {
-                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
+                fetch('https://7tv.io/v3/users/' + userId).then(r => r.json()).then(async d => {
                     const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
                     if(setId) {
-                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+                        const sRes = await fetch('https://7tv.io/v3/emote-sets/' + setId);
                         const sData = await sRes.json();
                         sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; assetCount++; });
                         setStat('assets', `ASSETS: ${assetCount}`, 'on');
@@ -250,7 +251,7 @@
         riser.className = 'riser'; riser.innerText = '+1';
         riser.style.setProperty('--x-offset', `${(Math.random() * 100 - 50)}px`);
         container.appendChild(riser);
-        setTimeout(() => riser.remove(), 700);
+        setTimeout(() => riser.remove(), 1200);
 
         const val = Math.floor(count);
         let tier = 0, text = "";
@@ -264,8 +265,8 @@
             m.className = `milestone m-tier-${tier}`; m.innerText = text;
             container.appendChild(m);
             wrap.className = `img-wrap flash-${tier}`;
-            setTimeout(() => { wrap.className = 'img-wrap'; }, 1200);
-            setTimeout(() => m.remove(), 1200);
+            setTimeout(() => { wrap.className = 'img-wrap'; }, 2000);
+            setTimeout(() => m.remove(), 2000);
         }
     }
 
@@ -282,7 +283,15 @@
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
                 }
-                countEl.innerText = 'x' + Math.ceil(c);
+                
+                const newText = 'x' + Math.ceil(c);
+                if(countEl.innerText !== newText) {
+                    countEl.innerText = newText;
+                    if(triggeredEmoteName === n) {
+                        countEl.classList.remove('count-pop'); void countEl.offsetWidth; countEl.classList.add('count-pop');
+                    }
+                }
+
                 slot.classList.add('active');
                 
                 if(triggeredEmoteName === n) {
