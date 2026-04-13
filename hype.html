@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.1 [RISER ADDITION]</title>
+    <title>Mugi Co. | Engine v16.7.3 [COMBO IMPACT]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -55,13 +55,10 @@
         
         body { margin: 0; background-color: transparent; color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
-        /* HUD & CONTROL UI */
         #hud { position: absolute; top: 10px; left: 10px; z-index: 100; display: flex; flex-direction: column; gap: 3px; }
         .indicator { font-size: 10px; font-weight: 900; padding: 4px 12px; background: rgba(0,0,0,0.95); border-left: 4px solid #444; min-width: 280px; text-transform: uppercase; }
         .indicator.version { background: var(--p); border-left: none; text-align: center; font-size: 11px; margin-bottom: 2px; }
-        .indicator.on { border-left-color: #00ffcc; color: #00ffcc; }
 
-        /* LEADERBOARD & COMBO STYLING */
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 40px; width: 100vw; height: 100vh; padding-bottom: 60px; box-sizing: border-box; position: absolute; bottom: 0; left: 0; }
         
         .emote-slot { position: relative; display: flex; flex-direction: column; align-items: center; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4); opacity: 0; transform: translateY(50px); }
@@ -70,14 +67,21 @@
         .img-wrap { 
             height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; 
             background: var(--ui-bg); border: 8px solid #fff; box-shadow: 10px 10px 0px #000; 
-            margin-bottom: -15px; position: relative; z-index: 5; transition: background 0.3s, border-color 0.3s;
+            margin-bottom: -15px; position: relative; z-index: 5; transition: border-color 0.3s;
         }
         
         /* Combo Tiers */
-        .tier-low .img-wrap { border-color: #fff; background: rgba(0,0,0,0.95); }
-        .tier-mid .img-wrap { border-color: var(--cyan); background: rgba(0, 255, 255, 0.2); }
-        .tier-high .img-wrap { border-color: var(--g); background: rgba(255, 215, 0, 0.3); }
-        .tier-ultra .img-wrap { border-color: var(--red); background: rgba(255, 77, 77, 0.4); }
+        .tier-low .img-wrap { border-color: #fff; }
+        .tier-mid .img-wrap { border-color: var(--cyan); }
+        .tier-high .img-wrap { border-color: var(--g); }
+        .tier-ultra .img-wrap { border-color: var(--red); }
+
+        /* --- IMPACT FLASH ANIMATION --- */
+        @keyframes impactFlash {
+            0% { background: white; filter: brightness(2); }
+            100% { background: var(--ui-bg); filter: brightness(1); }
+        }
+        .flash { animation: impactFlash 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 
         .emote-img { max-height: 170px; max-width: 170px; object-fit: contain; }
         
@@ -87,7 +91,6 @@
             letter-spacing: -4px; margin-top: -10px;
         }
 
-        /* --- RISER CSS --- */
         .riser {
             position: absolute; font-weight: 900; font-size: 48px; color: #fff;
             text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100;
@@ -106,18 +109,15 @@
         #control.active { transform: translateX(0); }
         input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; font-weight: bold; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; cursor: pointer; font-weight: 900; z-index: 210; }
-        .monitor { background: #111; padding: 15px; margin-top: 25px; border: 1px solid #222; }
-        .mon-item { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 8px; color: #666; text-transform: uppercase; }
-        .asset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
-        .asset-tag { font-size: 9px; background: #000; padding: 4px; border: 1px solid #333; color: #888; text-align: center; }
     </style>
 </head>
 <body>
 
-<div id="hud">
-    <div class="indicator version">MUGI ENGINE v16.7.1</div>
-    <div id="stat-tmi" class="indicator">Twitch: IDLE</div>
-    <div id="stat-assets" class="indicator">ASSETS: 0</div>
+<div id="leaderboard">
+    <div id="slot-0" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
@@ -127,40 +127,15 @@
     <input type="text" id="inp-ch" placeholder="Username">
     <input type="text" id="inp-7id" placeholder="7TV ID">
     <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:900; margin-top: 25px;" onclick="reboot()">BOOT ENGINE</button>
-
-    <div class="monitor">
-        <div class="mon-item">OBS: <span id="ctrl-obs">WAITING</span></div>
-        <div class="mon-item">Twitch: <span id="ctrl-tmi">OFFLINE</span></div>
-        <div class="mon-item">Channel: <span id="ctrl-chan">-</span></div>
-        <div class="asset-grid">
-            <div class="asset-tag">7TV: <b id="cnt-7tv">0</b></div>
-            <div class="asset-tag">BTTV: <b id="cnt-bttv">0</b></div>
-            <div class="asset-tag">FFZ: <b id="cnt-ffz">0</b></div>
-            <div class="asset-tag">TW: <b id="cnt-tw">0</b></div>
-        </div>
-    </div>
-</div>
-
-<div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
 </div>
 
 <script>
     let emoteMap = {};
     let emoteCounts = {};
+    let currentTiers = [0, 0, 0, 0]; // Track tiers for impact flashes
     let client = null;
     let mainLoop = null;
-    let counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
 
-    function updateCtrlStatus(id, text, state) {
-        const el = document.getElementById(`ctrl-${id}`);
-        if(el) { el.innerText = text; el.className = state === 'on' ? 'live' : 'wait'; }
-    }
-
-    // --- RISER LOGIC ---
     function spawnRiser(slot) {
         const riser = document.createElement('div');
         riser.className = 'riser';
@@ -170,11 +145,11 @@
         riser.addEventListener('animationend', () => riser.remove());
     }
 
+    // Asset loading from v16.7
     async function loadAssets(userId, channel) {
-        emoteMap = {}; counts = { s7: 0, bttv: 0, ffz: 0, tw: 0 };
+        emoteMap = {};
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
-            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; });
-            syncAssetUI();
+            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
         });
         try {
             const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
@@ -182,12 +157,7 @@
             const tId = twData[0]?.id;
             if(tId) {
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; counts.bttv++; });
-                    syncAssetUI();
-                });
-                fetch(`https://api.betterttv.net/3/cached/frankerfacez/users/twitch/${tId}`).then(r => r.json()).then(d => {
-                    d.forEach(e => { emoteMap[e.code] = e.images['4x'] || e.images['2x'] || e.images['1x']; counts.ffz++; });
-                    syncAssetUI();
+                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; });
                 });
             }
             if(userId) {
@@ -196,34 +166,22 @@
                     if(setId) {
                         const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
                         const sData = await sRes.json();
-                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; counts.s7++; });
-                        syncAssetUI();
+                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
                     }
                 });
             }
         } catch(e) { console.error(e); }
     }
 
-    function syncAssetUI() {
-        let total = Object.keys(emoteMap).length;
-        document.getElementById('stat-assets').innerText = `ASSETS: ${total}`;
-        document.getElementById('cnt-7tv').innerText = counts.s7;
-        document.getElementById('cnt-bttv').innerText = counts.bttv;
-        document.getElementById('cnt-ffz').innerText = counts.ffz;
-        document.getElementById('cnt-tw').innerText = counts.tw;
-        if(!isRemote && activeConn?.open) activeConn.send({ type: 'SYNC_ASSETS', counts, total });
-    }
-
     function reboot() {
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         const ID7 = document.getElementById('inp-7id').value.trim();
         if(!CH) return;
-        if (isRemote && activeConn?.open) { activeConn.send({ type: 'BOOT', ch: CH, id7: ID7 }); return; }
-
         loadAssets(ID7, CH);
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
         emoteCounts = {};
+        currentTiers = [0, 0, 0, 0];
         
         mainLoop = setInterval(() => {
             Object.keys(emoteCounts).forEach(k => { 
@@ -237,14 +195,6 @@
         client.on('message', (chan, tags, msg) => {
             let found = [];
             msg.split(' ').forEach(w => { if(emoteMap[w]) found.push(w); });
-            if(tags.emotes) {
-                Object.keys(tags.emotes).forEach(id => {
-                    const range = tags.emotes[id][0].split('-');
-                    const n = msg.substring(parseInt(range[0]), parseInt(range[1]) + 1);
-                    if(!emoteMap[n]) { emoteMap[n] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`; counts.tw++; syncAssetUI(); }
-                    tags.emotes[id].forEach(() => found.push(n));
-                });
-            }
             found.forEach(e => { 
                 emoteCounts[e] = (emoteCounts[e] || 0) + 1; 
                 updateLeaderboard(e); 
@@ -263,39 +213,42 @@
             if(sorted[i]){
                 const [n, c] = sorted[i];
                 const roundedC = Math.ceil(c);
+                
                 if(wrap.getAttribute('data-name') !== n){
                     wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
                     wrap.setAttribute('data-name', n);
+                    currentTiers[i] = 0; // Reset tier memory for new emote
                 }
                 
                 countEl.innerText = `x${roundedC}`;
                 slot.classList.add('active');
 
+                // Tier Calculation
+                let tier = 1;
+                if(roundedC > 50) tier = 4;
+                else if(roundedC > 20) tier = 3;
+                else if(roundedC > 10) tier = 2;
+
+                // TRIGGER IMPACT FLASH ON TIER UP
+                if(tier > currentTiers[i]) {
+                    wrap.classList.remove('flash'); void wrap.offsetWidth; wrap.classList.add('flash');
+                    currentTiers[i] = tier;
+                }
+
                 slot.classList.remove('tier-low', 'tier-mid', 'tier-high', 'tier-ultra');
-                if(roundedC > 50) slot.classList.add('tier-ultra');
-                else if(roundedC > 20) slot.classList.add('tier-high');
-                else if(roundedC > 10) slot.classList.add('tier-mid');
-                else slot.classList.add('tier-low');
+                const tName = ['tier-low', 'tier-mid', 'tier-high', 'tier-ultra'][tier-1];
+                slot.classList.add(tName);
 
                 if(trig === n) {
                     wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
-                    // TRIGGER RISER
                     spawnRiser(slot);
                 }
-            } else { slot.classList.remove('active'); }
-        }
-    }
-
-    window.onload = () => {
-        if(!isRemote) {
-            const savedCh = localStorage.getItem('mugi_ch');
-            if(savedCh) {
-                document.getElementById('inp-ch').value = savedCh;
-                document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
-                setTimeout(reboot, 500);
+            } else { 
+                slot.classList.remove('active'); 
+                currentTiers[i] = 0;
             }
         }
-    };
+    }
 </script>
 </body>
 </html>
