@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.6 [UI CLEANUP]</title>
+    <title>Mugi Co. | Engine v16.7.7 [DYNAMIC RANKS]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -12,11 +12,9 @@
         const urlParams = new URLSearchParams(window.location.search);
         const isRemote = urlParams.has('control');
         const peer = new Peer(isRemote ? null : PEER_ID);
-        let activeConn = null;
 
         if (!isRemote) {
             peer.on('connection', (conn) => {
-                activeConn = conn;
                 conn.on('data', (data) => {
                     if (data.type === 'BOOT') {
                         document.getElementById('inp-ch').value = data.ch;
@@ -45,15 +43,15 @@
         .img-wrap { 
             height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; 
             background: var(--ui-bg); border: 8px solid #fff; box-shadow: 10px 10px 0px #000; 
-            margin-bottom: -15px; position: relative; z-index: 5; transition: border-color 0.3s;
+            margin-bottom: -15px; position: relative; z-index: 5; transition: border-color 0.2s;
         }
         
-        .tier-low .img-wrap { border-color: #fff; }
-        .tier-mid .img-wrap { border-color: var(--cyan); }
-        .tier-high .img-wrap { border-color: var(--g); }
-        .tier-ultra .img-wrap { border-color: var(--red); }
+        /* Temporary Rank Border Animations */
+        .rank-10 { border-color: var(--cyan) !important; }
+        .rank-50 { border-color: var(--g) !important; }
+        .rank-100 { border-color: var(--red) !important; }
+        .rank-200 { border-color: #ff00ff !important; }
 
-        /* FIXED: Number styling to prevent the "crossed out" look */
         .count { 
             font-size: 80px; font-weight: 900; position: relative; z-index: 10;
             color: #fff; 
@@ -61,7 +59,6 @@
             letter-spacing: -2px; margin-top: -10px;
         }
 
-        /* UNIFIED RISER SYSTEM */
         .riser {
             position: absolute; font-weight: 900; font-size: 48px; color: #fff;
             text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100;
@@ -69,7 +66,6 @@
             animation: riseAndFade 0.7s ease-out forwards;
         }
         
-        /* Combo specific riser states */
         .riser.milestone { font-size: 64px; text-shadow: 6px 6px 0 #000; z-index: 110; }
 
         @keyframes riseAndFade {
@@ -96,10 +92,10 @@
 <body>
 
 <div id="leaderboard">
-    <div id="slot-0" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-1" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-2" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
-    <div id="slot-3" class="emote-slot"><div class="img-wrap"></div><div class="count">x0</div></div>
+    <div id="slot-0" class="emote-slot"><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-1" class="emote-slot"><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-2" class="emote-slot"><div class="img-wrap"></div><div class="count">0</div></div>
+    <div id="slot-3" class="emote-slot"><div class="img-wrap"></div><div class="count">0</div></div>
 </div>
 
 <button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
@@ -117,16 +113,24 @@
     let client = null;
     let mainLoop = null;
 
-    // UNIFIED RISER LOGIC: Replaces the +1 when a milestone is hit
+    const rankNames = {
+        10: "COMBO",
+        25: "GREAT",
+        50: "ULTRA",
+        100: "GODLIKE",
+        200: "MUGI MODE"
+    };
+
     function spawnRiser(slot, milestoneValue = null) {
         const riser = document.createElement('div');
         riser.className = 'riser';
         
         if (milestoneValue) {
-            riser.innerText = `COMBO ${milestoneValue}`;
+            const name = rankNames[milestoneValue] || "COMBO";
+            riser.innerText = `${name} ${milestoneValue}`;
             riser.classList.add('milestone');
-            riser.style.left = '10%'; // Centered approach for big milestones
-            riser.style.width = '80%';
+            riser.style.left = '0';
+            riser.style.width = '100%';
             riser.style.textAlign = 'center';
             
             if(milestoneValue >= 100) riser.style.color = 'var(--red)';
@@ -189,9 +193,9 @@
 
         client = new tmi.Client({ channels: [CH] });
         client.on('message', (chan, tags, msg) => {
-            let found = [];
-            msg.split(' ').forEach(w => { if(emoteMap[w]) found.push(w); });
-            found.forEach(e => { 
+            let words = msg.split(' ');
+            let uniqueFound = [...new Set(words.filter(w => emoteMap[w]))];
+            uniqueFound.forEach(e => { 
                 emoteCounts[e] = (emoteCounts[e] || 0) + 1; 
                 updateLeaderboard(e); 
             });
@@ -201,7 +205,7 @@
 
     function updateLeaderboard(trig) {
         const sorted = Object.entries(emoteCounts).sort((a,b) => b[1]-a[1]).slice(0,4);
-        const milestones = [10, 50, 100, 200, 500];
+        const milestoneCheck = [10, 25, 50, 100, 200];
 
         for(let i=0; i<4; i++){
             const slot = document.getElementById(`slot-${i}`);
@@ -218,26 +222,25 @@
                     lastMilestone[i] = 0; 
                 }
                 
-                countEl.innerText = `x${roundedC}`;
+                countEl.innerText = roundedC;
                 slot.classList.add('active');
-
-                slot.classList.remove('tier-low', 'tier-mid', 'tier-high', 'tier-ultra');
-                if(roundedC >= 50) slot.classList.add('tier-ultra');
-                else if(roundedC >= 20) slot.classList.add('tier-high');
-                else if(roundedC >= 10) slot.classList.add('tier-mid');
-                else slot.classList.add('tier-low');
 
                 if(trig === n) {
                     wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
                     
-                    // Unified Riser Trigger
-                    const currentM = milestones.filter(m => roundedC >= m).pop() || 0;
+                    const currentM = milestoneCheck.filter(m => roundedC >= m).pop() || 0;
                     if(currentM > lastMilestone[i]) {
-                        spawnRiser(slot, currentM); // Spawns COMBO riser instead of +1
+                        spawnRiser(slot, currentM);
+                        
+                        // Flash Rank Border
+                        const rankClass = `rank-${currentM}`;
+                        wrap.classList.add(rankClass);
+                        setTimeout(() => wrap.classList.remove(rankClass), 2000);
+                        
                         wrap.classList.remove('flash'); void wrap.offsetWidth; wrap.classList.add('flash');
                         lastMilestone[i] = currentM;
                     } else {
-                        spawnRiser(slot); // Spawns standard +1
+                        spawnRiser(slot);
                     }
                 }
             } else { 
@@ -246,15 +249,6 @@
             }
         }
     }
-
-    window.onload = () => {
-        const savedCh = localStorage.getItem('mugi_ch');
-        if(savedCh && !isRemote) {
-            document.getElementById('inp-ch').value = savedCh;
-            document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
-            setTimeout(reboot, 500);
-        }
-    };
 </script>
 </body>
 </html>
