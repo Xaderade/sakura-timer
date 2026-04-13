@@ -2,11 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.9 [STAY-TINT]</title>
+    <title>Mugi Co. | Engine v16.7.10 [FIXED ASSETS]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
 
+    <script>
+        const PEER_ID = 'mugi-link-123'; 
+        const urlParams = new URLSearchParams(window.location.search);
+        const isRemote = urlParams.has('control');
+        const peer = new Peer(isRemote ? null : PEER_ID);
+
+        if (!isRemote) {
+            peer.on('connection', (conn) => {
+                conn.on('data', (data) => {
+                    if (data.type === 'BOOT') {
+                        document.getElementById('inp-ch').value = data.ch;
+                        if(data.id7) document.getElementById('inp-7id').value = data.id7;
+                        reboot(); 
+                    }
+                });
+            });
+        }
+    </script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
         :root { 
@@ -27,16 +46,15 @@
             margin-bottom: -15px; position: relative; z-index: 5; transition: all 0.2s ease;
         }
         
-        /* RANK STATES: Background stays tinted for 2 seconds */
-        .rank-10 { border-color: var(--cyan) !important; background: rgba(0, 255, 255, 0.2) !important; --flash-color: var(--cyan); }
-        .rank-25 { border-color: var(--g) !important; background: rgba(255, 215, 0, 0.2) !important; --flash-color: var(--g); }
-        .rank-50 { border-color: var(--red) !important; background: rgba(255, 77, 77, 0.2) !important; --flash-color: var(--red); }
-        .rank-100 { border-color: var(--magenta) !important; background: rgba(255, 0, 255, 0.2) !important; --flash-color: var(--magenta); }
+        /* RANK STATES: Tinted BG */
+        .rank-10 { border-color: var(--cyan) !important; background: rgba(0, 255, 255, 0.2) !important; }
+        .rank-25 { border-color: var(--g) !important; background: rgba(255, 215, 0, 0.2) !important; }
+        .rank-50 { border-color: var(--red) !important; background: rgba(255, 77, 77, 0.2) !important; }
+        .rank-100 { border-color: var(--magenta) !important; background: rgba(255, 0, 255, 0.2) !important; }
 
         .count { 
             font-size: 80px; font-weight: 900; position: relative; z-index: 10;
-            color: #fff; 
-            text-shadow: 6px 6px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 2px 2px 0px #000;
+            color: #fff; text-shadow: 6px 6px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 2px 2px 0px #000;
             letter-spacing: -2px; margin-top: -10px;
         }
 
@@ -53,7 +71,6 @@
             100% { transform: translateY(-160px) scale(1.4); opacity: 0; }
         }
 
-        /* HARD FLASH ANIMATION */
         @keyframes hardFlash {
             0% { filter: brightness(5) saturate(2); }
             100% { filter: brightness(1) saturate(1); }
@@ -83,7 +100,7 @@
 
 <div id="control">
     <input type="text" id="inp-ch" placeholder="Username">
-    <input type="text" id="inp-7id" placeholder="7TV ID">
+    <input type="text" id="inp-7id" placeholder="7TV ID (Optional)">
     <button style="width:100%; padding:20px; background:var(--p); color:white; border:none; cursor:pointer; font-weight:900; margin-top: 25px;" onclick="reboot()">BOOT ENGINE</button>
 </div>
 
@@ -118,6 +135,7 @@
 
     async function loadAssets(userId, channel) {
         emoteMap = {};
+        // 1. Global 7TV
         fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
             g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
         });
@@ -126,17 +144,30 @@
             const twData = await twRes.json();
             const tId = twData[0]?.id;
             if(tId) {
+                // 2. BTTV Channel Emotes
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; });
                 });
             }
-        } catch(e) { console.error(e); }
+            // 3. 7TV User-Specific Emotes
+            if(userId) {
+                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
+                    const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
+                    if(setId) {
+                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
+                        const sData = await sRes.json();
+                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
+                    }
+                });
+            }
+        } catch(e) { console.error("Asset Load Error:", e); }
     }
 
     function reboot() {
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         const ID7 = document.getElementById('inp-7id').value.trim();
         if(!CH) return;
+        
         loadAssets(ID7, CH);
         if(client) client.disconnect();
         if(mainLoop) clearInterval(mainLoop);
