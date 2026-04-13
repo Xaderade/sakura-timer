@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.7 [DYNAMIC RANKS]</title>
+    <title>Mugi Co. | Engine v16.7.8 [SYNCED FLASH]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -29,7 +29,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
         :root { 
-            --p: #9146ff; --cyan: #00ffff; --g: #ffd700; --red: #ff4d4d; 
+            --p: #9146ff; --cyan: #00ffff; --g: #ffd700; --red: #ff4d4d; --magenta: #ff00ff;
             --ui-bg: rgba(0, 0, 0, 0.95); --font-main: 'Inter', sans-serif; 
         }
         
@@ -46,11 +46,12 @@
             margin-bottom: -15px; position: relative; z-index: 5; transition: border-color 0.2s;
         }
         
-        /* Temporary Rank Border Animations */
-        .rank-10 { border-color: var(--cyan) !important; }
-        .rank-50 { border-color: var(--g) !important; }
-        .rank-100 { border-color: var(--red) !important; }
-        .rank-200 { border-color: #ff00ff !important; }
+        /* Rank Border & Background Sync */
+        .rank-10 { border-color: var(--cyan) !important; --flash-color: var(--cyan); }
+        .rank-25 { border-color: var(--g) !important; --flash-color: var(--g); }
+        .rank-50 { border-color: var(--red) !important; --flash-color: var(--red); }
+        .rank-100 { border-color: var(--magenta) !important; --flash-color: var(--magenta); }
+        .rank-200 { border-color: #fff !important; --flash-color: #fff; }
 
         .count { 
             font-size: 80px; font-weight: 900; position: relative; z-index: 10;
@@ -66,18 +67,19 @@
             animation: riseAndFade 0.7s ease-out forwards;
         }
         
-        .riser.milestone { font-size: 64px; text-shadow: 6px 6px 0 #000; z-index: 110; }
+        .riser.milestone { font-size: 68px; text-shadow: 6px 6px 0 #000; z-index: 110; }
 
         @keyframes riseAndFade {
             0% { transform: translateY(0) scale(1); opacity: 1; }
             100% { transform: translateY(-160px) scale(1.4); opacity: 0; }
         }
 
+        /* UPDATED IMPACT FLASH: Uses the --flash-color variable */
         @keyframes impactFlash {
-            0% { background: white; filter: brightness(2); }
+            0% { background: var(--flash-color, white); filter: brightness(1.5); }
             100% { background: var(--ui-bg); filter: brightness(1); }
         }
-        .flash { animation: impactFlash 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+        .flash { animation: impactFlash 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 
         .emote-img { max-height: 170px; max-width: 170px; object-fit: contain; }
         .pop { animation: hitPop 0.12s ease-out; }
@@ -127,14 +129,15 @@
         
         if (milestoneValue) {
             const name = rankNames[milestoneValue] || "COMBO";
-            riser.innerText = `${name} ${milestoneValue}`;
+            riser.innerText = name; // REMOVED trailing number
             riser.classList.add('milestone');
             riser.style.left = '0';
             riser.style.width = '100%';
             riser.style.textAlign = 'center';
             
-            if(milestoneValue >= 100) riser.style.color = 'var(--red)';
-            else if(milestoneValue >= 50) riser.style.color = 'var(--g)';
+            if(milestoneValue >= 100) riser.style.color = 'var(--magenta)';
+            else if(milestoneValue >= 50) riser.style.color = 'var(--red)';
+            else if(milestoneValue >= 25) riser.style.color = 'var(--g)';
             else riser.style.color = 'var(--cyan)';
         } else {
             riser.innerText = '+1';
@@ -232,12 +235,14 @@
                     if(currentM > lastMilestone[i]) {
                         spawnRiser(slot, currentM);
                         
-                        // Flash Rank Border
+                        // Flash Rank Border & Sync Background
                         const rankClass = `rank-${currentM}`;
                         wrap.classList.add(rankClass);
                         setTimeout(() => wrap.classList.remove(rankClass), 2000);
                         
+                        // Trigger Flash with synced color
                         wrap.classList.remove('flash'); void wrap.offsetWidth; wrap.classList.add('flash');
+                        
                         lastMilestone[i] = currentM;
                     } else {
                         spawnRiser(slot);
