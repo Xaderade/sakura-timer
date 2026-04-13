@@ -23,16 +23,8 @@
                     if (data.type === 'BOOT') {
                         document.getElementById('inp-ch').value = data.ch;
                         if(data.id7) document.getElementById('inp-7id').value = data.id7;
-                        reboot(true); 
+                        reboot(); 
                     }
-                });
-            });
-        } else {
-            peer.on('open', () => {
-                const conn = peer.connect(PEER_ID);
-                conn.on('open', () => {
-                    activeConn = conn;
-                    updateCtrlStatus('obs', 'LINKED TO OBS', 'on');
                 });
             });
         }
@@ -192,17 +184,10 @@
         document.getElementById('cnt-tw').innerText = counts.tw;
     }
 
-    function reboot(isInternal = false) {
+    function reboot() {
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         const ID7 = document.getElementById('inp-7id').value.trim();
         if(!CH) return;
-
-        if(isRemote && !isInternal) {
-            if(activeConn && activeConn.open) {
-                activeConn.send({ type: 'BOOT', ch: CH, id7: ID7 });
-            }
-            return;
-        }
 
         localStorage.setItem('mugi_ch', CH);
         localStorage.setItem('mugi_id7', ID7);
@@ -274,7 +259,7 @@
         if(savedCh) {
             document.getElementById('inp-ch').value = savedCh;
             document.getElementById('inp-7id').value = localStorage.getItem('mugi_id7') || '';
-            if(!isRemote) setTimeout(() => reboot(true), 500);
+            if(!isRemote) setTimeout(reboot, 500);
         }
     };
 </script>
