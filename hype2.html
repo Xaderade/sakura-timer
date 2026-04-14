@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.10 [FIXED MILESTONE LOGIC]</title>
+    <title>Mugi Co. | Engine v16.7.10 [LEFT-SIDE ENTRANCE]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -35,23 +35,37 @@
         
         body { margin: 0; background-color: transparent; color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
-        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 40px; width: 100vw; height: 100vh; padding-bottom: 60px; box-sizing: border-box; position: absolute; bottom: 0; left: 0; }
+        #leaderboard { 
+            display: flex; 
+            justify-content: flex-start; /* Align to left side of screen */
+            align-items: flex-end; 
+            gap: 40px; 
+            width: 100vw; 
+            height: 100vh; 
+            padding: 0 0 60px 60px; /* Padding on the left */
+            box-sizing: border-box; 
+            position: absolute; bottom: 0; left: 0; 
+        }
         
         .emote-slot { 
             position: relative; display: flex; flex-direction: column; align-items: center; 
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            opacity: 0; transform: translateY(100px); 
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            opacity: 0; 
+            transform: translateX(-200px) rotate(-10deg); /* Start off-screen left */
         }
-        .emote-slot.active { opacity: 1; transform: translateY(0) skewX(-5deg); }
+        .emote-slot.active { 
+            opacity: 1; 
+            transform: translateX(0) rotate(0deg) skewX(-5deg); /* Snap into place */
+        }
 
         .img-wrap { 
             height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; 
             background: var(--ui-bg); border: 8px solid #fff; box-shadow: 10px 10px 0px #000; 
             margin-bottom: -15px; position: relative; z-index: 5; transition: all 0.2s ease;
+            /* Game UI Slant */
             clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%);
         }
         
-        /* MILESTONE COLORS: Active only when rank class is applied */
         .rank-10 { border-color: var(--cyan) !important; background: rgba(0, 255, 255, 0.2) !important; }
         .rank-25 { border-color: var(--g) !important; background: rgba(255, 215, 0, 0.2) !important; }
         .rank-50 { border-color: var(--red) !important; background: rgba(255, 77, 77, 0.2) !important; }
@@ -221,7 +235,6 @@
                         const rCls = `rank-${currentM}`;
                         wrap.classList.add(rCls, 'flash');
                         
-                        // RESTORED: Remove color and flash after 2 seconds
                         setTimeout(() => {
                             wrap.classList.remove(rCls, 'flash');
                         }, 2000);
