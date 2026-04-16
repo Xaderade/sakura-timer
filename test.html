@@ -1,491 +1,251 @@
 <!DOCTYPE html>
-
-<html lang="en">
-
+<html>
 <head>
-
-    <meta charset="UTF-8">
-
-    <title>Mugi Co. | Engine v16.7.15</title>
-
-    
-
-    <script src="tmi.min.js"></script>
-
-    <script src="peerjs.min.js"></script>
-
-
-
-    <script>
-
-        const PEER_ID = 'mugi-engine-mark-sa-2026'; 
-
-        const urlParams = new URLSearchParams(window.location.search);
-
-        const isRemote = urlParams.has('control');
-
-        const peer = new Peer(isRemote ? null : PEER_ID);
-
-        let remoteConn = null;
-
-
-
-        const ENGINE_VERSION = "v16.7.15";
-
-
-
-        if (!isRemote) {
-
-            peer.on('connection', (conn) => {
-
-                conn.on('data', (data) => {
-
-                    if (data.type === 'BOOT') {
-
-                        document.getElementById('inp-ch').value = data.ch;
-
-                        document.getElementById('inp-7id').value = data.id7 || '';
-
-                        reboot(); 
-
-                    }
-
-                });
-
-            });
-
-        } else {
-
-            function connectToOBS() {
-
-                if (remoteConn && remoteConn.open) return;
-
-                const conn = peer.connect(PEER_ID);
-
-                conn.on('open', () => { remoteConn = conn; });
-
-            }
-
-            peer.on('open', () => setInterval(connectToOBS, 3000));
-
-        }
-
-    </script>
-
-    
-
+    <title>Mugi Choice - Dynamic Pie</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
-
-        :root { 
-
-            --p: #9146ff; --cyan: #00ffff; --g: #ffd700; --red: #ff4d4d; --magenta: #ff00ff;
-
-            --ui-bg: rgba(0, 0, 0, 0.95); --font-main: 'Inter', sans-serif; 
-
+        @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
+        
+        body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
+        
+        #display-container {
+            position: relative;
+            width: 800px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
         }
 
-        
+        #header-area { text-align: center; margin-bottom: 20px; }
+        #main-title { font-size: 80px; color: white; text-shadow: 6px 6px 0px #000; margin: 0; }
+        #sub-title { font-size: 30px; color: #FFD700; text-shadow: 3px 3px 0px #000; margin: 0; text-transform: uppercase; }
 
-        body { margin: 0; background-color: transparent; color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
+        #pie-wrapper {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-        
+        #center-number {
+            position: absolute;
+            z-index: 10;
+            color: white;
+            text-shadow: 8px 8px 0px #000;
+            font-size: 120px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
 
-        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 40px; width: 100vw; height: 100vh; padding: 0 0 60px 0; box-sizing: border-box; position: absolute; bottom: 0; left: 0; }
+        #timer-text { 
+            position: absolute; top: -40px; right: -40px;
+            font-size: 70px; color: #FF4444; text-shadow: 4px 4px 0px #000; 
+        }
 
-        .emote-slot { position: relative; display: flex; flex-direction: column; align-items: center; transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; transform: translateY(100px); }
+        #win-announcement {
+            position: absolute;
+            font-size: 120px;
+            color: #FFD700;
+            text-shadow: 10px 10px 0px #000;
+            display: none;
+            text-align: center;
+            width: 100%;
+            z-index: 20;
+        }
 
-        .emote-slot.active { opacity: 1; transform: translateY(0) skewX(-5deg); }
+        .hidden { opacity: 0 !important; transform: scale(0.9); }
 
-        .img-wrap { height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; background: var(--ui-bg); border: 8px solid #fff; box-shadow: 10px 10px 0px #000; margin-bottom: -15px; position: relative; z-index: 5; clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%); }
-
-        .count { font-size: 80px; font-weight: 900; position: relative; z-index: 10; color: #fff; text-shadow: 6px 6px 0px #000, -2px -2px 0px #000; font-style: italic; }
-
-
-
-        /* PERSISTENT CONTROL PANEL */
-
-        #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #0a0a0a; border-left: 4px solid var(--p); padding: 25px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; display: flex; flex-direction: column; }
-
-        #control.active { transform: translateX(0); }
-
-        
-
-        .ver-badge { font-size: 10px; background: var(--p); color: white; padding: 2px 6px; border-radius: 3px; display: inline-block; margin-bottom: 5px; }
-
-        .status-header { border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; flex-shrink: 0; }
-
-        
-
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
-
-        .light { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #222; margin-right: 5px; }
-
-        .light.on { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
-
-        
-
-        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
-
-        button#boot-btn { width: 100%; padding: 20px; background: var(--p); color: white; border: none; cursor: pointer; font-weight: 900; }
-
-        #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; cursor: pointer; font-weight: 900; z-index: 210; }
-
-
-
-        .rank-10 { border-color: var(--cyan) !important; }
-
-        .rank-25 { border-color: var(--g) !important; }
-
-        .rank-50 { border-color: var(--red) !important; }
-
-        .rank-100 { border-color: var(--magenta) !important; }
-
-        
-
-        .riser { position: absolute; font-weight: 900; font-size: 48px; color: #fff; text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100; animation: riseAndFade 0.7s ease-out forwards; }
-
-        @keyframes riseAndFade { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-160px) scale(1.4); opacity: 0; } }
-
-        .emote-img { max-height: 170px; max-width: 170px; object-fit: contain; }
-
+        /* CONTROL PANEL */
+        #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; color: white; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
+        .control-box { background: white; color: black; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 450px; }
+        .input-group { margin: 20px 0; }
+        input { width: 80px; padding: 10px; font-size: 20px; border: 3px solid black; border-radius: 10px; text-align: center; font-weight: bold; }
+        button { width: 100%; padding: 18px; cursor: pointer; font-weight: bold; font-size: 18px; border: 4px solid #000; border-radius: 15px; margin-top: 12px; text-transform: uppercase; }
+        .start-btn { background: #43B047; color: white; }
+        .toggle-btn { background: #2196F3; color: white; }
+        .reset-btn { background: #E52521; color: white; }
+        .status-tray { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #ccc; display: flex; justify-content: space-around; font-size: 12px; font-weight: bold; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; background: red; }
+        .online { background: #43B047; box-shadow: 0 0 5px #43B047; }
     </style>
-
 </head>
-
 <body>
 
+    <div id="win-announcement"></div>
 
-
-<div id="leaderboard">
-
-    <div id="slot-0" class="emote-slot"><div class="img-wrap"></div><div class="count">0</div></div>
-
-    <div id="slot-1" class="emote-slot"><div class="img-wrap"></div><div class="count">0</div></div>
-
-    <div id="slot-2" class="emote-slot"><div class="img-wrap"></div><div class="count">0</div></div>
-
-    <div id="slot-3" class="emote-slot"><div class="img-wrap"></div><div class="count">0</div></div>
-
-</div>
-
-
-
-<button id="m-toggle" onclick="document.getElementById('control').classList.toggle('active')">☰</button>
-
-
-
-<div id="control">
-
-    <div class="status-header">
-
-        <div class="ver-badge">ENGINE <span id="ver-num"></span></div>
-
-        <div class="stat-grid">
-
-            <div><span id="l-tmi" class="light"></span> CHAT</div>
-
-            <div><span id="l-7tv" class="light"></span> 7TV</div>
-
-            <div><span id="l-bt" class="light"></span> BTTV</div>
-
-            <div><span id="l-peer" class="light"></span> OBS LINK</div>
-
+    <div id="display-container" class="hidden">
+        <div id="header-area">
+            <h1 id="main-title">CHOOSE NOW</h1>
+            <p id="sub-title">Type number in chat to vote</p>
         </div>
-
-        <div style="font-size: 11px; margin-top: 12px; color: #888; border-top: 1px solid #222; padding-top: 10px;">
-
-            EMOTES INDEXED: <span id="lib-count" style="color:white">0</span>
-
+        <div id="pie-wrapper">
+            <div id="timer-text"></div>
+            <div id="center-number"></div>
+            <canvas id="voteChart"></canvas>
         </div>
-
     </div>
 
+    <div id="controls">
+        <div class="control-box">
+            <h2 style="margin:0;">DYNAMIC CHOICE</h2>
+            <div class="input-group">
+                <label style="display:block; font-weight:bold; margin-bottom: 8px;">VOTE DURATION (SEC):</label>
+                <input type="number" id="timer-input" value="30">
+            </div>
+            <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
+            <button class="toggle-btn" onclick="toggleVisibility()">👁 SHOW / HIDE PIE</button>
+            <button class="reset-btn" onclick="resetAll()">✖ RESET & CLEAR</button>
+            <div class="status-tray">
+                <div style="display:flex; align-items:center; gap:5px;"><div id="dot-obs" class="dot"></div> OBS</div>
+                <div style="display:flex; align-items:center; gap:5px;"><div id="dot-twitch" class="dot"></div> CHAT</div>
+            </div>
+        </div>
+    </div>
 
-
-    <input type="text" id="inp-ch" placeholder="Twitch Username">
-
-    <input type="text" id="inp-7id" placeholder="7TV Set ID (Optional)">
-
-    <button id="boot-btn" onclick="sendBoot()">PUSH TO OBS</button>
-
-</div>
-
-
-
-<script>
-
-    document.getElementById('ver-num').innerText = ENGINE_VERSION;
-
-    let emoteMap = {};
-
-    let emoteCounts = {};
-
-    let lastMilestone = [0, 0, 0, 0]; 
-
-    let client = null;
-
-    let mainLoop = null;
-
-
-
-    function setLight(id, state) {
-
-        const el = document.getElementById(id);
-
-        if(el) el.className = state ? 'light on' : 'light';
-
-    }
-
-
-
-    function sendBoot() {
-
-        const payload = {
-
-            type: 'BOOT',
-
-            ch: document.getElementById('inp-ch').value,
-
-            id7: document.getElementById('inp-7id').value
-
-        };
-
-        if (remoteConn && remoteConn.open) {
-
-            remoteConn.send(payload);
-
-        }
-
-        reboot();
-
-    }
-
-
-
-    async function loadAssets(userId, channel) {
-
-        emoteMap = {};
-
-        setLight('l-7tv', false); setLight('l-bt', false);
-
+    <script>
+        const RATER_ID = 'mugi-dynamic-pie-2026';
+        const CHANNEL = 'crazyjapanese';
+        const isController = window.location.hash.includes('control');
+        const colors = { 1: '#43B047', 2: '#2196F3', 3: '#E52521', 4: '#9C27B0' };
         
+        if (isController) document.getElementById('controls').style.display = 'flex';
 
-        await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
+        let votes = {}; 
+        let isVotingOpen = false;
+        let timerInterval;
 
-            g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
-
+        const ctx = document.getElementById('voteChart').getContext('2d');
+        const voteChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: 'black', borderWidth: 5 }] },
+            options: {
+                cutout: '45%',
+                responsive: true,
+                animation: { duration: 400 },
+                plugins: { legend: { display: false } }
+            }
         });
 
-
-
-        try {
-
-            const twRes = await fetch(`https://api.ivr.fi/v2/twitch/user?login=${channel}`);
-
-            const twData = await twRes.json();
-
-            const tId = twData[0]?.id;
-
-            if(tId) {
-
-                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
-
-                    [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; });
-
-                    setLight('l-bt', true);
-
-                });
-
-                fetch(`https://7tv.io/v3/users/twitch/${tId}`).then(r => r.json()).then(d => {
-
-                    if(d.emote_set?.emotes) {
-
-                        d.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
-
-                        setLight('l-7tv', true);
-
-                    }
-
-                });
-
-            }
-
-        } catch(e) { console.error("Asset Load Error:", e); }
-
-        document.getElementById('lib-count').innerText = Object.keys(emoteMap).length;
-
-    }
-
-
-
-    function reboot() {
-
-        const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
-
-        if(!CH) return;
-
-        loadAssets(null, CH);
-
-        if(client) { client.disconnect(); setLight('l-tmi', false); }
-
-        if(mainLoop) clearInterval(mainLoop);
-
-        emoteCounts = {}; lastMilestone = [0, 0, 0, 0];
-
-        
-
-        mainLoop = setInterval(() => {
-
-            if (Object.keys(emoteCounts).length === 0) return;
-
-            Object.keys(emoteCounts).forEach(k => { 
-
-                emoteCounts[k] *= 0.998; 
-
-                if(emoteCounts[k] <= 0.5) delete emoteCounts[k]; 
-
+        const peer = new Peer(isController ? null : RATER_ID);
+        let conn;
+        peer.on('open', () => { if (isController) connectToOBS(); });
+        function connectToOBS() {
+            conn = peer.connect(RATER_ID);
+            conn.on('open', () => { if(isController) document.getElementById('dot-obs').classList.add('online'); });
+        }
+        peer.on('connection', (c) => {
+            conn = c;
+            conn.on('data', (data) => {
+                if (data.action === 'start') executeStart(data.time);
+                if (data.action === 'reset') executeReset();
+                if (data.action === 'toggle') executeToggle();
             });
-
-            updateLeaderboard(null);
-
-        }, 16);
-
-
-
-        client = new tmi.Client({ channels: [CH] });
-
-        client.on('connected', () => setLight('l-tmi', true));
-
-        client.on('message', (chan, tags, msg) => {
-
-            let uniqueFound = new Set();
-
-            if (tags.emotes) {
-
-                Object.keys(tags.emotes).forEach(id => {
-
-                    const [range] = tags.emotes[id][0].split('-');
-
-                    const name = msg.substring(parseInt(range), parseInt(tags.emotes[id][0].split('-')[1]) + 1);
-
-                    emoteMap[name] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
-
-                    uniqueFound.add(name);
-
-                });
-
-            }
-
-            msg.split(' ').forEach(word => { if (emoteMap[word]) uniqueFound.add(word); });
-
-            uniqueFound.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; updateLeaderboard(e); });
-
         });
 
-        client.connect();
+        ComfyJS.onChat = (user, message, flags, self, extra) => {
+            if (!isVotingOpen) return;
+            const msg = message.trim();
+            if (['Pog', 'OOOO', 'LOL', 'KEKW'].includes(msg)) {
+                votes[user] = parseInt(msg);
+                updateChart();
+            }
+        };
+        ComfyJS.Init(CHANNEL);
+        setTimeout(() => { if(isController) document.getElementById('dot-twitch').classList.add('online'); }, 1500);
 
-    }
-
-
-
-    setInterval(() => { 
-
-        const isConnected = isRemote ? (remoteConn && remoteConn.open) : peer.open;
-
-        setLight('l-peer', isConnected); 
-
-    }, 1000);
-
-
-
-    function spawnRiser(slot) {
-
-        const riser = document.createElement('div');
-
-        riser.className = 'riser';
-
-        riser.innerText = '+1';
-
-        riser.style.left = (Math.random() * 40 + 30) + '%'; 
-
-        slot.appendChild(riser);
-
-        riser.addEventListener('animationend', () => riser.remove());
-
-    }
-
-
-
-    function updateLeaderboard(trig) {
-
-        const sorted = Object.entries(emoteCounts).sort((a,b) => b[1]-a[1]).slice(0,4);
-
-        const milestoneCheck = [10, 25, 50, 100, 200];
-
-
-
-        for(let i=0; i<4; i++){
-
-            const slot = document.getElementById(`slot-${i}`);
-
-            const wrap = slot.querySelector('.img-wrap');
-
-            const countEl = slot.querySelector('.count');
-
-            
-
-            if(sorted[i]){
-
-                const [n, c] = sorted[i];
-
-                const roundedC = Math.ceil(c);
-
-                if(wrap.getAttribute('data-name') !== n){
-
-                    wrap.innerHTML = `<img src="${emoteMap[n]}" class="emote-img">`;
-
-                    wrap.setAttribute('data-name', n);
-
-                    lastMilestone[i] = 0; 
-
-                }
-
-                countEl.innerText = roundedC;
-
-                slot.classList.add('active');
-
-
-
-                if(trig === n) {
-
-                    spawnRiser(slot);
-
-                    const currentM = milestoneCheck.filter(m => roundedC >= m).pop() || 0;
-
-                    if(currentM > lastMilestone[i]) {
-
-                        const rCls = `rank-${currentM}`;
-
-                        wrap.classList.add(rCls);
-
-                        setTimeout(() => { wrap.classList.remove(rCls); }, 2000);
-
-                        lastMilestone[i] = currentM;
-
-                    }
-
-                }
-
-            } else { slot.classList.remove('active'); wrap.setAttribute('data-name', ''); }
-
+        function startVoting() {
+            const duration = document.getElementById('timer-input').value || 30;
+            if (conn) conn.send({ action: 'start', time: duration });
+            executeStart(duration);
         }
 
-    }
+        function toggleVisibility() {
+            if (conn) conn.send({ action: 'toggle' });
+            executeToggle();
+        }
 
-</script>
+        function resetAll() {
+            if (conn) conn.send({ action: 'reset' });
+            executeReset();
+        }
 
+        function executeStart(time) {
+            executeReset();
+            isVotingOpen = true;
+            document.getElementById('display-container').classList.remove('hidden');
+            document.getElementById('timer-text').innerText = time;
+            let timeLeft = time;
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer-text').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    finishVoting();
+                }
+            }, 1000);
+        }
+
+        function updateChart() {
+            const counts = {};
+            Object.values(votes).forEach(v => counts[v] = (counts[v] || 0) + 1);
+            const activeChoices = Object.keys(counts).sort();
+            const dataValues = activeChoices.map(c => counts[c]);
+            const bgColors = activeChoices.map(c => colors[c]);
+
+            voteChart.data.labels = activeChoices;
+            voteChart.data.datasets[0].data = dataValues;
+            voteChart.data.datasets[0].backgroundColor = bgColors;
+            voteChart.update();
+
+            if (activeChoices.length > 0) {
+                const maxVotes = Math.max(...dataValues);
+                const winnerIdx = dataValues.indexOf(maxVotes);
+                const winnerNum = activeChoices[winnerIdx];
+                const centerEl = document.getElementById('center-number');
+                centerEl.innerText = winnerNum;
+                centerEl.style.color = colors[winnerNum];
+                const total = dataValues.reduce((a, b) => a + b, 0);
+                const scale = 1 + (maxVotes / total);
+                centerEl.style.transform = `scale(${scale})`;
+            }
+        }
+
+        function finishVoting() {
+            isVotingOpen = false;
+            const data = voteChart.data.datasets[0].data;
+            const labels = voteChart.data.labels;
+            
+            if (labels.length > 0) {
+                const max = Math.max(...data);
+                const winner = labels[data.indexOf(max)];
+                const announce = document.getElementById('win-announcement');
+                announce.innerText = `${winner} WINS!`;
+                announce.style.color = colors[winner];
+                announce.style.display = 'block';
+                document.getElementById('display-container').classList.add('hidden');
+                setTimeout(() => { announce.style.display = 'none'; }, 5000);
+            }
+        }
+
+        function executeToggle() { document.getElementById('display-container').classList.toggle('hidden'); }
+
+        function executeReset() {
+            clearInterval(timerInterval);
+            votes = {};
+            isVotingOpen = false;
+            document.getElementById('timer-text').innerText = "";
+            document.getElementById('center-number').innerText = "";
+            document.getElementById('win-announcement').style.display = 'none';
+            voteChart.data.labels = [];
+            voteChart.data.datasets[0].data = [];
+            voteChart.update();
+        }
+    </script>
 </body>
-
 </html>
