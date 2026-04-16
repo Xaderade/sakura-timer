@@ -184,7 +184,7 @@
                 
                 // --- BIGGER FONT MATH ---
                 // Leader: 60px to 120px
-                const size1 = 60 + (top1Perc * 0.6);
+                const size1 = 80 + (top1Perc * 0.6);
 
                 if (sortedChoices.length === 1) {
                     displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.8;">${top1Word}<br><span style="font-size:${size1 * 0.4}px; color:white;">${top1Perc}%</span></div>`;
@@ -192,7 +192,7 @@
                     const top2Word = sortedChoices[1];
                     const top2Perc = Math.round((counts[top2Word] / total) * 100);
                     // Runner up: 40px to 90px
-                    const size2 = 40 + (top2Perc * 0.5);
+                    const size2 = 60 + (top2Perc * 0.5);
 
                     displayHTML = `
                         <div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.75; margin-bottom:10px;">
