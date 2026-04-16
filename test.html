@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - Dual Leader v16.7.26</title>
+    <title>Mugi Choice - Big Font Dual v16.7.29</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -11,21 +11,21 @@
         body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
         
         #display-container { position: relative; width: 800px; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.5s ease; }
-        #header-area { text-align: center; margin-bottom: 20px; }
+        #header-area { text-align: center; margin-bottom: 10px; }
         #main-title { font-size: 80px; color: white; text-shadow: 6px 6px 0px #000; margin: 0; }
         #sub-title { font-size: 24px; color: #FFD700; text-shadow: 3px 3px 0px #000; margin: 0; text-transform: uppercase; }
 
         #pie-wrapper { position: relative; width: 600px; height: 600px; display: flex; justify-content: center; align-items: center; }
         
-        /* UPDATED: Increased width and added flex to handle two names side-by-side */
         #center-number { 
-            position: absolute; z-index: 10; width: 90%; 
+            position: absolute; z-index: 10; width: 85%; 
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
             pointer-events: none; text-align: center; 
-            text-shadow: 6px 6px 0px #000;
+            text-shadow: 7px 7px 0px #000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        #timer-text { position: absolute; top: -40px; right: -40px; font-size: 70px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
+        #timer-text { position: absolute; top: -20px; right: -20px; font-size: 80px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
         #win-announcement { position: absolute; font-size: 120px; color: #FFD700; text-shadow: 10px 10px 0px #000; display: none; text-align: center; width: 100%; z-index: 20; }
         .hidden { opacity: 0 !important; transform: scale(0.9); }
 
@@ -69,8 +69,8 @@
                 <textarea id="choices-input">Pog, OOOO, LOL, KEKW</textarea>
             </div>
             <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex:1;"><label>TIMER (SEC):</label><input type="number" id="timer-input" value="30"></div>
-                <div class="input-group" style="flex:2;"><label>OVERLAY TITLE:</label><input type="text" id="title-input" value="CHOOSE NOW"></div>
+                <div class="input-group" style="flex:1;"><label>TIMER:</label><input type="number" id="timer-input" value="30"></div>
+                <div class="input-group" style="flex:2;"><label>TITLE:</label><input type="text" id="title-input" value="CHOOSE NOW"></div>
             </div>
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
             <button class="toggle-btn" onclick="toggleVisibility()">👁 SHOW / HIDE PIE</button>
@@ -99,7 +99,7 @@
         const voteChart = new Chart(ctx, {
             type: 'doughnut',
             data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: 'black', borderWidth: 5 }] },
-            options: { cutout: '65%', responsive: true, animation: { duration: 400 }, plugins: { legend: { display: false } } }
+            options: { cutout: '70%', responsive: true, animation: { duration: 400 }, plugins: { legend: { display: false } } }
         });
 
         const peer = new Peer(isController ? null : RATER_ID);
@@ -162,14 +162,10 @@
             }, 1000);
         }
 
-        // --- NEW TOP 2 LOGIC (NON-BREAKING) ---
         function updateChart() {
             const counts = {};
             Object.values(votes).forEach(v => counts[v] = (counts[v] || 0) + 1);
-            
-            // Sort choices by vote count (highest first)
             const sortedChoices = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-            
             const dataValues = sortedChoices.map(c => counts[c]);
             const bgColors = sortedChoices.map(c => dynamicColors[c]);
 
@@ -186,29 +182,25 @@
                 const top1Word = sortedChoices[0];
                 const top1Perc = Math.round((counts[top1Word] / total) * 100);
                 
-                // Calculate size for Top 1 (Min 50px, Max 90px)
-                const size1 = 50 + (top1Perc * 0.4);
+                // --- BIGGER FONT MATH ---
+                // Leader: 60px to 120px
+                const size1 = 60 + (top1Perc * 0.6);
 
                 if (sortedChoices.length === 1) {
-                    displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.85;">${top1Word}<br><span style="font-size:${size1 * 0.5}px; color:white;">${top1Perc}%</span></div>`;
+                    displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.8;">${top1Word}<br><span style="font-size:${size1 * 0.4}px; color:white;">${top1Perc}%</span></div>`;
                 } else {
                     const top2Word = sortedChoices[1];
                     const top2Perc = Math.round((counts[top2Word] / total) * 100);
-                    
-                    // Calculate size for Top 2 (Min 30px, Max 70px)
-                    const size2 = 30 + (top2Perc * 0.4);
+                    // Runner up: 40px to 90px
+                    const size2 = 40 + (top2Perc * 0.5);
 
                     displayHTML = `
-                        <div style="display:flex; gap:15px; align-items:center; justify-content:center; line-height:0.85;">
-                            <div style="color:${dynamicColors[top1Word]}; font-size:${size1}px;">
-                                ${top1Word}<br><span style="font-size:${size1 * 0.5}px; color:white;">${top1Perc}%</span>
-                            </div>
-                            
-                            <div style="color:white; font-size:20px; opacity:0.4; margin-top:-20px;">VS</div>
-                            
-                            <div style="color:${dynamicColors[top2Word]}; font-size:${size2}px;">
-                                ${top2Word}<br><span style="font-size:${size2 * 0.5}px; color:white;">${top2Perc}%</span>
-                            </div>
+                        <div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.75; margin-bottom:10px;">
+                            ${top1Word} <span style="font-size:${size1 * 0.35}px; color:white;">${top1Perc}%</span>
+                        </div>
+                        <div style="color:white; font-size:25px; opacity:0.3; margin: 5px 0;">────────</div>
+                        <div style="color:${dynamicColors[top2Word]}; font-size:${size2}px; line-height:0.75;">
+                            ${top2Word} <span style="font-size:${size2 * 0.35}px; color:white;">${top2Perc}%</span>
                         </div>`;
                 }
                 centerEl.innerHTML = displayHTML;
