@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.12</title>
+    <title>Mugi Co. | Engine v16.7.13 [FIXED REMOTE SYNC]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -14,24 +14,30 @@
         const peer = new Peer(isRemote ? null : PEER_ID);
         let remoteConn = null;
 
-        // VERSION / BUILD
-        const ENGINE_VERSION = "v16.7.12";
+        const ENGINE_VERSION = "v16.7.13";
 
         if (!isRemote) {
-            // OBS Mode: Listen for remote commands
+            // OBS MODE
             peer.on('connection', (conn) => {
                 conn.on('data', (data) => {
                     if (data.type === 'BOOT') {
                         document.getElementById('inp-ch').value = data.ch;
                         document.getElementById('inp-7id').value = data.id7 || '';
-                        reboot(); 
+                        reboot(); // Triggers the full logic update
                     }
                 });
             });
         } else {
-            // Control Mode: Connect to OBS
-            const conn = peer.connect(PEER_ID);
-            conn.on('open', () => { remoteConn = conn; });
+            // REMOTE CONTROL MODE: Persistent connection logic
+            function connectToOBS() {
+                if (remoteConn && remoteConn.open) return;
+                const conn = peer.connect(PEER_ID);
+                conn.on('open', () => { 
+                    remoteConn = conn; 
+                    console.log("Linked to OBS");
+                });
+            }
+            peer.on('open', () => setInterval(connectToOBS, 3000)); // Keep trying to find OBS
         }
     </script>
     
@@ -68,7 +74,6 @@
         .pop { animation: hitPop 0.12s ease-out; }
         @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
-        /* CONTROL OVERLAY FIXES */
         #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #0a0a0a; border-left: 4px solid var(--p); padding: 25px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; }
         #control.active { transform: translateX(0); }
         .status-header { border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 10px; }
@@ -100,14 +105,14 @@
             <div><span id="l-tmi" class="light"></span> TMI</div>
             <div><span id="l-7tv" class="light"></span> 7TV</div>
             <div><span id="l-bt" class="light"></span> BTTV</div>
-            <div><span id="l-peer" class="light"></span> OBS</div>
+            <div><span id="l-peer" class="light"></span> OBS LINK</div>
         </div>
         <div style="font-size: 11px; margin-top: 10px; color: var(--p)">EMOTES LOADED: <span id="lib-count">0</span></div>
     </div>
 
     <input type="text" id="inp-ch" placeholder="Username (Twitch)">
     <input type="text" id="inp-7id" placeholder="7TV ID (Optional)">
-    <button id="boot-btn" onclick="sendBoot()">BOOT ENGINE</button>
+    <button id="boot-btn" onclick="sendBoot()">PUSH TO OBS</button>
 </div>
 
 <script>
@@ -121,7 +126,8 @@
     const rankNames = { 10: "COMBO", 25: "GREAT", 50: "ULTRA", 100: "GODLIKE", 200: "MUGI MODE" };
 
     function setLight(id, state) {
-        document.getElementById(id).className = state ? 'light on' : 'light';
+        const el = document.getElementById(id);
+        if(el) el.className = state ? 'light on' : 'light';
     }
 
     function sendBoot() {
@@ -130,9 +136,11 @@
             ch: document.getElementById('inp-ch').value,
             id7: document.getElementById('inp-7id').value
         };
-        // If we are on mobile/control, send to OBS
-        if (remoteConn) remoteConn.send(payload);
-        // Also boot locally in case this IS the OBS source
+        // Always try to send to OBS
+        if (remoteConn && remoteConn.open) {
+            remoteConn.send(payload);
+        }
+        // Always run locally (in case we are in OBS)
         reboot();
     }
 
@@ -140,7 +148,6 @@
         emoteMap = {};
         setLight('l-7tv', false); setLight('l-bt', false);
         
-        // Load Global 7TV
         await fetch('https://7tv.io/v3/emote-sets/global').then(r => r.json()).then(g => {
             g.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
         });
@@ -150,13 +157,11 @@
             const twData = await twRes.json();
             const tId = twData[0]?.id;
             if(tId) {
-                // BTTV
-                await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
+                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; });
                     setLight('l-bt', true);
                 });
-                // 7TV Channel
-                await fetch(`https://7tv.io/v3/users/twitch/${tId}`).then(r => r.json()).then(d => {
+                fetch(`https://7tv.io/v3/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     if(d.emote_set?.emotes) {
                         d.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
                         setLight('l-7tv', true);
@@ -203,8 +208,10 @@
         client.connect();
     }
 
-    // Monitor OBS Peer connection
-    setInterval(() => { setLight('l-peer', (remoteConn && remoteConn.open) || (!isRemote && peer.open)); }, 1000);
+    setInterval(() => { 
+        const isConnected = isRemote ? (remoteConn && remoteConn.open) : peer.open;
+        setLight('l-peer', isConnected); 
+    }, 1000);
 
     function spawnRiser(slot, milestoneValue = null) {
         const riser = document.createElement('div');
