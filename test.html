@@ -1,34 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - v16.7.39</title>
+    <title>Mugi Choice - v16.7.41</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
         body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
+        
         #display-container { position: relative; width: 800px; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.5s ease; }
-        #main-title { font-size: 80px; color: white; text-shadow: 6px 6px 0px #000; margin: 0; text-align: center; }
-        #sub-title { font-size: 24px; color: #FFD700; text-shadow: 3px 3px 0px #000; margin: 0; text-transform: uppercase; text-align: center; }
+        #main-title { font-size: 80px; color: white; text-shadow: 6px 6px 0px #000; margin: 0; text-align: center; line-height: 1; }
+        #sub-title { font-size: 24px; color: #FFD700; text-shadow: 3px 3px 0px #000; margin: 5px 0; text-transform: uppercase; text-align: center; }
+        
         #pie-wrapper { position: relative; width: 600px; height: 600px; display: flex; justify-content: center; align-items: center; }
-        #center-number { position: absolute; z-index: 10; width: 85%; text-align: center; text-shadow: 7px 7px 0px #000; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+        
+        /* RESTORED CENTER STYLING */
+        #center-number { 
+            position: absolute; z-index: 10; width: 85%; text-align: center; 
+            text-shadow: 7px 7px 0px #000; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; pointer-events: none; 
+        }
+        
         #vote-counter { position: absolute; top: -20px; left: -20px; font-size: 60px; color: #FFD700; text-shadow: 4px 4px 0px #000; }
         #timer-text { position: absolute; top: -20px; right: -20px; font-size: 80px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
-        #win-announcement { position: absolute; font-size: 120px; color: #FFD700; text-shadow: 10px 10px 0px #000; display: none; text-align: center; width: 100%; z-index: 20; }
+        #win-announcement { position: absolute; font-size: 110px; color: #FFD700; text-shadow: 10px 10px 0px #000; display: none; text-align: center; width: 100%; z-index: 20; line-height: 1; }
         .hidden { opacity: 0 !important; transform: scale(0.8); }
 
         /* CONTROLLER STYLING */
         #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; color: white; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
-        .control-box { background: #fdfdfd; color: black; border: 6px solid #000; padding: 25px; border-radius: 25px; width: 450px; box-shadow: 10px 10px 0px rgba(0,0,0,0.5); }
+        .control-box { background: #fff; color: #000; border: 6px solid #000; padding: 25px; border-radius: 25px; width: 450px; box-shadow: 10px 10px 0px rgba(0,0,0,0.5); }
         .input-group { margin: 10px 0; text-align: left; }
         label { font-size: 10px; font-weight: bold; color: #555; text-transform: uppercase; }
         input, textarea { width: 100%; padding: 12px; font-size: 16px; border: 3px solid #000; border-radius: 10px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; font-size: 14px; border: 3px solid #000; border-radius: 10px; margin-top: 5px; text-transform: uppercase; transition: 0.1s; }
-        button:active { transform: translateY(2px); }
+        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; font-size: 14px; border: 3px solid #000; border-radius: 10px; margin-top: 5px; text-transform: uppercase; }
         .start-btn { background: #4CAF50; color: white; font-size: 18px; }
         .sync-btn { background: #9146FF; color: white; width: 100px; margin: 0; }
-        .debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 9px; padding: 10px; border-radius: 5px; margin-top: 15px; height: 50px; overflow-y: auto; text-align: left; width: 100%; box-sizing: border-box; }
+        .debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; border-radius: 5px; margin-top: 15px; height: 70px; overflow-y: auto; text-align: left; width: 100%; box-sizing: border-box; }
         .status-tray { display: flex; justify-content: space-around; font-size: 11px; font-weight: bold; margin-top: 10px; }
         .dot { height: 8px; width: 8px; border-radius: 50%; background: #ccc; display: inline-block; margin-right: 4px; }
         .active { background: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
@@ -52,7 +60,7 @@
 
     <div id="controls">
         <div class="control-box">
-            <h3 style="margin:0 0 10px 0; text-align:center;">MUGI PIE (MARK V)</h3>
+            <h3 style="margin:0 0 10px 0; text-align:center;">MUGI PIE (V16.7.41)</h3>
             
             <div class="input-group" style="background:#eee; padding:10px; border-radius:10px; border:2px solid #000;">
                 <label>1. Connect Twitch</label>
@@ -63,7 +71,7 @@
             </div>
 
             <div class="input-group">
-                <label>2. Voting Options (Comma separated)</label>
+                <label>2. Voting Options (e.g. Pog, LUL)</label>
                 <textarea id="choices-input">Pog, KEKW, LUL, GG</textarea>
             </div>
 
@@ -83,8 +91,8 @@
                 <span><div id="dot-twitch" class="dot"></div>CHAT-LINK</span>
             </div>
 
-            <div id="debug" class="debug-log">System Ready. Waiting for connection...</div>
-            <div id="version-tag">v16.7.39</div>
+            <div id="debug" class="debug-log">System Ready...</div>
+            <div id="version-tag">v16.7.41</div>
         </div>
     </div>
 
@@ -92,15 +100,15 @@
         const RATER_ID = 'mugi-pie-2026';
         const isController = window.location.hash.includes('control');
         const colors = ['#4CAF50', '#2196F3', '#f44336', '#9C27B0', '#FF9800', '#795548'];
-        let activeChoices = {};
+        let activeChoices = {}; 
+        let displayNames = {};  
         let votes = {};
         let voting = false;
         let timer;
 
         function log(msg) {
             const d = document.getElementById('debug');
-            if(d) d.innerHTML += `<br>> ${msg}`;
-            console.log(msg);
+            if(d) d.innerHTML = `> ${msg}<br>` + d.innerHTML.substring(0, 500);
         }
 
         const ctx = document.getElementById('voteChart').getContext('2d');
@@ -114,29 +122,21 @@
         let conn;
 
         peer.on('open', (id) => {
-            log(`Peer Open: ${id}`);
             if (isController) {
                 conn = peer.connect(RATER_ID);
                 conn.on('open', () => {
-                    log("Connected to OBS Source");
                     document.getElementById('dot-obs').classList.add('active');
-                    const saved = localStorage.getItem('mugi_chan');
-                    if(saved) conn.send({ action: 'sync_chan', chan: saved });
                 });
             }
         });
 
         peer.on('connection', (c) => {
             conn = c;
-            log("Controller Linked");
             conn.on('data', (d) => {
                 if(d.action === 'start') executeStart(d);
                 if(d.action === 'reset') executeReset();
                 if(d.action === 'toggle') document.getElementById('display-container').classList.toggle('hidden');
-                if(d.action === 'sync_chan') {
-                    log(`Syncing Chat to: ${d.chan}`);
-                    ComfyJS.Init(d.chan);
-                }
+                if(d.action === 'sync_chan') { ComfyJS.Init(d.chan); }
             });
         });
 
@@ -147,10 +147,11 @@
         }
 
         ComfyJS.onChat = (user, msg) => {
+            const cleanMsg = msg.trim().toLowerCase();
+            log(`[${user}]: ${msg}`);
             if(!voting) return;
-            const choice = msg.trim();
-            if(activeChoices.hasOwnProperty(choice)) {
-                votes[user] = choice;
+            if(activeChoices.hasOwnProperty(cleanMsg)) {
+                votes[user] = cleanMsg;
                 updateChart();
             }
         };
@@ -159,22 +160,26 @@
             const chan = document.getElementById('channel-input').value.trim();
             if(!chan) return;
             localStorage.setItem('mugi_chan', chan);
-            log(`Attempting Twitch: ${chan}`);
             try {
                 ComfyJS.Init(chan);
                 document.getElementById('dot-twitch').classList.add('active');
                 if(conn) conn.send({ action: 'sync_chan', chan: chan });
-                log("Twitch connected.");
             } catch(e) { log(`Error: ${e.message}`); }
         }
 
         function startVoting() {
             const raw = document.getElementById('choices-input').value.split(',').map(s => s.trim());
             const choiceMap = {};
-            raw.forEach((c, i) => choiceMap[c] = colors[i % colors.length]);
+            const nameMap = {};
+            raw.forEach((c, i) => {
+                const lower = c.toLowerCase();
+                choiceMap[lower] = colors[i % colors.length];
+                nameMap[lower] = c;
+            });
             const data = {
                 action: 'start',
                 choices: choiceMap,
+                displayNames: nameMap,
                 time: document.getElementById('timer-input').value,
                 title: document.getElementById('title-input').value
             };
@@ -185,9 +190,10 @@
         function executeStart(d) {
             executeReset();
             activeChoices = d.choices;
+            displayNames = d.displayNames;
             voting = true;
             document.getElementById('main-title').innerText = d.title;
-            document.getElementById('sub-title').innerText = "VOTE: " + Object.keys(activeChoices).join(" / ");
+            document.getElementById('sub-title').innerText = "VOTE: " + Object.values(displayNames).join(" / ");
             document.getElementById('display-container').classList.remove('hidden');
             let timeLeft = d.time;
             document.getElementById('timer-text').innerText = timeLeft;
@@ -198,12 +204,13 @@
             }, 1000);
         }
 
+        /* RESTORED TOP 2 LOGIC */
         function updateChart() {
             const counts = {};
             Object.values(votes).forEach(v => counts[v] = (counts[v] || 0) + 1);
             const sorted = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
             
-            chart.data.labels = sorted;
+            chart.data.labels = sorted.map(s => displayNames[s]);
             chart.data.datasets[0].data = sorted.map(s => counts[s]);
             chart.data.datasets[0].backgroundColor = sorted.map(s => activeChoices[s]);
             chart.update();
@@ -212,9 +219,26 @@
             document.getElementById('vote-num').innerText = total;
 
             if(sorted.length > 0) {
-                const top = sorted[0];
-                const perc = Math.round((counts[top]/total)*100);
-                document.getElementById('center-number').innerHTML = `<div style="color:${activeChoices[top]}; font-size:70px;">${top}<br><span style="font-size:30px; color:white;">${perc}%</span></div>`;
+                const centerEl = document.getElementById('center-number');
+                const top1Word = sorted[0];
+                const top1Perc = Math.round((counts[top1Word] / total) * 100);
+                const size1 = 60 + (top1Perc * 0.5);
+
+                if (sorted.length === 1) {
+                    centerEl.innerHTML = `<div style="color:${activeChoices[top1Word]}; font-size:${size1}px; line-height:0.8;">${displayNames[top1Word]}<br><span style="font-size:${size1 * 0.4}px; color:white;">${top1Perc}%</span></div>`;
+                } else {
+                    const top2Word = sorted[1];
+                    const top2Perc = Math.round((counts[top2Word] / total) * 100);
+                    const size2 = 35 + (top2Perc * 0.4);
+                    centerEl.innerHTML = `
+                        <div style="color:${activeChoices[top1Word]}; font-size:${size1}px; line-height:0.75;">
+                            ${displayNames[top1Word]} <span style="font-size:${size1 * 0.3}px; color:white;">${top1Perc}%</span>
+                        </div>
+                        <div style="color:white; font-size:20px; opacity:0.3; margin: 2px 0;">────────</div>
+                        <div style="color:${activeChoices[top2Word]}; font-size:${size2}px; line-height:0.75;">
+                            ${displayNames[top2Word]} <span style="font-size:${size2 * 0.3}px; color:white;">${top2Perc}%</span>
+                        </div>`;
+                }
             }
         }
 
@@ -222,29 +246,24 @@
             voting = false;
             const labels = chart.data.labels;
             if(labels.length > 0) {
-                const winner = labels[0];
+                const winnerName = labels[0];
                 const winEl = document.getElementById('win-announcement');
-                winEl.innerText = `${winner} WINS!`;
-                winEl.style.color = activeChoices[winner];
+                winEl.innerText = `${winnerName} WINS!`;
+                winEl.style.color = activeChoices[winnerName.toLowerCase()];
                 winEl.style.display = 'block';
                 document.getElementById('display-container').classList.add('hidden');
-                setTimeout(() => winEl.style.display='none', 5000);
+                setTimeout(() => winEl.style.display='none', 6000);
             }
         }
 
         function toggleUI() { if(conn) conn.send({action:'toggle'}); document.getElementById('display-container').classList.toggle('hidden'); }
         function resetSystem() { if(conn) conn.send({action:'reset'}); executeReset(); }
-        
         function executeReset() {
-            clearInterval(timer);
-            voting = false;
-            votes = {};
+            clearInterval(timer); voting = false; votes = {};
             document.getElementById('vote-num').innerText = "0";
             document.getElementById('center-number').innerHTML = "";
             document.getElementById('display-container').classList.add('hidden');
-            chart.data.labels = [];
-            chart.data.datasets[0].data = [];
-            chart.update();
+            chart.data.labels = []; chart.data.datasets[0].data = []; chart.update();
         }
     </script>
 </body>
