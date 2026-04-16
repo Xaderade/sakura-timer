@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Pie - Choice Version</title>
+    <title>Mugi Choice - Dynamic Pie</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -10,17 +10,43 @@
         
         body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
         
-        /* OVERLAY STYLES */
         #display-container {
             position: relative;
-            width: 700px;
-            height: 700px;
-            transition: opacity 0.5s ease;
+            width: 750px;
+            height: 750px;
+            transition: all 0.5s ease;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
         }
-        #timer-text { font-size: 100px; color: white; text-shadow: 5px 5px 0px #000; margin-bottom: 10px; height: 120px; }
+
+        /* The big number inside the pie */
+        #center-number {
+            position: absolute;
+            z-index: 10;
+            color: white;
+            text-shadow: 8px 8px 0px #000;
+            font-size: 100px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        #timer-text { 
+            position: absolute; top: -80px;
+            font-size: 80px; color: white; text-shadow: 5px 5px 0px #000; 
+        }
+
+        #win-announcement {
+            position: absolute;
+            font-size: 120px;
+            color: #FFD700;
+            text-shadow: 10px 10px 0px #000;
+            display: none;
+            text-align: center;
+            width: 1000px;
+            z-index: 20;
+        }
+
         .hidden { opacity: 0 !important; }
 
         /* CONTROL PANEL STYLES */
@@ -33,39 +59,42 @@
         .toggle-btn { background: #2196F3; color: white; }
         .reset-btn { background: #E52521; color: white; }
         .status-tray { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #ccc; display: flex; justify-content: space-around; font-size: 12px; font-weight: bold; }
-        .stat-item { display: flex; align-items: center; gap: 5px; }
         .dot { height: 10px; width: 10px; border-radius: 50%; background: red; }
         .online { background: #43B047; box-shadow: 0 0 5px #43B047; }
     </style>
 </head>
 <body>
 
+    <div id="win-announcement"></div>
+
     <div id="display-container">
         <div id="timer-text"></div>
+        <div id="center-number"></div>
         <canvas id="voteChart"></canvas>
     </div>
 
     <div id="controls">
         <div class="control-box">
-            <h2 style="margin:0;">MUGI PIE CHORCE</h2>
+            <h2 style="margin:0;">DYNAMIC CHOICE</h2>
             <div class="input-group">
                 <label style="display:block; font-weight:bold; margin-bottom: 8px;">VOTE DURATION (SEC):</label>
                 <input type="number" id="timer-input" value="30">
             </div>
-            <button class="start-btn" onclick="startVoting()">▶ START 1-4 VOTING</button>
+            <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
             <button class="toggle-btn" onclick="toggleVisibility()">👁 SHOW / HIDE PIE</button>
             <button class="reset-btn" onclick="resetAll()">✖ RESET & CLEAR</button>
             <div class="status-tray">
-                <div class="stat-item"><div id="dot-obs" class="dot"></div> OBS LINK</div>
-                <div class="stat-item"><div id="dot-twitch" class="dot"></div> TWITCH CHAT</div>
+                <div style="display:flex; align-items:center; gap:5px;"><div id="dot-obs" class="dot"></div> OBS</div>
+                <div style="display:flex; align-items:center; gap:5px;"><div id="dot-twitch" class="dot"></div> CHAT</div>
             </div>
         </div>
     </div>
 
     <script>
-        const RATER_ID = 'mugi-pie-v2-2026';
+        const RATER_ID = 'mugi-dynamic-pie-2026';
         const CHANNEL = 'crazyjapanese';
         const isController = window.location.hash.includes('control');
+        const colors = { 1: '#43B047', 2: '#2196F3', 3: '#E52521', 4: '#9C27B0' };
         
         if (isController) document.getElementById('controls').style.display = 'flex';
 
@@ -73,41 +102,26 @@
         let isVotingOpen = false;
         let timerInterval;
 
-        // Initialize Pie Chart
         const ctx = document.getElementById('voteChart').getContext('2d');
         const voteChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['1', '2', '3', '4'],
-                datasets: [{
-                    data: [1, 1, 1, 1],
-                    backgroundColor: ['#43B047', '#2196F3', '#E52521', '#9C27B0'],
-                    borderColor: 'black',
-                    borderWidth: 8
-                }]
-            },
+            type: 'doughnut', // Doughnut allows the center number to sit better
+            data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: 'black', borderWidth: 5 }] },
             options: {
+                cutout: '40%', // Space for the number
                 responsive: true,
                 animation: { duration: 400 },
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { color: 'white', font: { size: 60, family: 'Luckiest Guy' } }
-                    }
-                }
+                plugins: { legend: { display: false } }
             }
         });
 
-        // PeerJS Connection Logic
+        // PeerJS Connection
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
-
         peer.on('open', () => { if (isController) connectToOBS(); });
         function connectToOBS() {
             conn = peer.connect(RATER_ID);
             conn.on('open', () => { if(isController) document.getElementById('dot-obs').classList.add('online'); });
         }
-
         peer.on('connection', (c) => {
             conn = c;
             conn.on('data', (data) => {
@@ -117,7 +131,7 @@
             });
         });
 
-        // Twitch Chat Logic
+        // Chat Listener
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             if (!isVotingOpen) return;
             const msg = message.trim();
@@ -129,9 +143,8 @@
         ComfyJS.Init(CHANNEL);
         setTimeout(() => { if(isController) document.getElementById('dot-twitch').classList.add('online'); }, 1500);
 
-        // Control Functions
         function startVoting() {
-            const duration = parseInt(document.getElementById('timer-input').value) || 30;
+            const duration = document.getElementById('timer-input').value || 30;
             if (conn) conn.send({ action: 'start', time: duration });
             executeStart(duration);
         }
@@ -146,46 +159,83 @@
             executeReset();
         }
 
-        // Execution Functions (Overlay Side)
         function executeStart(time) {
             executeReset();
             isVotingOpen = true;
+            document.getElementById('display-container').classList.remove('hidden');
+            document.getElementById('timer-text').innerText = time;
             let timeLeft = time;
-            document.getElementById('timer-text').innerText = timeLeft;
             timerInterval = setInterval(() => {
                 timeLeft--;
                 document.getElementById('timer-text').innerText = timeLeft;
                 if (timeLeft <= 0) {
                     clearInterval(timerInterval);
-                    isVotingOpen = false;
-                    document.getElementById('timer-text').innerText = "DONE!";
+                    finishVoting();
                 }
             }, 1000);
         }
 
-        function executeToggle() {
-            document.getElementById('display-container').classList.toggle('hidden');
+        function updateChart() {
+            const counts = {};
+            Object.values(votes).forEach(v => counts[v] = (counts[v] || 0) + 1);
+            
+            const activeChoices = Object.keys(counts).sort();
+            const dataValues = activeChoices.map(c => counts[c]);
+            const bgColors = activeChoices.map(c => colors[c]);
+
+            voteChart.data.labels = activeChoices;
+            voteChart.data.datasets[0].data = dataValues;
+            voteChart.data.datasets[0].backgroundColor = bgColors;
+            voteChart.update();
+
+            // Update center number logic
+            if (activeChoices.length > 0) {
+                const maxVotes = Math.max(...dataValues);
+                const winnerIdx = dataValues.indexOf(maxVotes);
+                const winnerNum = activeChoices[winnerIdx];
+                
+                const centerEl = document.getElementById('center-number');
+                centerEl.innerText = winnerNum;
+                centerEl.style.color = colors[winnerNum];
+                
+                // Scale number based on percentage of total votes
+                const total = dataValues.reduce((a, b) => a + b, 0);
+                const scale = 1 + (maxVotes / total);
+                centerEl.style.transform = `scale(${scale})`;
+            }
         }
+
+        function finishVoting() {
+            isVotingOpen = false;
+            const data = voteChart.data.datasets[0].data;
+            const labels = voteChart.data.labels;
+            
+            if (labels.length > 0) {
+                const max = Math.max(...data);
+                const winner = labels[data.indexOf(max)];
+                
+                const announce = document.getElementById('win-announcement');
+                announce.innerText = `${winner} WINS!`;
+                announce.style.color = colors[winner];
+                announce.style.display = 'block';
+                
+                document.getElementById('display-container').classList.add('hidden');
+                
+                setTimeout(() => { announce.style.display = 'none'; }, 5000);
+            }
+        }
+
+        function executeToggle() { document.getElementById('display-container').classList.toggle('hidden'); }
 
         function executeReset() {
             clearInterval(timerInterval);
             votes = {};
             isVotingOpen = false;
             document.getElementById('timer-text').innerText = "";
-            updateChart();
-        }
-
-        function updateChart() {
-            let counts = [0, 0, 0, 0];
-            const voterEntries = Object.values(votes);
-            voterEntries.forEach(v => counts[v-1]++);
-            
-            // Default to equal slices if no votes
-            if (voterEntries.length === 0) {
-                voteChart.data.datasets[0].data = [1, 1, 1, 1];
-            } else {
-                voteChart.data.datasets[0].data = counts;
-            }
+            document.getElementById('center-number').innerText = "";
+            document.getElementById('win-announcement').style.display = 'none';
+            voteChart.data.labels = [];
+            voteChart.data.datasets[0].data = [];
             voteChart.update();
         }
     </script>
