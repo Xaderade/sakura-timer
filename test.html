@@ -146,15 +146,24 @@
             if(saved) document.getElementById('channel-input').value = saved;
         }
 
-        ComfyJS.onChat = (user, msg) => {
-            const cleanMsg = msg.trim().toLowerCase();
-            log(`[${user}]: ${msg}`);
-            if(!voting) return;
-            if(activeChoices.hasOwnProperty(cleanMsg)) {
-                votes[user] = cleanMsg;
-                updateChart();
-            }
-        };
+        ComfyJS.onChat = (user, msg, flags, self, extra) => {
+    // 1. Clean the message (Lowercase and remove all extra spaces)
+    const cleanMsg = msg.trim().toLowerCase();
+    
+    // 2. DEBUG: This will now show EVERYTHING in your black box
+    log(`Incoming: [${user}] said "${msg}"`);
+
+    if(!voting) return;
+
+    // 3. Check against the activeChoices keys
+    if(activeChoices.hasOwnProperty(cleanMsg)) {
+        votes[user] = cleanMsg;
+        updateChart();
+        log(`MATCH FOUND: ${cleanMsg} recorded for ${user}`);
+    } else {
+        log(`NO MATCH: "${cleanMsg}" is not in your current list.`);
+    }
+};
 
         function manualConnect() {
             const chan = document.getElementById('channel-input').value.trim();
