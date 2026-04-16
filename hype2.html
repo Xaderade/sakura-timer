@@ -2,27 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.14 [UNIQUE SYNC]</title>
+    <title>Mugi Co. | Engine v16.7.15</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
 
     <script>
-        // UNIQUE ID - Change this if it still doesn't connect
         const PEER_ID = 'mugi-engine-mark-sa-2026'; 
-        
         const urlParams = new URLSearchParams(window.location.search);
         const isRemote = urlParams.has('control');
         const peer = new Peer(isRemote ? null : PEER_ID);
         let remoteConn = null;
 
-        const ENGINE_VERSION = "v16.7.14";
+        const ENGINE_VERSION = "v16.7.15";
 
         if (!isRemote) {
-            // OBS MODE
-            peer.on('open', (id) => console.log('OBS Ready on ID:', id));
             peer.on('connection', (conn) => {
-                console.log("Remote Control Linked!");
                 conn.on('data', (data) => {
                     if (data.type === 'BOOT') {
                         document.getElementById('inp-ch').value = data.ch;
@@ -32,16 +27,10 @@
                 });
             });
         } else {
-            // REMOTE CONTROL MODE
             function connectToOBS() {
                 if (remoteConn && remoteConn.open) return;
-                console.log("Searching for OBS...");
                 const conn = peer.connect(PEER_ID);
-                conn.on('open', () => { 
-                    remoteConn = conn; 
-                    console.log("Connected to OBS");
-                });
-                conn.on('error', (err) => console.log("Connection Error:", err));
+                conn.on('open', () => { remoteConn = conn; });
             }
             peer.on('open', () => setInterval(connectToOBS, 3000));
         }
@@ -57,40 +46,34 @@
         body { margin: 0; background-color: transparent; color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
         #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 40px; width: 100vw; height: 100vh; padding: 0 0 60px 0; box-sizing: border-box; position: absolute; bottom: 0; left: 0; }
-        
         .emote-slot { position: relative; display: flex; flex-direction: column; align-items: center; transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; transform: translateY(100px); }
         .emote-slot.active { opacity: 1; transform: translateY(0) skewX(-5deg); }
+        .img-wrap { height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; background: var(--ui-bg); border: 8px solid #fff; box-shadow: 10px 10px 0px #000; margin-bottom: -15px; position: relative; z-index: 5; clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%); }
+        .count { font-size: 80px; font-weight: 900; position: relative; z-index: 10; color: #fff; text-shadow: 6px 6px 0px #000, -2px -2px 0px #000; font-style: italic; }
 
-        .img-wrap { height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; background: var(--ui-bg); border: 8px solid #fff; box-shadow: 10px 10px 0px #000; margin-bottom: -15px; position: relative; z-index: 5; transition: all 0.2s ease; clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%); }
-        
-        .rank-10 { border-color: var(--cyan) !important; background: rgba(0, 255, 255, 0.2) !important; }
-        .rank-25 { border-color: var(--g) !important; background: rgba(255, 215, 0, 0.2) !important; }
-        .rank-50 { border-color: var(--red) !important; background: rgba(255, 77, 77, 0.2) !important; }
-        .rank-100 { border-color: var(--magenta) !important; background: rgba(255, 0, 255, 0.2) !important; }
-
-        .count { font-size: 80px; font-weight: 900; position: relative; z-index: 10; color: #fff; text-shadow: 6px 6px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 2px 2px 0px #000; letter-spacing: -2px; margin-top: -10px; font-style: italic; }
-
-        .riser { position: absolute; font-weight: 900; font-size: 48px; color: #fff; text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100; animation: riseAndFade 0.7s ease-out forwards; }
-        .riser.milestone { font-size: 68px; text-shadow: 6px 6px 0 #000; z-index: 110; }
-
-        @keyframes riseAndFade { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-160px) scale(1.4); opacity: 0; } }
-        .flash { animation: hardFlash 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
-        @keyframes hardFlash { 0% { filter: brightness(5) saturate(2); } 100% { filter: brightness(1) saturate(1); } }
-        .emote-img { max-height: 170px; max-width: 170px; object-fit: contain; }
-        .pop { animation: hitPop 0.12s ease-out; }
-        @keyframes hitPop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
-
-        #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #0a0a0a; border-left: 4px solid var(--p); padding: 25px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; }
+        /* PERSISTENT CONTROL PANEL */
+        #control { position: absolute; top: 0; right: 0; width: 340px; height: 100vh; background: #0a0a0a; border-left: 4px solid var(--p); padding: 25px; z-index: 200; transform: translateX(100%); transition: 0.3s; box-sizing: border-box; display: flex; flex-direction: column; }
         #control.active { transform: translateX(0); }
-        .status-header { border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 10px; }
-        .ver { font-size: 12px; color: #666; margin-bottom: 5px; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 10px; text-transform: uppercase; }
-        .light { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #333; margin-right: 5px; }
-        .light.on { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
         
-        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; font-weight: bold; border-radius: 4px; }
-        button#boot-btn { width: 100%; padding: 20px; background: var(--p); color: white; border: none; cursor: pointer; font-weight: 900; margin-top: 10px; }
+        .ver-badge { font-size: 10px; background: var(--p); color: white; padding: 2px 6px; border-radius: 3px; display: inline-block; margin-bottom: 5px; }
+        .status-header { border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; flex-shrink: 0; }
+        
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .light { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #222; margin-right: 5px; }
+        .light.on { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
+        
+        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
+        button#boot-btn { width: 100%; padding: 20px; background: var(--p); color: white; border: none; cursor: pointer; font-weight: 900; }
         #m-toggle { position: absolute; top: 10px; right: 10px; background: var(--p); border: none; color: white; width: 45px; height: 45px; cursor: pointer; font-weight: 900; z-index: 210; }
+
+        .rank-10 { border-color: var(--cyan) !important; }
+        .rank-25 { border-color: var(--g) !important; }
+        .rank-50 { border-color: var(--red) !important; }
+        .rank-100 { border-color: var(--magenta) !important; }
+        
+        .riser { position: absolute; font-weight: 900; font-size: 48px; color: #fff; text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100; animation: riseAndFade 0.7s ease-out forwards; }
+        @keyframes riseAndFade { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-160px) scale(1.4); opacity: 0; } }
+        .emote-img { max-height: 170px; max-width: 170px; object-fit: contain; }
     </style>
 </head>
 <body>
@@ -106,18 +89,20 @@
 
 <div id="control">
     <div class="status-header">
-        <div class="ver">MUGI ENGINE <span id="ver-num"></span></div>
+        <div class="ver-badge">ENGINE <span id="ver-num"></span></div>
         <div class="stat-grid">
-            <div><span id="l-tmi" class="light"></span> TMI</div>
+            <div><span id="l-tmi" class="light"></span> CHAT</div>
             <div><span id="l-7tv" class="light"></span> 7TV</div>
             <div><span id="l-bt" class="light"></span> BTTV</div>
             <div><span id="l-peer" class="light"></span> OBS LINK</div>
         </div>
-        <div style="font-size: 11px; margin-top: 10px; color: var(--p)">EMOTES LOADED: <span id="lib-count">0</span></div>
+        <div style="font-size: 11px; margin-top: 12px; color: #888; border-top: 1px solid #222; padding-top: 10px;">
+            EMOTES INDEXED: <span id="lib-count" style="color:white">0</span>
+        </div>
     </div>
 
-    <input type="text" id="inp-ch" placeholder="Username (Twitch)">
-    <input type="text" id="inp-7id" placeholder="7TV ID (Optional)">
+    <input type="text" id="inp-ch" placeholder="Twitch Username">
+    <input type="text" id="inp-7id" placeholder="7TV Set ID (Optional)">
     <button id="boot-btn" onclick="sendBoot()">PUSH TO OBS</button>
 </div>
 
@@ -128,8 +113,6 @@
     let lastMilestone = [0, 0, 0, 0]; 
     let client = null;
     let mainLoop = null;
-
-    const rankNames = { 10: "COMBO", 25: "GREAT", 50: "ULTRA", 100: "GODLIKE", 200: "MUGI MODE" };
 
     function setLight(id, state) {
         const el = document.getElementById(id);
@@ -179,7 +162,6 @@
     function reboot() {
         const CH = document.getElementById('inp-ch').value.trim().toLowerCase();
         if(!CH) return;
-        
         loadAssets(null, CH);
         if(client) { client.disconnect(); setLight('l-tmi', false); }
         if(mainLoop) clearInterval(mainLoop);
@@ -217,22 +199,11 @@
         setLight('l-peer', isConnected); 
     }, 1000);
 
-    function spawnRiser(slot, milestoneValue = null) {
+    function spawnRiser(slot) {
         const riser = document.createElement('div');
         riser.className = 'riser';
-        if (milestoneValue) {
-            riser.innerText = rankNames[milestoneValue] || "COMBO";
-            riser.classList.add('milestone');
-            riser.style.left = '0'; riser.style.width = '100%'; riser.style.textAlign = 'center';
-            if(milestoneValue >= 100) riser.style.color = 'var(--magenta)';
-            else if(milestoneValue >= 50) riser.style.color = 'var(--red)';
-            else if(milestoneValue >= 25) riser.style.color = 'var(--g)';
-            else riser.style.color = 'var(--cyan)';
-        } else {
-            riser.innerText = '+1';
-            riser.style.left = (Math.random() * 40 + 30) + '%'; 
-            riser.style.color = '#fff';
-        }
+        riser.innerText = '+1';
+        riser.style.left = (Math.random() * 40 + 30) + '%'; 
         slot.appendChild(riser);
         riser.addEventListener('animationend', () => riser.remove());
     }
@@ -258,17 +229,16 @@
                 slot.classList.add('active');
 
                 if(trig === n) {
-                    wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
+                    spawnRiser(slot);
                     const currentM = milestoneCheck.filter(m => roundedC >= m).pop() || 0;
                     if(currentM > lastMilestone[i]) {
-                        spawnRiser(slot, currentM);
                         const rCls = `rank-${currentM}`;
-                        wrap.classList.add(rCls, 'flash');
-                        setTimeout(() => { wrap.classList.remove(rCls, 'flash'); }, 2000);
+                        wrap.classList.add(rCls);
+                        setTimeout(() => { wrap.classList.remove(rCls); }, 2000);
                         lastMilestone[i] = currentM;
-                    } else { spawnRiser(slot); }
+                    }
                 }
-            } else { slot.classList.remove('active'); lastMilestone[i] = 0; wrap.setAttribute('data-name', ''); }
+            } else { slot.classList.remove('active'); wrap.setAttribute('data-name', ''); }
         }
     }
 </script>
