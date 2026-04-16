@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - Balanced HUD v16.7.31</title>
+    <title>Mugi Choice - Stable Emote v16.7.33</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -19,7 +19,7 @@
         
         #center-number { 
             position: absolute; z-index: 10; width: 85%; 
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            transition: all 0.3s ease; 
             pointer-events: none; text-align: center; 
             text-shadow: 7px 7px 0px #000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -40,7 +40,7 @@
         .control-box { background: white; color: black; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 480px; }
         .input-group { margin: 15px 0; text-align: left; }
         label { font-weight: bold; font-size: 14px; }
-        input, textarea { width: 100%; padding: 10px; font-size: 16px; border: 3px solid black; border-radius: 10px; box-sizing: border-box; font-family: sans-serif; }
+        input, textarea { width: 100%; padding: 10px; font-size: 16px; border: 3px solid black; border-radius: 10px; box-sizing: border-box; }
         textarea { height: 60px; resize: none; font-weight: bold; color: #2196F3; }
         button { width: 100%; padding: 15px; cursor: pointer; font-weight: bold; font-size: 18px; border: 4px solid #000; border-radius: 15px; margin-top: 10px; text-transform: uppercase; }
         .start-btn { background: #43B047; color: white; }
@@ -73,7 +73,7 @@
             <h2 style="margin:0;">MUGI DYNAMIC CONTROL</h2>
             <div class="input-group">
                 <label>CHOICES (Comma Separated):</label>
-                <textarea id="choices-input">Pog, OOOO, LOL, KEKW</textarea>
+                <textarea id="choices-input">KEKW, LUL, Pog, GG</textarea>
             </div>
             <div style="display: flex; gap: 10px;">
                 <div class="input-group" style="flex:1;"><label>TIMER:</label><input type="number" id="timer-input" value="30"></div>
@@ -95,9 +95,6 @@
         const isController = window.location.hash.includes('control');
         const colorPalette = ['#43B047', '#2196F3', '#E52521', '#9C27B0', '#FF9800', '#FFEB3B', '#00BCD4', '#E91E63'];
         let dynamicColors = {};
-        
-        if (isController) document.getElementById('controls').style.display = 'flex';
-
         let votes = {}; 
         let isVotingOpen = false;
         let timerInterval;
@@ -127,9 +124,10 @@
             });
         });
 
+        // EMOTE SAFE CHAT LOGIC
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             if (!isVotingOpen) return;
-            const msg = message.trim(); 
+            const msg = message.trim(); // No uppercase conversion
             if (dynamicColors.hasOwnProperty(msg)) {
                 votes[user] = msg; 
                 updateChart();
@@ -158,7 +156,7 @@
             dynamicColors = data.colorMap;
             isVotingOpen = true;
             document.getElementById('main-title').innerText = data.title;
-            document.getElementById('sub-title').innerText = "Type: " + Object.keys(dynamicColors).join(" / ");
+            document.getElementById('sub-title').innerText = "Type Choice in Chat";
             document.getElementById('display-container').classList.remove('hidden');
             let timeLeft = data.time;
             document.getElementById('timer-text').innerText = timeLeft;
@@ -170,55 +168,51 @@
         }
 
         function updateChart() {
-            const counts = {};
-            Object.values(votes).forEach(v => counts[v] = (counts[v] || 0) + 1);
-            const sortedChoices = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-            const dataValues = sortedChoices.map(c => counts[c]);
-            const bgColors = sortedChoices.map(c => dynamicColors[c]);
-
-            voteChart.data.labels = sortedChoices;
-            voteChart.data.datasets[0].data = dataValues;
-            voteChart.data.datasets[0].backgroundColor = bgColors;
-            voteChart.update();
-
-            const total = dataValues.reduce((a, b) => a + b, 0);
+            const voteArray = Object.values(votes);
+            const total = voteArray.length;
             document.getElementById('vote-num').innerText = total;
 
-            if (sortedChoices.length > 0) {
-                const centerEl = document.getElementById('center-number');
-                let displayHTML = "";
-                
-                const top1Word = sortedChoices[0];
-                const top1Perc = Math.round((counts[top1Word] / total) * 100);
-                const size1 = 60 + (top1Perc * 0.6);
+            if (total === 0) return;
 
-                if (sortedChoices.length === 1) {
-                    displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.8;">${top1Word}<br><span style="font-size:${size1 * 0.4}px; color:white;">${top1Perc}%</span></div>`;
-                } else {
-                    const top2Word = sortedChoices[1];
-                    const top2Perc = Math.round((counts[top2Word] / total) * 100);
-                    const size2 = 40 + (top2Perc * 0.5);
+            const counts = {};
+            voteArray.forEach(v => counts[v] = (counts[v] || 0) + 1);
+            const sortedChoices = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
 
-                    displayHTML = `
-                        <div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.75; margin-bottom:5px;">
-                            ${top1Word} <span style="font-size:${size1 * 0.35}px; color:white;">${top1Perc}%</span>
-                        </div>
-                        <div style="color:white; font-size:25px; opacity:0.3; margin: 2px 0;">────────</div>
-                        <div style="color:${dynamicColors[top2Word]}; font-size:${size2}px; line-height:0.75;">
-                            ${top2Word} <span style="font-size:${size2 * 0.35}px; color:white;">${top2Perc}%</span>
-                        </div>`;
-                }
-                centerEl.innerHTML = displayHTML;
+            voteChart.data.labels = sortedChoices;
+            voteChart.data.datasets[0].data = sortedChoices.map(c => counts[c]);
+            voteChart.data.datasets[0].backgroundColor = sortedChoices.map(c => dynamicColors[c]);
+            voteChart.update();
+
+            const centerEl = document.getElementById('center-number');
+            let displayHTML = "";
+            
+            const top1Word = sortedChoices[0];
+            const top1Perc = Math.round((counts[top1Word] / total) * 100);
+            const size1 = 60 + (top1Perc * 0.6);
+
+            if (sortedChoices.length === 1) {
+                displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.8;">${top1Word}<br><span style="font-size:${size1 * 0.4}px; color:white;">${top1Perc}%</span></div>`;
+            } else {
+                const top2Word = sortedChoices[1];
+                const top2Perc = Math.round((counts[top2Word] / total) * 100);
+                const size2 = 40 + (top2Perc * 0.5);
+                displayHTML = `
+                    <div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.75; margin-bottom:5px;">
+                        ${top1Word} <span style="font-size:${size1 * 0.35}px; color:white;">${top1Perc}%</span>
+                    </div>
+                    <div style="color:white; font-size:25px; opacity:0.3; margin: 2px 0;">────────</div>
+                    <div style="color:${dynamicColors[top2Word]}; font-size:${size2}px; line-height:0.75;">
+                        ${top2Word} <span style="font-size:${size2 * 0.35}px; color:white;">${top2Perc}%</span>
+                    </div>`;
             }
+            centerEl.innerHTML = displayHTML;
         }
 
         function finishVoting() {
             isVotingOpen = false;
-            const data = voteChart.data.datasets[0].data;
             const labels = voteChart.data.labels;
             if (labels.length > 0) {
-                const max = Math.max(...data);
-                const winner = labels[data.indexOf(max)];
+                const winner = labels[0];
                 const announce = document.getElementById('win-announcement');
                 announce.innerText = `${winner} WINS!`;
                 announce.style.color = dynamicColors[winner];
