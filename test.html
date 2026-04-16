@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - Dynamic Pie</title>
+    <title>Mugi Choice - Dynamic Pie v16.7.18</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -38,9 +38,10 @@
             z-index: 10;
             color: white;
             text-shadow: 8px 8px 0px #000;
-            font-size: 120px;
+            font-size: 100px; /* Adjusted for longer words like KEKW */
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
+            text-align: center;
         }
 
         #timer-text { 
@@ -82,7 +83,7 @@
     <div id="display-container" class="hidden">
         <div id="header-area">
             <h1 id="main-title">CHOOSE NOW</h1>
-            <p id="sub-title">Type number in chat to vote</p>
+            <p id="sub-title">Type in chat to vote</p>
         </div>
         <div id="pie-wrapper">
             <div id="timer-text"></div>
@@ -112,7 +113,14 @@
         const RATER_ID = 'mugi-dynamic-pie-2026';
         const CHANNEL = 'robcdee';
         const isController = window.location.hash.includes('control');
-        const colors = { 1: '#43B047', 2: '#2196F3', 3: '#E52521', 4: '#9C27B0' };
+        
+        // Colors mapped directly to chat words
+        const colors = { 
+            'Pog': '#43B047', 
+            'OOOO': '#2196F3', 
+            'LOL': '#E52521', 
+            'KEKW': '#9C27B0' 
+        };
         
         if (isController) document.getElementById('controls').style.display = 'flex';
 
@@ -134,11 +142,14 @@
 
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
+
         peer.on('open', () => { if (isController) connectToOBS(); });
+        
         function connectToOBS() {
             conn = peer.connect(RATER_ID);
             conn.on('open', () => { if(isController) document.getElementById('dot-obs').classList.add('online'); });
         }
+
         peer.on('connection', (c) => {
             conn = c;
             conn.on('data', (data) => {
@@ -150,28 +161,31 @@
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             if (!isVotingOpen) return;
-            const msg = message.trim();
-            if (['Pog', 'OOOO', 'LOL', 'KEKW'].includes(msg)) {
-                votes[user] = parseInt(msg);
+            const msg = message.trim(); 
+            
+            // Validate word matches our list
+            if (Object.keys(colors).includes(msg)) {
+                votes[user] = msg; 
                 updateChart();
             }
         };
+
         ComfyJS.Init(CHANNEL);
         setTimeout(() => { if(isController) document.getElementById('dot-twitch').classList.add('online'); }, 1500);
 
         function startVoting() {
             const duration = document.getElementById('timer-input').value || 30;
-            if (conn) conn.send({ action: 'start', time: duration });
+            if (conn && conn.open) conn.send({ action: 'start', time: duration });
             executeStart(duration);
         }
 
         function toggleVisibility() {
-            if (conn) conn.send({ action: 'toggle' });
+            if (conn && conn.open) conn.send({ action: 'toggle' });
             executeToggle();
         }
 
         function resetAll() {
-            if (conn) conn.send({ action: 'reset' });
+            if (conn && conn.open) conn.send({ action: 'reset' });
             executeReset();
         }
 
@@ -206,10 +220,12 @@
             if (activeChoices.length > 0) {
                 const maxVotes = Math.max(...dataValues);
                 const winnerIdx = dataValues.indexOf(maxVotes);
-                const winnerNum = activeChoices[winnerIdx];
+                const winnerWord = activeChoices[winnerIdx];
                 const centerEl = document.getElementById('center-number');
-                centerEl.innerText = winnerNum;
-                centerEl.style.color = colors[winnerNum];
+                
+                centerEl.innerText = winnerWord;
+                centerEl.style.color = colors[winnerWord];
+                
                 const total = dataValues.reduce((a, b) => a + b, 0);
                 const scale = 1 + (maxVotes / total);
                 centerEl.style.transform = `scale(${scale})`;
