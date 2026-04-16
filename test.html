@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - v16.7.41</title>
+    <title>Mugi Choice - v16.7.44</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
+        
         body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
         
         #display-container { position: relative; width: 800px; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.5s ease; }
@@ -15,7 +16,6 @@
         
         #pie-wrapper { position: relative; width: 600px; height: 600px; display: flex; justify-content: center; align-items: center; }
         
-        /* RESTORED CENTER STYLING */
         #center-number { 
             position: absolute; z-index: 10; width: 85%; text-align: center; 
             text-shadow: 7px 7px 0px #000; display: flex; flex-direction: column; 
@@ -25,6 +25,7 @@
         #vote-counter { position: absolute; top: -20px; left: -20px; font-size: 60px; color: #FFD700; text-shadow: 4px 4px 0px #000; }
         #timer-text { position: absolute; top: -20px; right: -20px; font-size: 80px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
         #win-announcement { position: absolute; font-size: 110px; color: #FFD700; text-shadow: 10px 10px 0px #000; display: none; text-align: center; width: 100%; z-index: 20; line-height: 1; }
+        
         .hidden { opacity: 0 !important; transform: scale(0.8); }
 
         /* CONTROLLER STYLING */
@@ -34,6 +35,7 @@
         label { font-size: 10px; font-weight: bold; color: #555; text-transform: uppercase; }
         input, textarea { width: 100%; padding: 12px; font-size: 16px; border: 3px solid #000; border-radius: 10px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; font-size: 14px; border: 3px solid #000; border-radius: 10px; margin-top: 5px; text-transform: uppercase; }
+        
         .start-btn { background: #4CAF50; color: white; font-size: 18px; }
         .sync-btn { background: #9146FF; color: white; width: 100px; margin: 0; }
         .debug-log { background: #000; color: #0f0; font-family: monospace; font-size: 10px; padding: 10px; border-radius: 5px; margin-top: 15px; height: 70px; overflow-y: auto; text-align: left; width: 100%; box-sizing: border-box; }
@@ -60,7 +62,7 @@
 
     <div id="controls">
         <div class="control-box">
-            <h3 style="margin:0 0 10px 0; text-align:center;">MUGI PIE (V16.7.41)</h3>
+            <h3 style="margin:0 0 10px 0; text-align:center;">MUGI PIE (V16.7.44)</h3>
             
             <div class="input-group" style="background:#eee; padding:10px; border-radius:10px; border:2px solid #000;">
                 <label>1. Connect Twitch</label>
@@ -71,7 +73,7 @@
             </div>
 
             <div class="input-group">
-                <label>2. Voting Options (e.g. Pog, LUL)</label>
+                <label>2. Voting Options (Comma Separated)</label>
                 <textarea id="choices-input">Pog, KEKW, LUL, GG</textarea>
             </div>
 
@@ -92,7 +94,7 @@
             </div>
 
             <div id="debug" class="debug-log">System Ready...</div>
-            <div id="version-tag">v16.7.41</div>
+            <div id="version-tag">v16.7.44</div>
         </div>
     </div>
 
@@ -146,24 +148,18 @@
             if(saved) document.getElementById('channel-input').value = saved;
         }
 
-        ComfyJS.onChat = (user, msg, flags, self, extra) => {
-    // 1. Clean the message (Lowercase and remove all extra spaces)
-    const cleanMsg = msg.trim();
-    
-    // 2. DEBUG: This will now show EVERYTHING in your black box
-    log(`Incoming: [${user}] said "${msg}"`);
-
-    if(!voting) return;
-
-    // 3. Check against the activeChoices keys
-    if(activeChoices.hasOwnProperty(cleanMsg)) {
-        votes[user] = cleanMsg;
-        updateChart();
-        log(`MATCH FOUND: ${cleanMsg} recorded for ${user}`);
-    } else {
-        log(`NO MATCH: "${cleanMsg}" is not in your current list.`);
-    }
-};
+        ComfyJS.onChat = (user, msg) => {
+            const cleanMsg = msg.trim();
+            if(!voting) return;
+            
+            if(activeChoices.hasOwnProperty(cleanMsg)) {
+                votes[user] = cleanMsg;
+                updateChart();
+                log(`MATCH: ${cleanMsg}`);
+            } else {
+                log(`Chat: "${cleanMsg}" (No Match)`);
+            }
+        };
 
         function manualConnect() {
             const chan = document.getElementById('channel-input').value.trim();
@@ -177,13 +173,14 @@
         }
 
         function startVoting() {
-            const raw = document.getElementById('choices-input').value.split(',').map(s => s.trim());
+            const raw = document.getElementById('choices-input').value.split(',').map(s => s.replace(/[\n\r]/g, "").trim());
             const choiceMap = {};
             const nameMap = {};
             raw.forEach((c, i) => {
-                const lower = c.toLowerCase();
-                choiceMap[lower] = colors[i % colors.length];
-                nameMap[lower] = c;
+                if(c) {
+                    choiceMap[c] = colors[i % colors.length];
+                    nameMap[c] = c;
+                }
             });
             const data = {
                 action: 'start',
@@ -213,7 +210,6 @@
             }, 1000);
         }
 
-        /* RESTORED TOP 2 LOGIC */
         function updateChart() {
             const counts = {};
             Object.values(votes).forEach(v => counts[v] = (counts[v] || 0) + 1);
@@ -231,14 +227,14 @@
                 const centerEl = document.getElementById('center-number');
                 const top1Word = sorted[0];
                 const top1Perc = Math.round((counts[top1Word] / total) * 100);
-                const size1 = 100 + (top1Perc * 0.5);
+                const size1 = 60 + (top1Perc * 0.5);
 
                 if (sorted.length === 1) {
                     centerEl.innerHTML = `<div style="color:${activeChoices[top1Word]}; font-size:${size1}px; line-height:0.8;">${displayNames[top1Word]}<br><span style="font-size:${size1 * 0.4}px; color:white;">${top1Perc}%</span></div>`;
                 } else {
                     const top2Word = sorted[1];
                     const top2Perc = Math.round((counts[top2Word] / total) * 100);
-                    const size2 = 50 + (top2Perc * 0.4);
+                    const size2 = 35 + (top2Perc * 0.4);
                     centerEl.innerHTML = `
                         <div style="color:${activeChoices[top1Word]}; font-size:${size1}px; line-height:0.75;">
                             ${displayNames[top1Word]} <span style="font-size:${size1 * 0.3}px; color:white;">${top1Perc}%</span>
@@ -258,7 +254,7 @@
                 const winnerName = labels[0];
                 const winEl = document.getElementById('win-announcement');
                 winEl.innerText = `${winnerName} WINS!`;
-                winEl.style.color = activeChoices[winnerName.toLowerCase()];
+                winEl.style.color = activeChoices[winnerName];
                 winEl.style.display = 'block';
                 document.getElementById('display-container').classList.add('hidden');
                 setTimeout(() => winEl.style.display='none', 6000);
