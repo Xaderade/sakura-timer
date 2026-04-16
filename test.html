@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - Dynamic Pie v16.7.18</title>
+    <title>Mugi Choice - Dynamic Pie v16.7.21</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -38,7 +38,8 @@
             z-index: 10;
             color: white;
             text-shadow: 8px 8px 0px #000;
-            font-size: 100px; /* Adjusted for longer words like KEKW */
+            font-size: 85px; 
+            line-height: 0.85;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
             text-align: center;
@@ -114,7 +115,6 @@
         const CHANNEL = 'robcdee';
         const isController = window.location.hash.includes('control');
         
-        // Colors mapped directly to chat words
         const colors = { 
             'Pog': '#43B047', 
             'OOOO': '#2196F3', 
@@ -133,7 +133,7 @@
             type: 'doughnut',
             data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: 'black', borderWidth: 5 }] },
             options: {
-                cutout: '45%',
+                cutout: '65%', // Increased for percentage text space
                 responsive: true,
                 animation: { duration: 400 },
                 plugins: { legend: { display: false } }
@@ -144,7 +144,6 @@
         let conn;
 
         peer.on('open', () => { if (isController) connectToOBS(); });
-        
         function connectToOBS() {
             conn = peer.connect(RATER_ID);
             conn.on('open', () => { if(isController) document.getElementById('dot-obs').classList.add('online'); });
@@ -162,9 +161,7 @@
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             if (!isVotingOpen) return;
             const msg = message.trim(); 
-            
-            // Validate word matches our list
-            if (Object.keys(colors).includes(msg)) {
+            if (colors.hasOwnProperty(msg)) {
                 votes[user] = msg; 
                 updateChart();
             }
@@ -218,15 +215,16 @@
             voteChart.update();
 
             if (activeChoices.length > 0) {
+                const total = dataValues.reduce((a, b) => a + b, 0);
                 const maxVotes = Math.max(...dataValues);
                 const winnerIdx = dataValues.indexOf(maxVotes);
                 const winnerWord = activeChoices[winnerIdx];
+                const percentage = Math.round((maxVotes / total) * 100);
+
                 const centerEl = document.getElementById('center-number');
-                
-                centerEl.innerText = winnerWord;
+                centerEl.innerHTML = `${winnerWord}<br><span style="font-size: 50px; color: white;">${percentage}%</span>`;
                 centerEl.style.color = colors[winnerWord];
                 
-                const total = dataValues.reduce((a, b) => a + b, 0);
                 const scale = 1 + (maxVotes / total);
                 centerEl.style.transform = `scale(${scale})`;
             }
@@ -236,7 +234,6 @@
             isVotingOpen = false;
             const data = voteChart.data.datasets[0].data;
             const labels = voteChart.data.labels;
-            
             if (labels.length > 0) {
                 const max = Math.max(...data);
                 const winner = labels[data.indexOf(max)];
