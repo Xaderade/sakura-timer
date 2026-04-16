@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - v16.7.37</title>
+    <title>Mugi Choice - v16.7.38</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -10,7 +10,7 @@
         
         body { background: #00ff00; font-family: 'Luckiest Guy', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
         
-        #display-container { position: relative; width: 800px; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.5s ease; }
+        #display-container { position: relative; width: 800px; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.5s ease; opacity: 1; }
         #header-area { text-align: center; margin-bottom: 10px; }
         #main-title { font-size: 80px; color: white; text-shadow: 6px 6px 0px #000; margin: 0; }
         #sub-title { font-size: 24px; color: #FFD700; text-shadow: 3px 3px 0px #000; margin: 0; text-transform: uppercase; }
@@ -20,25 +20,29 @@
         #vote-counter { position: absolute; top: -20px; left: -20px; font-size: 60px; color: #FFD700; text-shadow: 4px 4px 0px #000; text-align: left; line-height: 0.9; }
         #vote-label { font-size: 20px; color: white; display: block; }
         #timer-text { position: absolute; top: -20px; right: -20px; font-size: 80px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
+        
         #win-announcement { position: absolute; font-size: 120px; color: #FFD700; text-shadow: 10px 10px 0px #000; display: none; text-align: center; width: 100%; z-index: 20; }
-        .hidden { opacity: 0 !important; transform: scale(0.9); }
+        
+        /* The "Invisible" state */
+        .hidden { opacity: 0 !important; transform: scale(0.8); pointer-events: none; }
 
         /* CONTROL PANEL */
         #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; color: white; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
         .control-box { background: white; color: black; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 480px; position: relative; }
-        .input-group { margin: 15px 0; text-align: left; }
-        label { font-weight: bold; font-size: 12px; text-transform: uppercase; color: #666; }
+        .input-group { margin: 12px 0; text-align: left; }
+        label { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #666; }
         input, textarea { width: 100%; padding: 10px; font-size: 16px; border: 3px solid black; border-radius: 10px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; font-size: 16px; border: 4px solid #000; border-radius: 12px; margin-top: 8px; text-transform: uppercase; }
-        .start-btn { background: #43B047; color: white; font-size: 20px; padding: 18px; }
-        .connect-btn { background: #9146FF; color: white; margin-top: 0; }
+        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; font-size: 15px; border: 4px solid #000; border-radius: 12px; margin-top: 5px; text-transform: uppercase; }
         
-        /* CONNECTION STATUS BAR */
-        #status-msg { font-size: 11px; color: #666; margin-top: 5px; font-weight: bold; text-align: center; }
-        .status-tray { margin-top: 20px; padding-top: 10px; border-top: 2px dashed #ccc; display: flex; justify-content: space-around; font-size: 12px; }
+        .start-btn { background: #43B047; color: white; font-size: 20px; padding: 15px; }
+        .connect-btn { background: #9146FF; color: white; margin: 0; width: 80px !important; padding: 8px; }
+        .test-btn { background: #FF9800; color: white; }
+
+        #status-msg { font-size: 11px; color: #666; margin-top: 4px; font-weight: bold; }
+        .status-tray { margin-top: 15px; padding-top: 10px; border-top: 2px dashed #ccc; display: flex; justify-content: space-around; font-size: 12px; }
         .dot { height: 10px; width: 10px; border-radius: 50%; background: red; }
         .online { background: #43B047; box-shadow: 0 0 5px #43B047; }
-        #version-tag { position: absolute; bottom: 10px; right: 15px; font-size: 10px; color: #999; }
+        #version-tag { position: absolute; bottom: 8px; right: 12px; font-size: 9px; color: #bbb; }
     </style>
 </head>
 <body>
@@ -60,31 +64,32 @@
 
     <div id="controls">
         <div class="control-box">
-            <h2 style="margin:0 0 10px 0;">MUGI DYNAMIC CONTROL</h2>
+            <h2 style="margin:0 0 10px 0;">MUGI PIE CONTROL</h2>
             
-            <div class="input-group" style="background: #f0f0f0; padding: 12px; border-radius: 15px; border: 3px solid #000;">
-                <label>1. Sync Twitch Chat:</label>
-                <div style="display: flex; gap: 5px;">
-                    <input type="text" id="channel-input" placeholder="Channel Name" style="margin:0; flex:1;">
-                    <button class="connect-btn" onclick="connectToTwitch()" style="width: auto; margin:0;">SYNC</button>
+            <div class="input-group" style="background: #f9f9f9; padding: 10px; border-radius: 15px; border: 2px solid #ccc;">
+                <label>Target Twitch Channel:</label>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <input type="text" id="channel-input" placeholder="e.g. robcdee" style="margin:0; flex:1;">
+                    <button class="connect-btn" onclick="connectToTwitch()">SYNC</button>
                 </div>
-                <div id="status-msg">Not Connected</div>
+                <div id="status-msg">Offline</div>
             </div>
 
             <div class="input-group">
-                <label>2. Voting Options (Comma Separated):</label>
-                <textarea id="choices-input" style="height:50px; color:#2196F3; font-weight:bold;">Pog, OOOO, LOL, KEKW</textarea>
+                <label>Choices (Comma Separated):</label>
+                <textarea id="choices-input" style="height:40px; color:#2196F3; font-weight:bold;">Pog, OOOO, LOL, KEKW</textarea>
             </div>
             
-            <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex:1;"><label>Time:</label><input type="number" id="timer-input" value="30"></div>
-                <div class="input-group" style="flex:2;"><label>Title:</label><input type="text" id="title-input" value="CHOOSE NOW"></div>
+            <div style="display: flex; gap: 8px;">
+                <div class="input-group" style="flex:1;"><label>Secs:</label><input type="number" id="timer-input" value="30"></div>
+                <div class="input-group" style="flex:2;"><label>Header:</label><input type="text" id="title-input" value="CHOOSE NOW"></div>
             </div>
 
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
             
-            <div style="display: flex; gap: 10px;">
-                <button onclick="toggleVisibility()" style="background:#2196F3; color:white; flex:1;">👁 HIDE/SHOW</button>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="toggleVisibility()" style="background:#2196F3; color:white; flex:1;">👁 SHOW/HIDE</button>
+                <button class="test-btn" onclick="testDisplay()" style="flex:1;">🛠 TEST UI</button>
                 <button onclick="resetAll()" style="background:#E52521; color:white; flex:1;">✖ RESET</button>
             </div>
 
@@ -92,7 +97,7 @@
                 <div style="display:flex; align-items:center; gap:5px;"><div id="dot-obs" class="dot"></div> OBS-LINK</div>
                 <div style="display:flex; align-items:center; gap:5px;"><div id="dot-twitch" class="dot"></div> CHAT-LINK</div>
             </div>
-            <div id="version-tag">v16.7.37</div>
+            <div id="version-tag">v16.7.38</div>
         </div>
     </div>
 
@@ -112,16 +117,15 @@
             options: { cutout: '70%', responsive: true, animation: { duration: 400 }, plugins: { legend: { display: false } } }
         });
 
-        // PEER JS SETUP
+        // PEER JS LOGIC
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
 
-        peer.on('open', () => { if (isController) connectToOBS(); });
-        function connectToOBS() {
+        peer.on('open', () => { if (isController) connectToPeer(); });
+        function connectToPeer() {
             conn = peer.connect(RATER_ID);
             conn.on('open', () => { 
                 document.getElementById('dot-obs').classList.add('online');
-                // Auto-sync channel to OBS if already saved
                 const saved = localStorage.getItem('mugi_last_channel');
                 if(saved) conn.send({ action: 'connect', channel: saved });
             });
@@ -134,18 +138,22 @@
                 if (data.action === 'reset') executeReset();
                 if (data.action === 'toggle') executeToggle();
                 if (data.action === 'connect') {
-                    window.location.reload(); // Hard refresh OBS to ensure clean Twitch connection
+                    ComfyJS.Disconnect();
+                    ComfyJS.Init(data.channel);
+                    console.log("OBS Connected to:", data.channel);
                 }
             });
         });
 
-        // If OBS loads and has a saved channel, connect immediately
-        window.onload = () => {
-            const saved = localStorage.getItem('mugi_last_channel');
-            if(saved && !isController) {
-                ComfyJS.Init(saved);
+        // Controller UI initialization
+        if (isController) {
+            document.getElementById('controls').style.display = 'flex';
+            const savedChannel = localStorage.getItem('mugi_last_channel');
+            if(savedChannel) {
+                document.getElementById('channel-input').value = savedChannel;
+                setTimeout(connectToTwitch, 1000); // Auto-connect controller on load
             }
-        };
+        }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             if (!isVotingOpen) return;
@@ -158,24 +166,18 @@
 
         function connectToTwitch() {
             const channel = document.getElementById('channel-input').value.trim();
-            if(!channel) return alert("Enter channel name");
+            if(!channel) return;
             
             localStorage.setItem('mugi_last_channel', channel);
-            
-            // Send refresh command to OBS to force it to use the new channel
             if(conn && conn.open) conn.send({ action: 'connect', channel: channel });
 
-            // Local Controller Connect
-            try {
-                ComfyJS.Disconnect();
-                ComfyJS.Init(channel);
-                document.getElementById('status-msg').innerText = "CONNECTED TO: " + channel.toUpperCase();
-                document.getElementById('status-msg').style.color = "#43B047";
-                document.getElementById('dot-twitch').classList.add('online');
-            } catch(e) {
-                document.getElementById('status-msg').innerText = "FAILED TO CONNECT";
-                document.getElementById('status-msg').style.color = "red";
-            }
+            ComfyJS.Disconnect();
+            ComfyJS.Init(channel);
+            
+            const msgEl = document.getElementById('status-msg');
+            msgEl.innerText = "CONNECTED: " + channel.toUpperCase();
+            msgEl.style.color = "#43B047";
+            document.getElementById('dot-twitch').classList.add('online');
         }
 
         function startVoting() {
@@ -187,6 +189,13 @@
             const startData = { action: 'start', time: duration, title: title, colorMap: newColors };
             if (conn && conn.open) conn.send(startData);
             executeStart(startData);
+        }
+
+        function testDisplay() {
+            const container = document.getElementById('display-container');
+            container.classList.remove('hidden');
+            document.getElementById('main-title').innerText = "TEST MODE";
+            document.getElementById('sub-title').innerText = "UI IS VISIBLE";
         }
 
         function toggleVisibility() { if (conn && conn.open) conn.send({ action: 'toggle' }); executeToggle(); }
@@ -274,6 +283,7 @@
             document.getElementById('timer-text').innerText = "";
             document.getElementById('center-number').innerHTML = "";
             document.getElementById('win-announcement').style.display = 'none';
+            document.getElementById('display-container').classList.add('hidden');
             voteChart.data.labels = [];
             voteChart.data.datasets[0].data = [];
             voteChart.update();
