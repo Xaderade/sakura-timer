@@ -186,22 +186,32 @@
                 const top1Word = sortedChoices[0];
                 const top1Perc = Math.round((counts[top1Word] / total) * 100);
                 
+                // Calculate size for Top 1 (Min 50px, Max 90px)
+                const size1 = 50 + (top1Perc * 0.4);
+
                 if (sortedChoices.length === 1) {
-                    // Solo Leader
-                    displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:85px; line-height:0.85;">${top1Word}<br><span style="font-size:50px; color:white;">${top1Perc}%</span></div>`;
+                    displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.85;">${top1Word}<br><span style="font-size:${size1 * 0.5}px; color:white;">${top1Perc}%</span></div>`;
                 } else {
-                    // Top 2 Battle
                     const top2Word = sortedChoices[1];
                     const top2Perc = Math.round((counts[top2Word] / total) * 100);
+                    
+                    // Calculate size for Top 2 (Min 30px, Max 70px)
+                    const size2 = 30 + (top2Perc * 0.4);
+
                     displayHTML = `
-                        <div style="display:flex; gap:10px; align-items:center; justify-content:center; line-height:0.85;">
-                            <div style="color:${dynamicColors[top1Word]}; font-size:60px;">${top1Word}<br><span style="font-size:30px; color:white;">${top1Perc}%</span></div>
-                            <div style="color:white; font-size:25px; opacity:0.6; margin-top:-20px;">VS</div>
-                            <div style="color:${dynamicColors[top2Word]}; font-size:60px;">${top2Word}<br><span style="font-size:30px; color:white;">${top2Perc}%</span></div>
+                        <div style="display:flex; gap:15px; align-items:center; justify-content:center; line-height:0.85;">
+                            <div style="color:${dynamicColors[top1Word]}; font-size:${size1}px;">
+                                ${top1Word}<br><span style="font-size:${size1 * 0.5}px; color:white;">${top1Perc}%</span>
+                            </div>
+                            
+                            <div style="color:white; font-size:20px; opacity:0.4; margin-top:-20px;">VS</div>
+                            
+                            <div style="color:${dynamicColors[top2Word]}; font-size:${size2}px;">
+                                ${top2Word}<br><span style="font-size:${size2 * 0.5}px; color:white;">${top2Perc}%</span>
+                            </div>
                         </div>`;
                 }
                 centerEl.innerHTML = displayHTML;
-                centerEl.style.transform = `scale(${1 + (counts[top1Word] / total) * 0.3})`;
             }
         }
 
