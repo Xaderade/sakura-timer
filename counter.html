@@ -1,47 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Counter - Perfect Fonts</title>
+    <title>Mugi Counter - Bulletproof Version</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
 
-        body { 
-            background: #00ff00; 
-            margin: 0; 
-            overflow: hidden; 
-            display: flex;
-            align-items: center;
-            height: 100vh;
-            width: 100vw;
-        }
-
-        #renderCanvas {
-            image-rendering: auto;
-            transform: skewX(-5deg);
-            margin-left: 50px;
-            transition: opacity 0.4s ease, transform 0.3s ease;
-        }
-
-        .hidden { opacity: 0 !important; transform: skewX(-5deg) scale(0.8) !important; }
+        body { background: #00ff00; margin: 0; overflow: hidden; display: flex; align-items: center; height: 100vh; width: 100vw; }
+        #renderCanvas { image-rendering: auto; transform: skewX(-5deg); margin-left: 50px; transition: opacity 0.4s ease; }
+        .hidden { opacity: 0 !important; }
 
         /* CONTROL PANEL */
         #controls { 
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: white; border: 6px solid #000; border-radius: 35px; 
             padding: 20px; text-align: center; box-shadow: 0 12px 0 #333; 
-            z-index: 9999; font-family: sans-serif; display: none; 
-            width: 450px;
+            z-index: 9999; font-family: sans-serif; display: none; width: 450px;
         }
         .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
         button { padding: 15px 25px; font-size: 25px; cursor: pointer; font-weight: bold; border-radius: 15px; border: 4px solid #000; box-shadow: 0 4px 0 #000; transition: 0.1s; }
         button:active { transform: translateY(4px); box-shadow: 0 1px 0 #000; }
-        
         .plus { background: #43B047; color: white; }
         .minus { background: #FBD000; color: black; }
         .toggle-btn { background: #2196F3; color: white; width: 100%; font-size: 18px; margin-top: 10px; }
         .input-box { width: 90%; padding: 12px; font-size: 18px; border: 3px solid black; border-radius: 10px; margin-bottom: 10px; text-align: center; font-weight: bold; }
-        
         .status-dot { height: 12px; width: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 5px; }
         .online { background: #43B047; box-shadow: 0 0 8px #43B047; }
     </style>
@@ -54,15 +36,13 @@
         <div style="margin-bottom: 10px;">
             <span id="status-dot" class="status-dot"></span>
             <span id="status-text" style="font-weight:bold; font-size:12px;">DISCONNECTED</span>
+            <button onclick="location.reload()" style="font-size: 10px; padding: 2px 5px; border-width: 2px; margin-left: 10px;">RELOAD</button>
         </div>
-        
         <input type="text" id="label-input" class="input-box" placeholder="Label (e.g. 💀 or WINS)" oninput="updateLabel(this.value)">
-        
         <div class="btn-group">
             <button class="minus" onclick="changeCount(-1)">-</button>
             <button class="plus" onclick="changeCount(1)">+</button>
         </div>
-
         <button class="toggle-btn" onclick="toggleVisibility()">👁 SHOW / HIDE OVERLAY</button>
         <button onclick="resetCount()" style="margin-top:10px; font-size:12px; background:#f0f0f0; border: 2px solid #000; width:100%; border-radius:10px; cursor:pointer; padding:5px;">RESET TO 0</button>
     </div>
@@ -80,154 +60,134 @@
         let scale = 1;
         let flashColor = null;
 
-        // Fonts
         const fontMain = 'italic 260px "Luckiest Guy"';
         const fontSmall = 'italic 160px "Luckiest Guy"';
-        const fontPrefix = 'italic 200px "Luckiest Guy"'; // Custom font for the text/emoji
+        const fontPrefix = 'italic 200px "Luckiest Guy"';
 
         function drawStyledText(text, x, y, font, useFlash = true) {
             ctx.font = font;
             ctx.lineJoin = "round";
             ctx.lineWidth = 20;
-            
-            // 1. Black Outline/Shadow logic
             ctx.strokeStyle = "black";
             ctx.strokeText(text, x, y);
             ctx.strokeText(text, x + 18, y + 18);
-
-            // 2. Gradient
             const grad = ctx.createLinearGradient(x, y - 130, x, y + 50);
             grad.addColorStop(0.2, "#FFFFFF");
             grad.addColorStop(0.85, "#A0A0A0");
-
-            // 3. Fill
             ctx.fillStyle = "black";
             ctx.fillText(text, x + 18, y + 18);
-            
             ctx.fillStyle = (useFlash && flashColor) ? flashColor : grad;
             ctx.fillText(text, x, y);
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const startX = 100;
-            const baseY = 400;
-
-            // Measure label to prevent overlap
+            const startX = 100; const baseY = 400;
             ctx.font = fontPrefix;
             const labelWidth = ctx.measureText(prefixLabel).width;
-
-            // Draw the prefix (Emoji or Text) in Luckiest Guy
             drawStyledText(prefixLabel, startX, baseY + 20, fontPrefix, false);
-
             ctx.save();
             const xPos = startX + labelWidth + 50;
             ctx.translate(xPos, baseY);
             ctx.scale(scale, scale);
             ctx.translate(-xPos, -baseY);
-
-            // Draw 'x' and number
             drawStyledText("x", xPos, baseY + 20, fontSmall, true);
             drawStyledText(count.toString(), xPos + 110, baseY + 20, fontMain, true);
-
             ctx.restore();
         }
 
-        // --- PeerJS Connection Core ---
+        // --- STRENGTHENED PEERJS ---
         const peer = new Peer(isController ? null : COUNTER_ID);
-        let conn;
+        let activeConn = null;
 
-        peer.on('open', (id) => {
-            if (isController) {
-                console.log("Connecting as controller...");
-                connectToPeer();
-            }
-        });
-
+        peer.on('open', () => { if (isController) attemptConnection(); });
+        
         peer.on('connection', (c) => {
-            conn = c;
-            setupDataListener();
+            activeConn = c;
+            console.log("Overlay received connection");
+            bindDataEvents(c);
         });
 
-        function connectToPeer() {
-            conn = peer.connect(COUNTER_ID);
-            conn.on('open', () => {
+        function attemptConnection() {
+            activeConn = peer.connect(COUNTER_ID);
+            activeConn.on('open', () => {
                 document.getElementById('status-dot').classList.add('online');
                 document.getElementById('status-text').innerText = "CONNECTED TO OBS";
-                // Send current state to sync
-                conn.send({ action: 'sync', count: count, label: prefixLabel });
+                activeConn.send({ action: 'sync', count: count, label: prefixLabel });
             });
-            setupDataListener();
+            bindDataEvents(activeConn);
         }
 
-        function setupDataListener() {
-            conn.on('data', (data) => {
+        function bindDataEvents(c) {
+            c.on('data', (data) => {
+                console.log("Data received:", data);
                 if (data.action === 'update') { count = data.val; triggerPop(); }
                 if (data.action === 'reset') { count = 0; draw(); }
                 if (data.action === 'toggle') { executeToggle(); }
                 if (data.action === 'label') { prefixLabel = data.val; draw(); }
                 if (data.action === 'sync') { count = data.count; prefixLabel = data.label; draw(); }
             });
+            c.on('close', () => {
+                if (isController) {
+                    document.getElementById('status-dot').classList.remove('online');
+                    document.getElementById('status-text').innerText = "CONNECTION LOST - RETRYING...";
+                    setTimeout(attemptConnection, 2000);
+                }
+            });
         }
 
-        // --- Logic Functions ---
+        function sendToOBS(payload) {
+            if (activeConn && activeConn.open) {
+                activeConn.send(payload);
+            } else if (isController) {
+                console.warn("No active connection to OBS");
+            }
+        }
+
         function updateLabel(val) {
             prefixLabel = val || " ";
             localStorage.setItem('sakura_label', prefixLabel);
-            if (conn && conn.open) conn.send({ action: 'label', val: prefixLabel });
+            sendToOBS({ action: 'label', val: prefixLabel });
             draw();
         }
 
         function toggleVisibility() {
-            if (conn && conn.open) conn.send({ action: 'toggle' });
+            sendToOBS({ action: 'toggle' });
             executeToggle();
         }
 
-        function executeToggle() {
-            canvas.classList.toggle('hidden');
-        }
+        function executeToggle() { canvas.classList.toggle('hidden'); }
 
         function changeCount(delta) {
             count += delta;
             localStorage.setItem('sakura_count', count);
             triggerPop();
-            if (conn && conn.open) conn.send({ action: 'update', val: count });
+            sendToOBS({ action: 'update', val: count });
         }
 
         function resetCount() {
             count = 0;
             localStorage.setItem('sakura_count', 0);
             draw();
-            if (conn && conn.open) conn.send({ action: 'reset' });
+            sendToOBS({ action: 'reset' });
         }
 
         function triggerPop() {
-            let start = null;
-            const duration = 300;
+            let start = null; const duration = 300;
             function animate(timestamp) {
                 if (!start) start = timestamp;
                 let progress = timestamp - start;
                 let p = progress / duration;
-                if (p < 0.3) {
-                    scale = 1 + (p / 0.3) * 0.15;
-                    flashColor = "#ccff00";
-                } else if (p < 1) {
-                    scale = 1.15 - ((p - 0.3) / 0.7) * 0.15;
-                    flashColor = null;
-                } else {
-                    scale = 1;
-                    flashColor = null;
-                }
+                if (p < 0.3) { scale = 1 + (p / 0.3) * 0.15; flashColor = "#ccff00"; }
+                else if (p < 1) { scale = 1.15 - ((p - 0.3) / 0.7) * 0.15; flashColor = null; }
+                else { scale = 1; flashColor = null; }
                 draw();
                 if (progress < duration) requestAnimationFrame(animate);
             }
             requestAnimationFrame(animate);
         }
 
-        // Initialize
-        document.fonts.load(fontMain).then(() => {
-            document.fonts.load(fontPrefix).then(draw);
-        });
+        document.fonts.load(fontMain).then(() => { draw(); });
     </script>
 </body>
 </html>
