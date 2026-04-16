@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - Big Font Dual v16.7.29</title>
+    <title>Mugi Choice - Balanced HUD v16.7.31</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -25,7 +25,13 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
+        /* LEFT SIDE: TOTAL VOTES */
+        #vote-counter { position: absolute; top: -20px; left: -20px; font-size: 50px; color: #FFD700; text-shadow: 4px 4px 0px #000; text-align: left; line-height: 0.9; }
+        #vote-label { font-size: 20px; color: white; display: block; }
+
+        /* RIGHT SIDE: TIMER */
         #timer-text { position: absolute; top: -20px; right: -20px; font-size: 80px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
+
         #win-announcement { position: absolute; font-size: 120px; color: #FFD700; text-shadow: 10px 10px 0px #000; display: none; text-align: center; width: 100%; z-index: 20; }
         .hidden { opacity: 0 !important; transform: scale(0.9); }
 
@@ -55,6 +61,7 @@
             <p id="sub-title">Type choice in chat</p>
         </div>
         <div id="pie-wrapper">
+            <div id="vote-counter"><span id="vote-label">VOTES:</span><span id="vote-num">0</span></div>
             <div id="timer-text"></div>
             <div id="center-number"></div>
             <canvas id="voteChart"></canvas>
@@ -84,7 +91,7 @@
 
     <script>
         const RATER_ID = 'mugi-dynamic-pie-2026';
-        const CHANNEL = 'agent00';
+        const CHANNEL = 'robcdee';
         const isController = window.location.hash.includes('control');
         const colorPalette = ['#43B047', '#2196F3', '#E52521', '#9C27B0', '#FF9800', '#FFEB3B', '#00BCD4', '#E91E63'];
         let dynamicColors = {};
@@ -174,31 +181,29 @@
             voteChart.data.datasets[0].backgroundColor = bgColors;
             voteChart.update();
 
+            const total = dataValues.reduce((a, b) => a + b, 0);
+            document.getElementById('vote-num').innerText = total;
+
             if (sortedChoices.length > 0) {
-                const total = dataValues.reduce((a, b) => a + b, 0);
                 const centerEl = document.getElementById('center-number');
                 let displayHTML = "";
                 
                 const top1Word = sortedChoices[0];
                 const top1Perc = Math.round((counts[top1Word] / total) * 100);
-                
-                // --- BIGGER FONT MATH ---
-                // Leader: 60px to 120px
-                const size1 = 80 + (top1Perc * 0.6);
+                const size1 = 60 + (top1Perc * 0.6);
 
                 if (sortedChoices.length === 1) {
                     displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.8;">${top1Word}<br><span style="font-size:${size1 * 0.4}px; color:white;">${top1Perc}%</span></div>`;
                 } else {
                     const top2Word = sortedChoices[1];
                     const top2Perc = Math.round((counts[top2Word] / total) * 100);
-                    // Runner up: 40px to 90px
-                    const size2 = 60 + (top2Perc * 0.5);
+                    const size2 = 40 + (top2Perc * 0.5);
 
                     displayHTML = `
-                        <div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.75; margin-bottom:10px;">
+                        <div style="color:${dynamicColors[top1Word]}; font-size:${size1}px; line-height:0.75; margin-bottom:5px;">
                             ${top1Word} <span style="font-size:${size1 * 0.35}px; color:white;">${top1Perc}%</span>
                         </div>
-                        <div style="color:white; font-size:25px; opacity:0.3; margin: 5px 0;">────────</div>
+                        <div style="color:white; font-size:25px; opacity:0.3; margin: 2px 0;">────────</div>
                         <div style="color:${dynamicColors[top2Word]}; font-size:${size2}px; line-height:0.75;">
                             ${top2Word} <span style="font-size:${size2 * 0.35}px; color:white;">${top2Perc}%</span>
                         </div>`;
@@ -228,6 +233,7 @@
             clearInterval(timerInterval);
             votes = {};
             isVotingOpen = false;
+            document.getElementById('vote-num').innerText = "0";
             document.getElementById('timer-text').innerText = "";
             document.getElementById('center-number').innerHTML = "";
             document.getElementById('win-announcement').style.display = 'none';
