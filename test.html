@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - Dynamic Pie v16.7.22</title>
+    <title>Mugi Choice - Dual Leader v16.7.26</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -16,9 +16,16 @@
         #sub-title { font-size: 24px; color: #FFD700; text-shadow: 3px 3px 0px #000; margin: 0; text-transform: uppercase; }
 
         #pie-wrapper { position: relative; width: 600px; height: 600px; display: flex; justify-content: center; align-items: center; }
-        #center-number { position: absolute; z-index: 10; color: white; text-shadow: 8px 8px 0px #000; font-size: 85px; line-height: 0.85; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; text-align: center; }
-        #timer-text { position: absolute; top: -40px; right: -40px; font-size: 70px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
+        
+        /* UPDATED: Increased width and added flex to handle two names side-by-side */
+        #center-number { 
+            position: absolute; z-index: 10; width: 90%; 
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            pointer-events: none; text-align: center; 
+            text-shadow: 6px 6px 0px #000;
+        }
 
+        #timer-text { position: absolute; top: -40px; right: -40px; font-size: 70px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
         #win-announcement { position: absolute; font-size: 120px; color: #FFD700; text-shadow: 10px 10px 0px #000; display: none; text-align: center; width: 100%; z-index: 20; }
         .hidden { opacity: 0 !important; transform: scale(0.9); }
 
@@ -57,27 +64,17 @@
     <div id="controls">
         <div class="control-box">
             <h2 style="margin:0;">MUGI DYNAMIC CONTROL</h2>
-            
             <div class="input-group">
                 <label>CHOICES (Comma Separated):</label>
                 <textarea id="choices-input">Pog, OOOO, LOL, KEKW</textarea>
             </div>
-
             <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex:1;">
-                    <label>TIMER (SEC):</label>
-                    <input type="number" id="timer-input" value="30">
-                </div>
-                <div class="input-group" style="flex:2;">
-                    <label>OVERLAY TITLE:</label>
-                    <input type="text" id="title-input" value="CHOOSE NOW">
-                </div>
+                <div class="input-group" style="flex:1;"><label>TIMER (SEC):</label><input type="number" id="timer-input" value="30"></div>
+                <div class="input-group" style="flex:2;"><label>OVERLAY TITLE:</label><input type="text" id="title-input" value="CHOOSE NOW"></div>
             </div>
-
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
             <button class="toggle-btn" onclick="toggleVisibility()">👁 SHOW / HIDE PIE</button>
             <button class="reset-btn" onclick="resetAll()">✖ RESET & CLEAR</button>
-            
             <div class="status-tray">
                 <div style="display:flex; align-items:center; gap:5px;"><div id="dot-obs" class="dot"></div> OBS</div>
                 <div style="display:flex; align-items:center; gap:5px;"><div id="dot-twitch" class="dot"></div> CHAT</div>
@@ -89,8 +86,6 @@
         const RATER_ID = 'mugi-dynamic-pie-2026';
         const CHANNEL = 'robcdee';
         const isController = window.location.hash.includes('control');
-        
-        // Preset palette for dynamic assignment
         const colorPalette = ['#43B047', '#2196F3', '#E52521', '#9C27B0', '#FF9800', '#FFEB3B', '#00BCD4', '#E91E63'];
         let dynamicColors = {};
         
@@ -104,12 +99,7 @@
         const voteChart = new Chart(ctx, {
             type: 'doughnut',
             data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: 'black', borderWidth: 5 }] },
-            options: {
-                cutout: '65%',
-                responsive: true,
-                animation: { duration: 400 },
-                plugins: { legend: { display: false } }
-            }
+            options: { cutout: '65%', responsive: true, animation: { duration: 400 }, plugins: { legend: { display: false } } }
         });
 
         const peer = new Peer(isController ? null : RATER_ID);
@@ -146,76 +136,72 @@
             const rawChoices = document.getElementById('choices-input').value.split(',').map(s => s.trim());
             const duration = document.getElementById('timer-input').value || 30;
             const title = document.getElementById('title-input').value || "VOTE NOW";
-            
-            // Build the dynamic color map
             const newColors = {};
-            rawChoices.forEach((choice, index) => {
-                newColors[choice] = colorPalette[index % colorPalette.length];
-            });
-
+            rawChoices.forEach((choice, index) => { newColors[choice] = colorPalette[index % colorPalette.length]; });
             const startData = { action: 'start', time: duration, title: title, colorMap: newColors };
-            
             if (conn && conn.open) conn.send(startData);
             executeStart(startData);
         }
 
-        function toggleVisibility() {
-            if (conn && conn.open) conn.send({ action: 'toggle' });
-            executeToggle();
-        }
-
-        function resetAll() {
-            if (conn && conn.open) conn.send({ action: 'reset' });
-            executeReset();
-        }
+        function toggleVisibility() { if (conn && conn.open) conn.send({ action: 'toggle' }); executeToggle(); }
+        function resetAll() { if (conn && conn.open) conn.send({ action: 'reset' }); executeReset(); }
 
         function executeStart(data) {
             executeReset();
             dynamicColors = data.colorMap;
             isVotingOpen = true;
-            
             document.getElementById('main-title').innerText = data.title;
             document.getElementById('sub-title').innerText = "Type: " + Object.keys(dynamicColors).join(" / ");
             document.getElementById('display-container').classList.remove('hidden');
-            
             let timeLeft = data.time;
             document.getElementById('timer-text').innerText = timeLeft;
-            
             timerInterval = setInterval(() => {
                 timeLeft--;
                 document.getElementById('timer-text').innerText = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    finishVoting();
-                }
+                if (timeLeft <= 0) { clearInterval(timerInterval); finishVoting(); }
             }, 1000);
         }
 
+        // --- NEW TOP 2 LOGIC (NON-BREAKING) ---
         function updateChart() {
             const counts = {};
             Object.values(votes).forEach(v => counts[v] = (counts[v] || 0) + 1);
-            const activeChoices = Object.keys(counts).sort();
-            const dataValues = activeChoices.map(c => counts[c]);
-            const bgColors = activeChoices.map(c => dynamicColors[c]);
+            
+            // Sort choices by vote count (highest first)
+            const sortedChoices = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+            
+            const dataValues = sortedChoices.map(c => counts[c]);
+            const bgColors = sortedChoices.map(c => dynamicColors[c]);
 
-            voteChart.data.labels = activeChoices;
+            voteChart.data.labels = sortedChoices;
             voteChart.data.datasets[0].data = dataValues;
             voteChart.data.datasets[0].backgroundColor = bgColors;
             voteChart.update();
 
-            if (activeChoices.length > 0) {
+            if (sortedChoices.length > 0) {
                 const total = dataValues.reduce((a, b) => a + b, 0);
-                const maxVotes = Math.max(...dataValues);
-                const winnerIdx = dataValues.indexOf(maxVotes);
-                const winnerWord = activeChoices[winnerIdx];
-                const percentage = Math.round((maxVotes / total) * 100);
-
                 const centerEl = document.getElementById('center-number');
-                centerEl.innerHTML = `${winnerWord}<br><span style="font-size: 50px; color: white;">${percentage}%</span>`;
-                centerEl.style.color = dynamicColors[winnerWord];
+                let displayHTML = "";
                 
-                const scale = 1 + (maxVotes / total);
-                centerEl.style.transform = `scale(${scale})`;
+                const top1Word = sortedChoices[0];
+                const top1Perc = Math.round((counts[top1Word] / total) * 100);
+                
+                if (sortedChoices.length === 1) {
+                    // Solo Leader
+                    displayHTML = `<div style="color:${dynamicColors[top1Word]}; font-size:85px; line-height:0.85;">${top1Word}<br><span style="font-size:50px; color:white;">${top1Perc}%</span></div>`;
+                } else {
+                    // Top 2 Battle
+                    const top2Word = sortedChoices[1];
+                    const top2Perc = Math.round((counts[top2Word] / total) * 100);
+                    displayHTML = `
+                        <div style="display:flex; gap:10px; align-items:center; justify-content:center; line-height:0.85;">
+                            <div style="color:${dynamicColors[top1Word]}; font-size:60px;">${top1Word}<br><span style="font-size:30px; color:white;">${top1Perc}%</span></div>
+                            <div style="color:white; font-size:25px; opacity:0.6; margin-top:-20px;">VS</div>
+                            <div style="color:${dynamicColors[top2Word]}; font-size:60px;">${top2Word}<br><span style="font-size:30px; color:white;">${top2Perc}%</span></div>
+                        </div>`;
+                }
+                centerEl.innerHTML = displayHTML;
+                centerEl.style.transform = `scale(${1 + (counts[top1Word] / total) * 0.3})`;
             }
         }
 
@@ -236,13 +222,12 @@
         }
 
         function executeToggle() { document.getElementById('display-container').classList.toggle('hidden'); }
-
         function executeReset() {
             clearInterval(timerInterval);
             votes = {};
             isVotingOpen = false;
             document.getElementById('timer-text').innerText = "";
-            document.getElementById('center-number').innerText = "";
+            document.getElementById('center-number').innerHTML = "";
             document.getElementById('win-announcement').style.display = 'none';
             voteChart.data.labels = [];
             voteChart.data.datasets[0].data = [];
