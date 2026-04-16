@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - v16.7.36</title>
+    <title>Mugi Choice - v16.7.37</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -16,20 +16,10 @@
         #sub-title { font-size: 24px; color: #FFD700; text-shadow: 3px 3px 0px #000; margin: 0; text-transform: uppercase; }
 
         #pie-wrapper { position: relative; width: 600px; height: 600px; display: flex; justify-content: center; align-items: center; }
-        
-        #center-number { 
-            position: absolute; z-index: 10; width: 85%; 
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            pointer-events: none; text-align: center; 
-            text-shadow: 7px 7px 0px #000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-
+        #center-number { position: absolute; z-index: 10; width: 85%; text-align: center; text-shadow: 7px 7px 0px #000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #vote-counter { position: absolute; top: -20px; left: -20px; font-size: 60px; color: #FFD700; text-shadow: 4px 4px 0px #000; text-align: left; line-height: 0.9; }
         #vote-label { font-size: 20px; color: white; display: block; }
-
         #timer-text { position: absolute; top: -20px; right: -20px; font-size: 80px; color: #FF4444; text-shadow: 4px 4px 0px #000; }
-
         #win-announcement { position: absolute; font-size: 120px; color: #FFD700; text-shadow: 10px 10px 0px #000; display: none; text-align: center; width: 100%; z-index: 20; }
         .hidden { opacity: 0 !important; transform: scale(0.9); }
 
@@ -38,17 +28,17 @@
         .control-box { background: white; color: black; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 480px; position: relative; }
         .input-group { margin: 15px 0; text-align: left; }
         label { font-weight: bold; font-size: 12px; text-transform: uppercase; color: #666; }
-        input, textarea { width: 100%; padding: 10px; font-size: 16px; border: 3px solid black; border-radius: 10px; box-sizing: border-box; font-family: sans-serif; }
-        textarea { height: 60px; resize: none; font-weight: bold; color: #2196F3; }
+        input, textarea { width: 100%; padding: 10px; font-size: 16px; border: 3px solid black; border-radius: 10px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; font-size: 16px; border: 4px solid #000; border-radius: 12px; margin-top: 8px; text-transform: uppercase; }
         .start-btn { background: #43B047; color: white; font-size: 20px; padding: 18px; }
-        .toggle-btn { background: #2196F3; color: white; }
-        .reset-btn { background: #E52521; color: white; }
         .connect-btn { background: #9146FF; color: white; margin-top: 0; }
+        
+        /* CONNECTION STATUS BAR */
+        #status-msg { font-size: 11px; color: #666; margin-top: 5px; font-weight: bold; text-align: center; }
         .status-tray { margin-top: 20px; padding-top: 10px; border-top: 2px dashed #ccc; display: flex; justify-content: space-around; font-size: 12px; }
         .dot { height: 10px; width: 10px; border-radius: 50%; background: red; }
         .online { background: #43B047; box-shadow: 0 0 5px #43B047; }
-        #version-tag { position: absolute; bottom: 10px; right: 15px; font-size: 10px; color: #999; font-weight: bold; }
+        #version-tag { position: absolute; bottom: 10px; right: 15px; font-size: 10px; color: #999; }
     </style>
 </head>
 <body>
@@ -70,34 +60,39 @@
 
     <div id="controls">
         <div class="control-box">
-            <h2 style="margin:0 0 15px 0;">MUGI DYNAMIC CONTROL</h2>
+            <h2 style="margin:0 0 10px 0;">MUGI DYNAMIC CONTROL</h2>
             
-            <div class="input-group" style="background: #f0f0f0; padding: 10px; border-radius: 15px; border: 2px solid #ccc;">
-                <label>Target Twitch Channel:</label>
+            <div class="input-group" style="background: #f0f0f0; padding: 12px; border-radius: 15px; border: 3px solid #000;">
+                <label>1. Sync Twitch Chat:</label>
                 <div style="display: flex; gap: 5px;">
-                    <input type="text" id="channel-input" placeholder="e.g. robcdee" style="margin:0;">
-                    <button class="connect-btn" onclick="connectToTwitch()" style="width: auto; white-space: nowrap;">Connect</button>
+                    <input type="text" id="channel-input" placeholder="Channel Name" style="margin:0; flex:1;">
+                    <button class="connect-btn" onclick="connectToTwitch()" style="width: auto; margin:0;">SYNC</button>
                 </div>
+                <div id="status-msg">Not Connected</div>
             </div>
 
             <div class="input-group">
-                <label>CHOICES (Comma Separated):</label>
-                <textarea id="choices-input">Pog, OOOO, LOL, KEKW</textarea>
+                <label>2. Voting Options (Comma Separated):</label>
+                <textarea id="choices-input" style="height:50px; color:#2196F3; font-weight:bold;">Pog, OOOO, LOL, KEKW</textarea>
             </div>
+            
             <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex:1;"><label>TIMER (SEC):</label><input type="number" id="timer-input" value="30"></div>
-                <div class="input-group" style="flex:2;"><label>TITLE:</label><input type="text" id="title-input" value="CHOOSE NOW"></div>
+                <div class="input-group" style="flex:1;"><label>Time:</label><input type="number" id="timer-input" value="30"></div>
+                <div class="input-group" style="flex:2;"><label>Title:</label><input type="text" id="title-input" value="CHOOSE NOW"></div>
             </div>
+
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
+            
             <div style="display: flex; gap: 10px;">
-                <button class="toggle-btn" onclick="toggleVisibility()" style="flex:1;">👁 SHOW/HIDE</button>
-                <button class="reset-btn" onclick="resetAll()" style="flex:1;">✖ RESET</button>
+                <button onclick="toggleVisibility()" style="background:#2196F3; color:white; flex:1;">👁 HIDE/SHOW</button>
+                <button onclick="resetAll()" style="background:#E52521; color:white; flex:1;">✖ RESET</button>
             </div>
+
             <div class="status-tray">
-                <div style="display:flex; align-items:center; gap:5px;"><div id="dot-obs" class="dot"></div> OBS</div>
-                <div style="display:flex; align-items:center; gap:5px;"><div id="dot-twitch" class="dot"></div> CHAT</div>
+                <div style="display:flex; align-items:center; gap:5px;"><div id="dot-obs" class="dot"></div> OBS-LINK</div>
+                <div style="display:flex; align-items:center; gap:5px;"><div id="dot-twitch" class="dot"></div> CHAT-LINK</div>
             </div>
-            <div id="version-tag">v16.7.36</div>
+            <div id="version-tag">v16.7.37</div>
         </div>
     </div>
 
@@ -110,13 +105,6 @@
         let isVotingOpen = false;
         let timerInterval;
 
-        if (isController) {
-            document.getElementById('controls').style.display = 'flex';
-            // Load saved channel if exists
-            const savedChannel = localStorage.getItem('mugi_last_channel');
-            if(savedChannel) document.getElementById('channel-input').value = savedChannel;
-        }
-
         const ctx = document.getElementById('voteChart').getContext('2d');
         const voteChart = new Chart(ctx, {
             type: 'doughnut',
@@ -124,13 +112,19 @@
             options: { cutout: '70%', responsive: true, animation: { duration: 400 }, plugins: { legend: { display: false } } }
         });
 
+        // PEER JS SETUP
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
 
         peer.on('open', () => { if (isController) connectToOBS(); });
         function connectToOBS() {
             conn = peer.connect(RATER_ID);
-            conn.on('open', () => { if(isController) document.getElementById('dot-obs').classList.add('online'); });
+            conn.on('open', () => { 
+                document.getElementById('dot-obs').classList.add('online');
+                // Auto-sync channel to OBS if already saved
+                const saved = localStorage.getItem('mugi_last_channel');
+                if(saved) conn.send({ action: 'connect', channel: saved });
+            });
         }
 
         peer.on('connection', (c) => {
@@ -140,11 +134,18 @@
                 if (data.action === 'reset') executeReset();
                 if (data.action === 'toggle') executeToggle();
                 if (data.action === 'connect') {
-                    ComfyJS.Disconnect();
-                    ComfyJS.Init(data.channel);
+                    window.location.reload(); // Hard refresh OBS to ensure clean Twitch connection
                 }
             });
         });
+
+        // If OBS loads and has a saved channel, connect immediately
+        window.onload = () => {
+            const saved = localStorage.getItem('mugi_last_channel');
+            if(saved && !isController) {
+                ComfyJS.Init(saved);
+            }
+        };
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             if (!isVotingOpen) return;
@@ -155,20 +156,26 @@
             }
         };
 
-        // Channel connection logic
         function connectToTwitch() {
             const channel = document.getElementById('channel-input').value.trim();
-            if(!channel) return alert("Enter a channel name!");
+            if(!channel) return alert("Enter channel name");
             
             localStorage.setItem('mugi_last_channel', channel);
-            ComfyJS.Disconnect();
-            ComfyJS.Init(channel);
             
+            // Send refresh command to OBS to force it to use the new channel
             if(conn && conn.open) conn.send({ action: 'connect', channel: channel });
-            
-            const dot = document.getElementById('dot-twitch');
-            dot.classList.remove('online');
-            setTimeout(() => dot.classList.add('online'), 1000);
+
+            // Local Controller Connect
+            try {
+                ComfyJS.Disconnect();
+                ComfyJS.Init(channel);
+                document.getElementById('status-msg').innerText = "CONNECTED TO: " + channel.toUpperCase();
+                document.getElementById('status-msg').style.color = "#43B047";
+                document.getElementById('dot-twitch').classList.add('online');
+            } catch(e) {
+                document.getElementById('status-msg').innerText = "FAILED TO CONNECT";
+                document.getElementById('status-msg').style.color = "red";
+            }
         }
 
         function startVoting() {
