@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.10 [LEFT-SIDE ENTRANCE]</title>
+    <title>Mugi Co. | Engine v16.7.11 [RESTORED NATIVE EMOTES]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
@@ -35,34 +35,19 @@
         
         body { margin: 0; background-color: transparent; color: white; font-family: var(--font-main); overflow: hidden; user-select: none; }
         
-        #leaderboard { 
-            display: flex; 
-            justify-content: flex-start; /* Align to left side of screen */
-            align-items: flex-end; 
-            gap: 40px; 
-            width: 100vw; 
-            height: 100vh; 
-            padding: 0 0 60px 60px; /* Padding on the left */
-            box-sizing: border-box; 
-            position: absolute; bottom: 0; left: 0; 
-        }
+        #leaderboard { display: flex; justify-content: center; align-items: flex-end; gap: 40px; width: 100vw; height: 100vh; padding: 0 0 60px 0; box-sizing: border-box; position: absolute; bottom: 0; left: 0; }
         
         .emote-slot { 
             position: relative; display: flex; flex-direction: column; align-items: center; 
             transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            opacity: 0; 
-            transform: translateX(-200px) rotate(-10deg); /* Start off-screen left */
+            opacity: 0; transform: translateY(100px); 
         }
-        .emote-slot.active { 
-            opacity: 1; 
-            transform: translateX(0) rotate(0deg) skewX(-5deg); /* Snap into place */
-        }
+        .emote-slot.active { opacity: 1; transform: translateY(0) skewX(-5deg); }
 
         .img-wrap { 
             height: 200px; width: 200px; display: flex; align-items: center; justify-content: center; 
             background: var(--ui-bg); border: 8px solid #fff; box-shadow: 10px 10px 0px #000; 
             margin-bottom: -15px; position: relative; z-index: 5; transition: all 0.2s ease;
-            /* Game UI Slant */
             clip-path: polygon(0% 0%, 100% 0%, 100% 85%, 85% 100%, 0% 100%);
         }
         
@@ -82,7 +67,6 @@
             text-shadow: 4px 4px 0 #000; pointer-events: none; z-index: 100;
             animation: riseAndFade 0.7s ease-out forwards;
         }
-        
         .riser.milestone { font-size: 68px; text-shadow: 6px 6px 0 #000; z-index: 110; }
 
         @keyframes riseAndFade {
@@ -91,10 +75,7 @@
         }
 
         .flash { animation: hardFlash 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
-        @keyframes hardFlash {
-            0% { filter: brightness(5) saturate(2); }
-            100% { filter: brightness(1) saturate(1); }
-        }
+        @keyframes hardFlash { 0% { filter: brightness(5) saturate(2); } 100% { filter: brightness(1) saturate(1); } }
 
         .emote-img { max-height: 170px; max-width: 170px; object-fit: contain; }
         .pop { animation: hitPop 0.12s ease-out; }
@@ -165,14 +146,9 @@
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tId}`).then(r => r.json()).then(d => {
                     [...(d.channelEmotes||[]), ...(d.sharedEmotes||[])].forEach(e => { emoteMap[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`; });
                 });
-            }
-            if(userId) {
-                fetch(`https://7tv.io/v3/users/${userId}`).then(r => r.json()).then(async d => {
-                    const setId = d.emote_set?.id || d.connections?.find(c => c.platform === 'TWITCH')?.emote_set?.id;
-                    if(setId) {
-                        const sRes = await fetch(`https://7tv.io/v3/emote-sets/${setId}`);
-                        const sData = await sRes.json();
-                        sData.emotes?.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
+                fetch(`https://7tv.io/v3/users/twitch/${tId}`).then(r => r.json()).then(d => {
+                    if(d.emote_set?.emotes) {
+                        d.emote_set.emotes.forEach(e => { emoteMap[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`; });
                     }
                 });
             }
@@ -200,8 +176,27 @@
 
         client = new tmi.Client({ channels: [CH] });
         client.on('message', (chan, tags, msg) => {
-            let uniqueFound = [...new Set(msg.split(' ').filter(w => emoteMap[w]))];
-            uniqueFound.forEach(e => { emoteCounts[e] = (emoteCounts[e] || 0) + 1; updateLeaderboard(e); });
+            let uniqueFound = new Set();
+
+            // Check Native Twitch Emotes First
+            if (tags.emotes) {
+                Object.keys(tags.emotes).forEach(id => {
+                    const [range] = tags.emotes[id][0].split('-');
+                    const name = msg.substring(parseInt(range), parseInt(tags.emotes[id][0].split('-')[1]) + 1);
+                    emoteMap[name] = `https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0`;
+                    uniqueFound.add(name);
+                });
+            }
+
+            // Check 7TV/BTTV
+            msg.split(' ').forEach(word => {
+                if (emoteMap[word]) uniqueFound.add(word);
+            });
+
+            uniqueFound.forEach(e => { 
+                emoteCounts[e] = (emoteCounts[e] || 0) + 1; 
+                updateLeaderboard(e); 
+            });
         });
         client.connect();
     }
@@ -229,16 +224,11 @@
                 if(trig === n) {
                     wrap.classList.remove('pop'); void wrap.offsetWidth; wrap.classList.add('pop');
                     const currentM = milestoneCheck.filter(m => roundedC >= m).pop() || 0;
-                    
                     if(currentM > lastMilestone[i]) {
                         spawnRiser(slot, currentM);
                         const rCls = `rank-${currentM}`;
                         wrap.classList.add(rCls, 'flash');
-                        
-                        setTimeout(() => {
-                            wrap.classList.remove(rCls, 'flash');
-                        }, 2000);
-                        
+                        setTimeout(() => { wrap.classList.remove(rCls, 'flash'); }, 2000);
                         lastMilestone[i] = currentM;
                     } else { spawnRiser(slot); }
                 }
