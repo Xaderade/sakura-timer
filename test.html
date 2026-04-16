@@ -222,14 +222,14 @@
                 const centerEl = document.getElementById('center-number');
                 const top1Word = sorted[0];
                 const top1Perc = Math.round((counts[top1Word] / total) * 100);
-                const size1 = 60 + (top1Perc * 0.5);
+                const size1 = 100 + (top1Perc * 0.5);
 
                 if (sorted.length === 1) {
                     centerEl.innerHTML = `<div style="color:${activeChoices[top1Word]}; font-size:${size1}px; line-height:0.8;">${displayNames[top1Word]}<br><span style="font-size:${size1 * 0.4}px; color:white;">${top1Perc}%</span></div>`;
                 } else {
                     const top2Word = sorted[1];
                     const top2Perc = Math.round((counts[top2Word] / total) * 100);
-                    const size2 = 35 + (top2Perc * 0.4);
+                    const size2 = 50 + (top2Perc * 0.4);
                     centerEl.innerHTML = `
                         <div style="color:${activeChoices[top1Word]}; font-size:${size1}px; line-height:0.75;">
                             ${displayNames[top1Word]} <span style="font-size:${size1 * 0.3}px; color:white;">${top1Perc}%</span>
