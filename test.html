@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Choice - v16.7.35</title>
+    <title>Mugi Choice - v16.7.36</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -37,18 +37,17 @@
         #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; color: white; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
         .control-box { background: white; color: black; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 480px; position: relative; }
         .input-group { margin: 15px 0; text-align: left; }
-        label { font-weight: bold; font-size: 14px; }
+        label { font-weight: bold; font-size: 12px; text-transform: uppercase; color: #666; }
         input, textarea { width: 100%; padding: 10px; font-size: 16px; border: 3px solid black; border-radius: 10px; box-sizing: border-box; font-family: sans-serif; }
         textarea { height: 60px; resize: none; font-weight: bold; color: #2196F3; }
-        button { width: 100%; padding: 15px; cursor: pointer; font-weight: bold; font-size: 18px; border: 4px solid #000; border-radius: 15px; margin-top: 10px; text-transform: uppercase; }
-        .start-btn { background: #43B047; color: white; }
+        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; font-size: 16px; border: 4px solid #000; border-radius: 12px; margin-top: 8px; text-transform: uppercase; }
+        .start-btn { background: #43B047; color: white; font-size: 20px; padding: 18px; }
         .toggle-btn { background: #2196F3; color: white; }
         .reset-btn { background: #E52521; color: white; }
+        .connect-btn { background: #9146FF; color: white; margin-top: 0; }
         .status-tray { margin-top: 20px; padding-top: 10px; border-top: 2px dashed #ccc; display: flex; justify-content: space-around; font-size: 12px; }
         .dot { height: 10px; width: 10px; border-radius: 50%; background: red; }
         .online { background: #43B047; box-shadow: 0 0 5px #43B047; }
-        
-        /* Version Tag for Controller */
         #version-tag { position: absolute; bottom: 10px; right: 15px; font-size: 10px; color: #999; font-weight: bold; }
     </style>
 </head>
@@ -71,38 +70,52 @@
 
     <div id="controls">
         <div class="control-box">
-            <h2 style="margin:0;">MUGI DYNAMIC CONTROL</h2>
+            <h2 style="margin:0 0 15px 0;">MUGI DYNAMIC CONTROL</h2>
+            
+            <div class="input-group" style="background: #f0f0f0; padding: 10px; border-radius: 15px; border: 2px solid #ccc;">
+                <label>Target Twitch Channel:</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="channel-input" placeholder="e.g. robcdee" style="margin:0;">
+                    <button class="connect-btn" onclick="connectToTwitch()" style="width: auto; white-space: nowrap;">Connect</button>
+                </div>
+            </div>
+
             <div class="input-group">
                 <label>CHOICES (Comma Separated):</label>
                 <textarea id="choices-input">Pog, OOOO, LOL, KEKW</textarea>
             </div>
             <div style="display: flex; gap: 10px;">
-                <div class="input-group" style="flex:1;"><label>TIMER:</label><input type="number" id="timer-input" value="30"></div>
+                <div class="input-group" style="flex:1;"><label>TIMER (SEC):</label><input type="number" id="timer-input" value="30"></div>
                 <div class="input-group" style="flex:2;"><label>TITLE:</label><input type="text" id="title-input" value="CHOOSE NOW"></div>
             </div>
             <button class="start-btn" onclick="startVoting()">▶ START VOTING</button>
-            <button class="toggle-btn" onclick="toggleVisibility()">👁 SHOW / HIDE PIE</button>
-            <button class="reset-btn" onclick="resetAll()">✖ RESET & CLEAR</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="toggle-btn" onclick="toggleVisibility()" style="flex:1;">👁 SHOW/HIDE</button>
+                <button class="reset-btn" onclick="resetAll()" style="flex:1;">✖ RESET</button>
+            </div>
             <div class="status-tray">
                 <div style="display:flex; align-items:center; gap:5px;"><div id="dot-obs" class="dot"></div> OBS</div>
                 <div style="display:flex; align-items:center; gap:5px;"><div id="dot-twitch" class="dot"></div> CHAT</div>
             </div>
-            <div id="version-tag">v16.7.35</div>
+            <div id="version-tag">v16.7.36</div>
         </div>
     </div>
 
     <script>
         const RATER_ID = 'mugi-dynamic-pie-2026';
-        const CHANNEL = 'agent00';
         const isController = window.location.hash.includes('control');
         const colorPalette = ['#43B047', '#2196F3', '#E52521', '#9C27B0', '#FF9800', '#FFEB3B', '#00BCD4', '#E91E63'];
         let dynamicColors = {};
-        
-        if (isController) document.getElementById('controls').style.display = 'flex';
-
         let votes = {}; 
         let isVotingOpen = false;
         let timerInterval;
+
+        if (isController) {
+            document.getElementById('controls').style.display = 'flex';
+            // Load saved channel if exists
+            const savedChannel = localStorage.getItem('mugi_last_channel');
+            if(savedChannel) document.getElementById('channel-input').value = savedChannel;
+        }
 
         const ctx = document.getElementById('voteChart').getContext('2d');
         const voteChart = new Chart(ctx, {
@@ -126,6 +139,10 @@
                 if (data.action === 'start') executeStart(data);
                 if (data.action === 'reset') executeReset();
                 if (data.action === 'toggle') executeToggle();
+                if (data.action === 'connect') {
+                    ComfyJS.Disconnect();
+                    ComfyJS.Init(data.channel);
+                }
             });
         });
 
@@ -138,8 +155,21 @@
             }
         };
 
-        ComfyJS.Init(CHANNEL);
-        setTimeout(() => { if(isController) document.getElementById('dot-twitch').classList.add('online'); }, 1500);
+        // Channel connection logic
+        function connectToTwitch() {
+            const channel = document.getElementById('channel-input').value.trim();
+            if(!channel) return alert("Enter a channel name!");
+            
+            localStorage.setItem('mugi_last_channel', channel);
+            ComfyJS.Disconnect();
+            ComfyJS.Init(channel);
+            
+            if(conn && conn.open) conn.send({ action: 'connect', channel: channel });
+            
+            const dot = document.getElementById('dot-twitch');
+            dot.classList.remove('online');
+            setTimeout(() => dot.classList.add('online'), 1000);
+        }
 
         function startVoting() {
             const rawChoices = document.getElementById('choices-input').value.split(',').map(s => s.trim());
