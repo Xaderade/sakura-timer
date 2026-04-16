@@ -12,28 +12,40 @@
         
         #display-container {
             position: relative;
-            width: 750px;
-            height: 750px;
+            width: 800px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             transition: all 0.5s ease;
+        }
+
+        #header-area { text-align: center; margin-bottom: 20px; }
+        #main-title { font-size: 80px; color: white; text-shadow: 6px 6px 0px #000; margin: 0; }
+        #sub-title { font-size: 30px; color: #FFD700; text-shadow: 3px 3px 0px #000; margin: 0; text-transform: uppercase; }
+
+        #pie-wrapper {
+            position: relative;
+            width: 600px;
+            height: 600px;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* The big number inside the pie */
         #center-number {
             position: absolute;
             z-index: 10;
             color: white;
             text-shadow: 8px 8px 0px #000;
-            font-size: 100px;
+            font-size: 120px;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
         }
 
         #timer-text { 
-            position: absolute; top: -80px;
-            font-size: 80px; color: white; text-shadow: 5px 5px 0px #000; 
+            position: absolute; top: -40px; right: -40px;
+            font-size: 70px; color: #FF4444; text-shadow: 4px 4px 0px #000; 
         }
 
         #win-announcement {
@@ -43,13 +55,13 @@
             text-shadow: 10px 10px 0px #000;
             display: none;
             text-align: center;
-            width: 1000px;
+            width: 100%;
             z-index: 20;
         }
 
-        .hidden { opacity: 0 !important; }
+        .hidden { opacity: 0 !important; transform: scale(0.9); }
 
-        /* CONTROL PANEL STYLES */
+        /* CONTROL PANEL */
         #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1a; color: white; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
         .control-box { background: white; color: black; border: 5px solid black; padding: 30px; border-radius: 30px; text-align: center; width: 450px; }
         .input-group { margin: 20px 0; }
@@ -67,10 +79,16 @@
 
     <div id="win-announcement"></div>
 
-    <div id="display-container">
-        <div id="timer-text"></div>
-        <div id="center-number"></div>
-        <canvas id="voteChart"></canvas>
+    <div id="display-container" class="hidden">
+        <div id="header-area">
+            <h1 id="main-title">CHOOSE NOW</h1>
+            <p id="sub-title">Type number in chat to vote</p>
+        </div>
+        <div id="pie-wrapper">
+            <div id="timer-text"></div>
+            <div id="center-number"></div>
+            <canvas id="voteChart"></canvas>
+        </div>
     </div>
 
     <div id="controls">
@@ -104,17 +122,16 @@
 
         const ctx = document.getElementById('voteChart').getContext('2d');
         const voteChart = new Chart(ctx, {
-            type: 'doughnut', // Doughnut allows the center number to sit better
+            type: 'doughnut',
             data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: 'black', borderWidth: 5 }] },
             options: {
-                cutout: '40%', // Space for the number
+                cutout: '45%',
                 responsive: true,
                 animation: { duration: 400 },
                 plugins: { legend: { display: false } }
             }
         });
 
-        // PeerJS Connection
         const peer = new Peer(isController ? null : RATER_ID);
         let conn;
         peer.on('open', () => { if (isController) connectToOBS(); });
@@ -131,7 +148,6 @@
             });
         });
 
-        // Chat Listener
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             if (!isVotingOpen) return;
             const msg = message.trim();
@@ -178,7 +194,6 @@
         function updateChart() {
             const counts = {};
             Object.values(votes).forEach(v => counts[v] = (counts[v] || 0) + 1);
-            
             const activeChoices = Object.keys(counts).sort();
             const dataValues = activeChoices.map(c => counts[c]);
             const bgColors = activeChoices.map(c => colors[c]);
@@ -188,17 +203,13 @@
             voteChart.data.datasets[0].backgroundColor = bgColors;
             voteChart.update();
 
-            // Update center number logic
             if (activeChoices.length > 0) {
                 const maxVotes = Math.max(...dataValues);
                 const winnerIdx = dataValues.indexOf(maxVotes);
                 const winnerNum = activeChoices[winnerIdx];
-                
                 const centerEl = document.getElementById('center-number');
                 centerEl.innerText = winnerNum;
                 centerEl.style.color = colors[winnerNum];
-                
-                // Scale number based on percentage of total votes
                 const total = dataValues.reduce((a, b) => a + b, 0);
                 const scale = 1 + (maxVotes / total);
                 centerEl.style.transform = `scale(${scale})`;
@@ -213,14 +224,11 @@
             if (labels.length > 0) {
                 const max = Math.max(...data);
                 const winner = labels[data.indexOf(max)];
-                
                 const announce = document.getElementById('win-announcement');
                 announce.innerText = `${winner} WINS!`;
                 announce.style.color = colors[winner];
                 announce.style.display = 'block';
-                
                 document.getElementById('display-container').classList.add('hidden');
-                
                 setTimeout(() => { announce.style.display = 'none'; }, 5000);
             }
         }
