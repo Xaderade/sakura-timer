@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Party - Ordinal Top 5 (Smooth Fix)</title>
+    <title>Mugi Party - Ordinal Top 5 (Show/Hide Fix)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
@@ -13,17 +13,20 @@
             overflow: hidden; 
         }
 
-        /* --- THE SMOOTHING FILTER --- */
-        .smooth-outline {
-            filter: url(#crispOutline);
-            paint-order: stroke fill;
-        }
-
+        /* --- OVERLAY VISIBILITY --- */
         #leaderboard-container {
             display: flex;
             flex-direction: column;
             gap: 15px;
             width: 980px;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .hidden { opacity: 0 !important; transform: translateY(-20px); pointer-events: none; }
+
+        .smooth-outline {
+            filter: url(#crispOutline);
+            paint-order: stroke fill;
         }
 
         @keyframes slideInLeft {
@@ -57,17 +60,12 @@
             justify-content: center;
         }
 
-        .rank-suffix {
-            font-size: 0.5em;
-            margin-left: 2px;
-            text-transform: uppercase;
-        }
+        .rank-suffix { font-size: 0.5em; margin-left: 2px; text-transform: uppercase; }
 
-        /* Rank Colors - Stroke is now handled by the SVG filter */
-        .rank-standard .rank { color: white; --stroke-color: black; }
-        .rank-1 .rank { color: #FFD700; --stroke-color: #986C00; }
-        .rank-2 .rank { color: #C0C0C0; --stroke-color: #555555; }
-        .rank-3 .rank { color: #CD7F32; --stroke-color: #603000; }
+        .rank-standard .rank { color: white; }
+        .rank-1 .rank { color: #FFD700; }
+        .rank-2 .rank { color: #C0C0C0; }
+        .rank-3 .rank { color: #CD7F32; }
 
         .name {
             flex-grow: 1;
@@ -76,24 +74,22 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            --stroke-color: black;
         }
 
-        .score {
-            font-size: 75px;
-            min-width: 160px;
-            text-align: right;
-            color: #FFF;
-            --stroke-color: #986C00;
-        }
+        .score { font-size: 75px; min-width: 160px; text-align: right; color: #FFF; }
 
+        /* --- CONTROL PANEL --- */
         #controls { 
             position: fixed; top: 20px; right: 20px; background: white; 
-            border: 5px solid black; border-radius: 20px; padding: 20px; 
-            z-index: 100; font-family: sans-serif; width: 300px; display: none;
+            border: 6px solid black; border-radius: 20px; padding: 20px; 
+            z-index: 100; font-family: sans-serif; width: 320px; display: none;
+            box-shadow: 0 10px 0 #333;
         }
         input { width: 92%; padding: 12px; margin-bottom: 12px; border: 3px solid #000; border-radius: 10px; font-weight: bold; }
-        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; background: #43B047; color: white; border: 3px solid #000; border-radius: 12px; }
+        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; border: 3px solid #000; border-radius: 12px; margin-top: 5px; text-transform: uppercase; }
+        .update-btn { background: #43B047; color: white; }
+        .toggle-btn { background: #2196F3; color: white; margin-bottom: 10px; }
+        .reset-btn { background: #E52521; color: white; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -118,12 +114,16 @@
     <div id="leaderboard-container"></div>
 
     <div id="controls">
-        <h3 style="margin-top:0">ORDINAL REMOTE</h3>
+        <h3 style="margin-top:0; text-align: center;">ORDINAL REMOTE</h3>
+        
+        <button class="toggle-btn" onclick="toggleVisibility()">👁 SHOW / HIDE OVERLAY</button>
+
         <input type="text" id="new-name" placeholder="PLAYER NAME">
         <input type="number" id="new-score" placeholder="SCORE" step="0.1">
-        <button onclick="sendEntry()">UPDATE RANKINGS</button>
-        <button onclick="clearBoard()" style="background:#E52521; margin-top:10px;">RESET ALL</button>
-        <div id="conn-status" style="font-size:12px; margin-top:10px;">Connecting...</div>
+        <button class="update-btn" onclick="sendEntry()">UPDATE RANKINGS</button>
+        
+        <button class="reset-btn" onclick="clearBoard()">RESET ALL</button>
+        <div id="conn-status" style="font-size:12px; margin-top:10px; text-align: center; font-weight: bold;">Connecting...</div>
     </div>
 
     <script>
@@ -136,7 +136,11 @@
         let conn;
 
         const peer = new Peer(isController ? null : PARTY_ID);
-        peer.on('open', () => { if (isController) connect(); });
+        
+        peer.on('open', () => { 
+            if (isController) connect(); 
+        });
+
         peer.on('connection', (c) => { 
             conn = c; 
             conn.on('data', (data) => {
@@ -144,30 +148,30 @@
                     leaderboardData = data.data;
                     renderBoard();
                 }
+                if(data.action === 'toggle') {
+                    executeToggle();
+                }
             });
         });
 
         function connect() {
             conn = peer.connect(PARTY_ID);
-            conn.on('open', () => { document.getElementById('conn-status').innerText = "STATUS: CONNECTED"; });
+            conn.on('open', () => { 
+                document.getElementById('conn-status').innerText = "STATUS: CONNECTED"; 
+            });
         }
 
         function getOrdinal(n) {
-            let s = ["th", "st", "nd", "rd"],
-                v = n % 100;
+            let s = ["th", "st", "nd", "rd"], v = n % 100;
             return s[(v - 20) % 10] || s[v] || s[0];
         }
 
         function renderBoard() {
             localStorage.setItem('mugi_ordinal_data', JSON.stringify(leaderboardData));
-            
             const sortedData = [...leaderboardData].sort((a, b) => b.score - a.score);
             const newTop5 = sortedData.slice(0, 5);
 
-            const newTop5Key = JSON.stringify(newTop5);
-            const currentTop5Key = JSON.stringify(currentDisplayedTop5);
-
-            if (newTop5Key !== currentTop5Key) {
+            if (JSON.stringify(newTop5) !== JSON.stringify(currentDisplayedTop5)) {
                 const container = document.getElementById('leaderboard-container');
                 container.innerHTML = '';
                 
@@ -186,11 +190,21 @@
                     `;
                     container.appendChild(row);
                 });
-                
                 currentDisplayedTop5 = newTop5; 
             }
         }
 
+        // --- VISIBILITY LOGIC ---
+        function toggleVisibility() {
+            if (conn && conn.open) conn.send({ action: 'toggle' });
+            executeToggle();
+        }
+
+        function executeToggle() {
+            document.getElementById('leaderboard-container').classList.toggle('hidden');
+        }
+
+        // --- ENTRY LOGIC ---
         function sendEntry() {
             const name = document.getElementById('new-name').value.trim();
             const score = parseFloat(document.getElementById('new-score').value);
