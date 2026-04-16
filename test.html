@@ -148,7 +148,7 @@
 
         ComfyJS.onChat = (user, msg, flags, self, extra) => {
     // 1. Clean the message (Lowercase and remove all extra spaces)
-    const cleanMsg = msg.trim().toLowerCase();
+    const cleanMsg = msg.trim();
     
     // 2. DEBUG: This will now show EVERYTHING in your black box
     log(`Incoming: [${user}] said "${msg}"`);
