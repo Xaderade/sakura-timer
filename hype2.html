@@ -2,42 +2,48 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mugi Co. | Engine v16.7.13 [FIXED REMOTE SYNC]</title>
+    <title>Mugi Co. | Engine v16.7.14 [UNIQUE SYNC]</title>
     
     <script src="tmi.min.js"></script>
     <script src="peerjs.min.js"></script>
 
     <script>
-        const PEER_ID = 'mugi-link-123'; 
+        // UNIQUE ID - Change this if it still doesn't connect
+        const PEER_ID = 'mugi-engine-mark-sa-2026'; 
+        
         const urlParams = new URLSearchParams(window.location.search);
         const isRemote = urlParams.has('control');
         const peer = new Peer(isRemote ? null : PEER_ID);
         let remoteConn = null;
 
-        const ENGINE_VERSION = "v16.7.13";
+        const ENGINE_VERSION = "v16.7.14";
 
         if (!isRemote) {
             // OBS MODE
+            peer.on('open', (id) => console.log('OBS Ready on ID:', id));
             peer.on('connection', (conn) => {
+                console.log("Remote Control Linked!");
                 conn.on('data', (data) => {
                     if (data.type === 'BOOT') {
                         document.getElementById('inp-ch').value = data.ch;
                         document.getElementById('inp-7id').value = data.id7 || '';
-                        reboot(); // Triggers the full logic update
+                        reboot(); 
                     }
                 });
             });
         } else {
-            // REMOTE CONTROL MODE: Persistent connection logic
+            // REMOTE CONTROL MODE
             function connectToOBS() {
                 if (remoteConn && remoteConn.open) return;
+                console.log("Searching for OBS...");
                 const conn = peer.connect(PEER_ID);
                 conn.on('open', () => { 
                     remoteConn = conn; 
-                    console.log("Linked to OBS");
+                    console.log("Connected to OBS");
                 });
+                conn.on('error', (err) => console.log("Connection Error:", err));
             }
-            peer.on('open', () => setInterval(connectToOBS, 3000)); // Keep trying to find OBS
+            peer.on('open', () => setInterval(connectToOBS, 3000));
         }
     </script>
     
@@ -136,11 +142,9 @@
             ch: document.getElementById('inp-ch').value,
             id7: document.getElementById('inp-7id').value
         };
-        // Always try to send to OBS
         if (remoteConn && remoteConn.open) {
             remoteConn.send(payload);
         }
-        // Always run locally (in case we are in OBS)
         reboot();
     }
 
