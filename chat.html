@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mugi Chat - Mega Emote</title>
+    <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
+        body { background: transparent; margin: 0; padding: 20px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; font-family: 'Luckiest Guy', sans-serif; }
+        #chat-container { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 800px; }
+        .message-row { display: flex; align-items: flex-start; animation: fadeIn 0.3s ease-out; text-shadow: 3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; margin-bottom: 5px; }
+        .user-name { color: #FFD700; font-size: 28px; margin-right: 12px; white-space: nowrap; flex-shrink: 0; }
+        .message-content { color: white; font-size: 26px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; line-height: 1.2; }
+        .chat-emote { height: 50px; vertical-align: middle; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .fade-out { animation: fadeOut 0.5s ease-in forwards; }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-20px); } }
+    </style>
+</head>
+<body>
+    <div id="chat-container"></div>
+
+    <script>
+        const CHAT_ID = 'mugi-chat-2026';
+        const container = document.getElementById('chat-container');
+        let thirdPartyEmotes = {}; // Dictionary: { "catJAM": "url", "OMEGALUL": "url" }
+
+        const peer = new Peer(CHAT_ID);
+        peer.on('connection', (conn) => {
+            conn.on('data', (data) => {
+                if(data.action === 'sync_chan') {
+                    console.log("Connecting to:", data.chan);
+                    loadThirdPartyEmotes(data.chan);
+                    ComfyJS.Init(data.chan);
+                }
+            });
+        });
+
+        async function loadThirdPartyEmotes(channel) {
+            thirdPartyEmotes = {}; 
+            try {
+                // 1. Get Twitch User ID first (needed for some APIs)
+                const userRes = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
+                const userData = await userRes.json();
+                const twitchId = userData.room.twitch_id;
+
+                // 2. Fetch BTTV (Global + Channel)
+                const bttvGlobal = await fetch('https://api.betterttv.net/3/cached/emotes/global');
+                (await bttvGlobal.json()).forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`);
+                const bttvChan = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`);
+                const bttvData = await bttvChan.json();
+                [...(bttvData.channelEmotes || []), ...(bttvData.sharedEmotes || [])].forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`);
+
+                // 3. Fetch FFZ (Channel)
+                userData.sets[userData.room.set].emoticons.forEach(e => thirdPartyEmotes[e.name] = e.urls['4'] || e.urls['1']);
+
+                // 4. Fetch 7TV (Channel)
+                const stvRes = await fetch(`https://7tv.io/v3/users/twitch/${twitchId}`);
+                const stvData = await stvRes.json();
+                if(stvData.emote_set) {
+                    stvData.emote_set.emotes.forEach(e => {
+                        thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
+                    });
+                }
+                console.log("Third Party Emotes Loaded:", Object.keys(thirdPartyEmotes).length);
+            } catch (err) { console.error("Emote Load Error:", err); }
+        }
+
+        ComfyJS.onChat = (user, message, flags, self, extra) => {
+            const row = document.createElement('div');
+            row.className = 'message-row';
+
+            const userSpan = document.createElement('span');
+            userSpan.className = 'user-name';
+            userSpan.innerText = `${user}:`;
+
+            const contentSpan = document.createElement('span');
+            contentSpan.className = 'message-content';
+
+            // Split message into words to check for 3rd party emotes
+            const words = message.split(' ');
+            const formattedNodes = words.map(word => {
+                // Check 1: Is it a Twitch Emote?
+                if (extra.emotes) {
+                    for (const id in extra.emotes) {
+                        for (const range of extra.emotes[id]) {
+                            const [start, end] = range.split('-').map(Number);
+                            if (message.substring(start, end + 1) === word) {
+                                return `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0">`;
+                            }
+                        }
+                    }
+                }
+                // Check 2: Is it BTTV/FFZ/7TV?
+                if (thirdPartyEmotes[word]) {
+                    return `<img class="chat-emote" src="${thirdPartyEmotes[word]}">`;
+                }
+                // Check 3: Just text
+                return document.createTextNode(word + ' ').textContent;
+            });
+
+            contentSpan.innerHTML = formattedNodes.join(' ');
+            row.appendChild(userSpan);
+            row.appendChild(contentSpan);
+            container.appendChild(row);
+
+            setTimeout(() => {
+                row.classList.add('fade-out');
+                setTimeout(() => row.remove(), 500);
+            }, 15000);
+
+            while (container.children.length > 12) { container.removeChild(container.firstChild); }
+        };
+    </script>
+</body>
+</html>
