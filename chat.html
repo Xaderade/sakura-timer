@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - v2.5</title>
+    <title>Mugi Chat - v2.6</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
             background: transparent; margin: 0; padding: 20px; overflow: hidden; height: 100vh; 
-            font-family: "Inter", "Roobert", "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 700;
+            font-family: "Inter", sans-serif; font-weight: 700;
         }
 
         #chat-viewport {
@@ -19,36 +19,38 @@
 
         .message-row { 
             display: flex; align-items: flex-start; padding: 6px 12px; border-radius: 6px;
-            background: rgba(0, 0, 0, 0.6); width: fit-content; animation: fadeIn 0.4s ease-out forwards;
+            background: rgba(0, 0, 0, 0.7); width: fit-content; animation: fadeIn 0.4s ease-out forwards;
+            border-left: 4px solid transparent;
         }
 
-        /* BADGE STYLING */
-        .badges-wrapper { display: flex; align-items: center; gap: 4px; margin-right: 8px; margin-top: 4px; }
-        .badge-icon { width: 20px; height: 20px; border-radius: 2px; }
+        .badges-wrapper { display: flex; align-items: center; gap: 4px; margin-right: 8px; margin-top: 4px; flex-shrink: 0; }
+        .badge-icon { width: 18px; height: 18px; }
 
-        .user-name { font-size: 22px; margin-right: 10px; white-space: nowrap; text-shadow: 2px 2px 2px rgba(0,0,0,0.5); }
-        .message-content { color: #ffffff; font-size: 21px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; line-height: 1.3; }
-        .chat-emote { height: 32px; vertical-align: middle; }
+        .user-name { font-size: 20px; margin-right: 8px; white-space: nowrap; }
+        .message-content { color: #ffffff; font-size: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; line-height: 1.3; }
+        .chat-emote { height: 28px; vertical-align: middle; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9) translateX(-10px); } to { opacity: 1; transform: scale(1) translateX(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
         /* CONTROLLER UI */
-        #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .control-box { background: #fff; color: #000; border: 4px solid #9146ff; padding: 25px; border-radius: 15px; width: 320px; font-family: sans-serif; position: relative; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 2px solid #ddd; border-radius: 5px; }
-        button { width: 100%; padding: 12px; background: #9146FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        #version-tag { position: absolute; bottom: 8px; right: 12px; font-size: 10px; color: #aaa; font-weight: bold; }
+        #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f0f0f; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        .control-box { background: #1a1a1a; border: 2px solid #9146ff; padding: 30px; border-radius: 12px; width: 340px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 12px; margin: 15px 0; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 4px; }
+        button { width: 100%; padding: 12px; background: #9146FF; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #debug-log { margin-top: 15px; font-family: monospace; font-size: 10px; color: #888; height: 60px; overflow-y: auto; background: #000; padding: 5px; width: 100%; box-sizing: border-box; }
+        #version-tag { position: absolute; bottom: 8px; right: 12px; font-size: 10px; color: #444; }
     </style>
 </head>
 <body>
     <div id="chat-viewport"><div id="chat-container"></div></div>
     <div id="controls">
         <div class="control-box">
-            <h2 style="margin:0; text-align:center; color:#9146ff;">CHAT CONTROL</h2>
-            <input type="text" id="channel-input" placeholder="Twitch Channel">
-            <button onclick="manualConnect()">CONNECT</button>
-            <p id="status" style="font-size: 11px; text-align: center; margin-top: 10px; font-weight: bold;">STANDBY</p>
-            <div id="version-tag">v2.5</div>
+            <h2 style="margin:0; text-align:center; color:#9146ff;">MUGI CHAT</h2>
+            <input type="text" id="channel-input" placeholder="Enter Twitch Username">
+            <button onclick="manualConnect()">GO LIVE</button>
+            <p id="status" style="font-size: 12px; text-align: center; margin-top: 12px;">SYSTEM READY</p>
+            <div id="debug-log">Initialised...</div>
+            <div id="version-tag">v2.6</div>
         </div>
     </div>
 
@@ -57,79 +59,98 @@
         const container = document.getElementById('chat-container');
         const isController = window.location.hash.includes('control');
         let thirdPartyEmotes = {};
-        let channelBadges = {};
 
-        if(isController) { document.getElementById('controls').style.display = 'flex'; }
+        function log(msg) {
+            const d = document.getElementById('debug-log');
+            if(d) d.innerHTML += `<div>> ${msg}</div>`;
+            console.log(msg);
+        }
 
-        const peer = new Peer(isController ? null : CHAT_ID);
+        if(isController) document.getElementById('controls').style.display = 'flex';
+
+        let peer = new Peer(isController ? null : CHAT_ID);
         let conn;
 
-        peer.on('open', () => {
+        peer.on('open', (id) => {
+            log(isController ? "Controller Peer Open" : "OBS Overlay Peer Open");
             if (isController) {
-                conn = peer.connect(CHAT_ID);
-                conn.on('open', () => { document.getElementById('status').innerText = "LINKED TO OBS"; });
+                attemptConnection();
             }
         });
 
+        function attemptConnection() {
+            log("Attempting to link to OBS...");
+            conn = peer.connect(CHAT_ID);
+            conn.on('open', () => {
+                document.getElementById('status').innerText = "LINKED TO OBS";
+                log("Peer Link Successful");
+            });
+            conn.on('error', (err) => log("Peer Error: " + err));
+        }
+
         peer.on('connection', (c) => {
             conn = c;
-            conn.on('data', (d) => { if(d.action === 'sync_chan') { loadResources(d.chan); ComfyJS.Init(d.chan); } });
+            log("Overlay received connection");
+            conn.on('data', (d) => {
+                if(d.action === 'sync_chan') {
+                    log("Syncing channel: " + d.chan);
+                    loadResources(d.chan);
+                    ComfyJS.Init(d.chan);
+                }
+            });
         });
 
         async function manualConnect() {
             const chan = document.getElementById('channel-input').value.trim();
             if(!chan) return;
-            document.getElementById('status').innerText = "LOADING ASSETS...";
+            log("Connecting to Twitch...");
             await loadResources(chan);
             ComfyJS.Init(chan);
-            if(conn) conn.send({ action: 'sync_chan', chan: chan });
-            document.getElementById('status').innerText = `ACTIVE: ${chan}`;
+            if(conn && conn.open) {
+                conn.send({ action: 'sync_chan', chan: chan });
+                log("Sync signal sent to OBS");
+            } else {
+                log("OBS not linked. Try refreshing OBS source.");
+            }
+            document.getElementById('status').innerText = `LIVE: ${chan}`;
         }
 
         async function loadResources(channel) {
+            log("Loading Emotes/Badges...");
             try {
-                const ffzRes = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
-                const ffzData = await ffzRes.json();
-                const twitchId = ffzData.room.twitch_id;
+                const ffz = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`).then(r => r.json());
+                const tID = ffz.room.twitch_id;
+                
+                // Emotes Fetch (7TV/BTTV)
+                const bG = await fetch('https://api.betterttv.net/3/cached/emotes/global').then(r => r.json());
+                bG.forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
+                
+                const bC = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tID}`).then(r => r.json());
+                [...(bC.channelEmotes || []), ...(bC.sharedEmotes || [])].forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
 
-                // Load Badges (Twitch API via FFZ proxy for easy access)
-                const badgeRes = await fetch(`https://api.frankerfacez.com/v1/badges/twitch/${twitchId}`);
-                channelBadges = await badgeRes.json();
-
-                // Load 3rd Party Emotes (Same as v2.4)
-                const bttvG = await fetch('https://api.betterttv.net/3/cached/emotes/global');
-                (await bttvG.json()).forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
-                const bttvC = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`);
-                const bttvD = await bttvC.json();
-                [...(bttvD.channelEmotes || []), ...(bttvD.sharedEmotes || [])].forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
-                const stvRes = await fetch(`https://7tv.io/v3/users/twitch/${twitchId}`);
-                const stvData = await stvRes.json();
-                if(stvData.emote_set) stvData.emote_set.emotes.forEach(e => thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`);
-            } catch (err) { console.log("Resource load error"); }
+                const sV = await fetch(`https://7tv.io/v3/users/twitch/${tID}`).then(r => r.json());
+                if(sV.emote_set) sV.emote_set.emotes.forEach(e => thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`);
+                
+                log("Resources Loaded.");
+            } catch (e) { log("Resource Error: API busy."); }
         }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             const row = document.createElement('div');
             row.className = 'message-row';
-            row.style.borderLeft = `4px solid ${extra.userColor || '#9146ff'}`;
+            row.style.borderLeftColor = extra.userColor || '#9146ff';
 
-            // BUILD BADGES
             const badgeWrapper = document.createElement('div');
             badgeWrapper.className = 'badges-wrapper';
-            
-            if (flags.broadcaster) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/5527c47c-427c-4a30-89bb-fd19ad9f010b/3">`;
-            else if (flags.moderator) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/326785d4-da13-4d24-8182-b03d151d0a01/3">`;
-            else if (flags.vip) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3">`;
-            
-            if (flags.subscriber) {
-                // Simplified Sub Badge link - works for most channels
-                badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/chat/badges/subscriber/static/0/3">`;
-            }
+            if(flags.broadcaster) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/5527c47c-427c-4a30-89bb-fd19ad9f010b/3">`;
+            if(flags.moderator) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/326785d4-da13-4d24-8182-b03d151d0a01/3">`;
+            if(flags.vip) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3">`;
+            if(flags.subscriber) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/chat/badges/subscriber/static/0/3">`;
 
             const userSpan = document.createElement('span');
             userSpan.className = 'user-name';
             userSpan.style.color = extra.userColor || '#9146ff'; 
-            userSpan.innerText = `${user}`;
+            userSpan.innerText = `${user}:`;
 
             const contentSpan = document.createElement('span');
             contentSpan.className = 'message-content';
@@ -152,7 +173,6 @@
             row.appendChild(contentSpan);
             container.appendChild(row);
 
-            // LIQUID SCROLL
             const rowHeight = row.offsetHeight + 6;
             container.style.transition = "none";
             container.style.transform = `translateY(${rowHeight}px)`;
@@ -160,8 +180,8 @@
             container.style.transition = "transform 0.3s cubic-bezier(0.2, 0, 0.1, 1)";
             container.style.transform = "translateY(0px)";
 
-            setTimeout(() => { row.style.opacity = "0"; setTimeout(() => row.remove(), 500); }, 15000);
-            if (container.children.length > 20) container.removeChild(container.firstChild);
+            setTimeout(() => { row.style.opacity = "0"; setTimeout(() => row.remove(), 500); }, 20000);
+            if (container.children.length > 25) container.removeChild(container.firstChild);
         };
     </script>
 </body>
