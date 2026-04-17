@@ -1,36 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - Integrated</title>
+    <title>Mugi Chat - Twitch Style</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
-        
-        /* OVERLAY STYLE */
-        body { background: transparent; margin: 0; padding: 20px; overflow: hidden; height: 100vh; display: flex; flex-direction: column; justify-content: flex-end; font-family: 'Luckiest Guy', sans-serif; }
-        #chat-container { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 800px; }
-        .message-row { display: flex; align-items: flex-start; animation: fadeIn 0.3s ease-out; text-shadow: 3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000; margin-bottom: 5px; }
-        .user-name { color: #FFD700; font-size: 28px; margin-right: 12px; white-space: nowrap; flex-shrink: 0; }
-        .message-content { color: white; font-size: 26px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; line-height: 1.2; }
-        .chat-emote { height: 50px; vertical-align: middle; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-        .fade-out { animation: fadeOut 0.5s ease-in forwards; }
-        @keyframes fadeOut { to { opacity: 0; transform: translateY(-20px); } }
+        /* TWITCH FONT STACK */
+        body { 
+            background: transparent; 
+            margin: 0; 
+            padding: 20px; 
+            overflow: hidden; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: flex-end; 
+            font-family: "Inter", "Roobert", "Helvetica Neue", Helvetica, Arial, sans-serif; 
+            font-weight: 600;
+        }
 
-        /* CONTROLLER UI (Hidden by default) */
-        #controls { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #121212; z-index: 9999; display: none; 
-            flex-direction: column; align-items: center; justify-content: center; 
+        #chat-container { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: flex-end;
+            width: 100%; 
+            max-width: 800px;
+            transition: all 0.3s ease;
         }
-        .control-box { 
-            background: #fff; color: #000; border: 6px solid #000; 
-            padding: 25px; border-radius: 25px; width: 350px; 
-            box-shadow: 10px 10px 0px rgba(0,0,0,0.5); font-family: sans-serif;
+
+        .message-row { 
+            display: flex; 
+            align-items: flex-start; 
+            animation: slideUp 0.2s ease-out; 
+            padding: 4px 10px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.5); /* Semi-dark background for readability */
+            margin-bottom: 4px;
+            width: fit-content;
         }
-        input { width: 100%; padding: 12px; font-size: 16px; border: 3px solid #000; border-radius: 10px; box-sizing: border-box; margin: 10px 0; }
-        button { width: 100%; padding: 12px; cursor: pointer; font-weight: bold; background: #9146FF; color: white; border: 3px solid #000; border-radius: 10px; text-transform: uppercase; }
+
+        .user-name { 
+            font-size: 20px; 
+            margin-right: 8px; 
+            white-space: nowrap; 
+            flex-shrink: 0;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.8);
+        }
+
+        .message-content { 
+            color: #efeff1; 
+            font-size: 19px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            gap: 4px; 
+            line-height: 1.5;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.8);
+        }
+
+        .chat-emote { 
+            height: 28px; /* Matches text height better */
+            vertical-align: middle; 
+        }
+
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        .fade-out { animation: fadeOut 0.5s ease-in forwards; }
+        @keyframes fadeOut { to { opacity: 0; transform: scale(0.95); } }
+
+        /* CONTROLLER UI */
+        #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .control-box { background: #fff; color: #000; border: 4px solid #9146ff; padding: 25px; border-radius: 15px; width: 320px; font-family: sans-serif; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 2px solid #ddd; border-radius: 5px; }
+        button { width: 100%; padding: 12px; background: #9146FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -39,11 +84,10 @@
 
     <div id="controls">
         <div class="control-box">
-            <h2 style="margin:0; text-align:center;">MUGI CHAT CONTROLLER</h2>
-            <p style="font-size: 12px; font-weight: bold; color: #555; margin: 10px 0 0 0;">ENTER TWITCH CHANNEL</p>
-            <input type="text" id="channel-input" placeholder="Channel Name">
-            <button onclick="manualConnect()">CONNECT CHAT</button>
-            <p id="status" style="font-size: 11px; text-align: center; margin-top: 10px; font-weight: bold;">DISCONNECTED</p>
+            <h2 style="margin:0; text-align:center; color:#9146ff;">CHAT CONTROL</h2>
+            <input type="text" id="channel-input" placeholder="Twitch Channel">
+            <button onclick="manualConnect()">CONNECT</button>
+            <p id="status" style="font-size: 11px; text-align: center; margin-top: 10px;">STANDBY</p>
         </div>
     </div>
 
@@ -53,49 +97,32 @@
         const isController = window.location.hash.includes('control');
         let thirdPartyEmotes = {};
 
-        // Toggle UI based on #control
-        if(isController) {
-            document.getElementById('controls').style.display = 'flex';
-            const saved = localStorage.getItem('mugi_chan');
-            if(saved) document.getElementById('channel-input').value = saved;
-        }
+        if(isController) { document.getElementById('controls').style.display = 'flex'; }
 
         const peer = new Peer(isController ? null : CHAT_ID);
         let conn;
 
-        peer.on('open', (id) => {
+        peer.on('open', () => {
             if (isController) {
                 conn = peer.connect(CHAT_ID);
-                conn.on('open', () => {
-                    document.getElementById('status').innerText = "CONNECTED TO OBS";
-                    document.getElementById('status').style.color = "green";
-                });
+                conn.on('open', () => { document.getElementById('status').innerText = "CONNECTED TO OBS"; });
             }
         });
 
         peer.on('connection', (c) => {
             conn = c;
             conn.on('data', (d) => {
-                if(d.action === 'sync_chan') {
-                    loadThirdPartyEmotes(d.chan);
-                    ComfyJS.Init(d.chan);
-                }
+                if(d.action === 'sync_chan') { loadThirdPartyEmotes(d.chan); ComfyJS.Init(d.chan); }
             });
         });
 
         async function manualConnect() {
             const chan = document.getElementById('channel-input').value.trim();
             if(!chan) return;
-            localStorage.setItem('mugi_chan', chan);
-            
-            // Connect this page
             loadThirdPartyEmotes(chan);
             ComfyJS.Init(chan);
-            
-            // Sync the OBS Overlay
             if(conn) conn.send({ action: 'sync_chan', chan: chan });
-            
-            document.getElementById('status').innerText = `CHAT ACTIVE: ${chan}`;
+            document.getElementById('status').innerText = `ACTIVE: ${chan}`;
         }
 
         async function loadThirdPartyEmotes(channel) {
@@ -106,52 +133,56 @@
                 const twitchId = userData.room.twitch_id;
 
                 // BTTV
-                const bttvGlobal = await fetch('https://api.betterttv.net/3/cached/emotes/global');
-                (await bttvGlobal.json()).forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`);
-                const bttvChan = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`);
-                const bttvData = await bttvChan.json();
-                [...(bttvData.channelEmotes || []), ...(bttvData.sharedEmotes || [])].forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/3x`);
-
-                // FFZ
-                userData.sets[userData.room.set].emoticons.forEach(e => thirdPartyEmotes[e.name] = e.urls['4'] || e.urls['1']);
+                const bttvG = await fetch('https://api.betterttv.net/3/cached/emotes/global');
+                (await bttvG.json()).forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
+                const bttvC = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`);
+                const bttvD = await bttvC.json();
+                [...(bttvD.channelEmotes || []), ...(bttvD.sharedEmotes || [])].forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
 
                 // 7TV
                 const stvRes = await fetch(`https://7tv.io/v3/users/twitch/${twitchId}`);
                 const stvData = await stvRes.json();
                 if(stvData.emote_set) {
                     stvData.emote_set.emotes.forEach(e => {
-                        thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/4x.webp`;
+                        thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
                     });
                 }
-            } catch (err) { console.error("Emote Load Error:", err); }
+            } catch (err) { console.log("Emote API skip or error."); }
         }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             const row = document.createElement('div');
             row.className = 'message-row';
+
             const userSpan = document.createElement('span');
             userSpan.className = 'user-name';
+            // PULLS TWITCH USER COLOR
+            userSpan.style.color = extra.userColor || '#FFD700'; 
             userSpan.innerText = `${user}:`;
+
             const contentSpan = document.createElement('span');
             contentSpan.className = 'message-content';
 
+            // EMOTE RENDERING FIX
             const words = message.split(' ');
-            const formattedNodes = words.map(word => {
+            const nodes = words.map(word => {
+                // Check 1: Twitch Native Emotes
                 if (extra.emotes) {
-                    for (const id in extra.emotes) {
-                        for (const range of extra.emotes[id]) {
-                            const [start, end] = range.split('-').map(Number);
+                    for (let id in extra.emotes) {
+                        for (let range of extra.emotes[id]) {
+                            let [start, end] = range.split('-').map(Number);
                             if (message.substring(start, end + 1) === word) {
-                                return `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0">`;
+                                return `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0">`;
                             }
                         }
                     }
                 }
+                // Check 2: 3rd Party
                 if (thirdPartyEmotes[word]) return `<img class="chat-emote" src="${thirdPartyEmotes[word]}">`;
                 return word;
             });
 
-            contentSpan.innerHTML = formattedNodes.join(' ');
+            contentSpan.innerHTML = nodes.join(' ');
             row.appendChild(userSpan);
             row.appendChild(contentSpan);
             container.appendChild(row);
@@ -159,9 +190,9 @@
             setTimeout(() => {
                 row.classList.add('fade-out');
                 setTimeout(() => row.remove(), 500);
-            }, 15000);
+            }, 10000);
 
-            while (container.children.length > 12) { container.removeChild(container.firstChild); }
+            if (container.children.length > 15) container.removeChild(container.firstChild);
         };
     </script>
 </body>
