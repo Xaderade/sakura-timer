@@ -1,96 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - Liquid Scroll</title>
+    <title>Mugi Chat - v2.5</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
-            background: transparent; 
-            margin: 0; 
-            padding: 20px; 
-            overflow: hidden; 
-            height: 100vh; 
-            font-family: "Inter", "Roobert", "Helvetica Neue", Helvetica, Arial, sans-serif; 
-            font-weight: 700;
+            background: transparent; margin: 0; padding: 20px; overflow: hidden; height: 100vh; 
+            font-family: "Inter", "Roobert", "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 700;
         }
 
-        /* The viewport that clips the chat */
         #chat-viewport {
-            position: absolute;
-            bottom: 40px;
-            left: 20px;
-            width: 100%;
-            max-width: 800px;
-            height: 800px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
+            position: absolute; bottom: 40px; left: 20px; width: 100%; max-width: 800px;
+            height: 800px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
         }
 
-        /* The actual list that moves */
-        #chat-container { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 6px;
-            transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1); /* THE SMOOTHING */
-        }
+        #chat-container { display: flex; flex-direction: column; gap: 6px; transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1); }
 
         .message-row { 
-            display: flex; 
-            align-items: flex-start; 
-            padding: 6px 12px;
-            border-radius: 6px;
-            background: rgba(0, 0, 0, 0.6);
-            width: fit-content;
-            animation: fadeIn 0.4s ease-out forwards;
-            border-left: 4px solid transparent;
+            display: flex; align-items: flex-start; padding: 6px 12px; border-radius: 6px;
+            background: rgba(0, 0, 0, 0.6); width: fit-content; animation: fadeIn 0.4s ease-out forwards;
         }
 
-        .user-name { 
-            font-size: 22px; 
-            margin-right: 10px; 
-            white-space: nowrap; 
-            text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
-        }
+        /* BADGE STYLING */
+        .badges-wrapper { display: flex; align-items: center; gap: 4px; margin-right: 8px; margin-top: 4px; }
+        .badge-icon { width: 20px; height: 20px; border-radius: 2px; }
 
-        .message-content { 
-            color: #ffffff; 
-            font-size: 21px; 
-            display: flex; 
-            flex-wrap: wrap; 
-            align-items: center; 
-            gap: 5px; 
-            line-height: 1.3;
-        }
-
+        .user-name { font-size: 22px; margin-right: 10px; white-space: nowrap; text-shadow: 2px 2px 2px rgba(0,0,0,0.5); }
+        .message-content { color: #ffffff; font-size: 21px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; line-height: 1.3; }
         .chat-emote { height: 32px; vertical-align: middle; }
 
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: scale(0.9) translateX(-10px); } 
-            to { opacity: 1; transform: scale(1) translateX(0); } 
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9) translateX(-10px); } to { opacity: 1; transform: scale(1) translateX(0); } }
 
         /* CONTROLLER UI */
         #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .control-box { background: #fff; color: #000; border: 4px solid #9146ff; padding: 25px; border-radius: 15px; width: 320px; font-family: sans-serif; }
+        .control-box { background: #fff; color: #000; border: 4px solid #9146ff; padding: 25px; border-radius: 15px; width: 320px; font-family: sans-serif; position: relative; }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 2px solid #ddd; border-radius: 5px; }
         button { width: 100%; padding: 12px; background: #9146FF; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #version-tag { position: absolute; bottom: 8px; right: 12px; font-size: 10px; color: #aaa; font-weight: bold; }
     </style>
 </head>
 <body>
-
-    <div id="chat-viewport">
-        <div id="chat-container"></div>
-    </div>
-
+    <div id="chat-viewport"><div id="chat-container"></div></div>
     <div id="controls">
         <div class="control-box">
             <h2 style="margin:0; text-align:center; color:#9146ff;">CHAT CONTROL</h2>
             <input type="text" id="channel-input" placeholder="Twitch Channel">
             <button onclick="manualConnect()">CONNECT</button>
-            <p id="status" style="font-size: 11px; text-align: center; margin-top: 10px;">STANDBY</p>
+            <p id="status" style="font-size: 11px; text-align: center; margin-top: 10px; font-weight: bold;">STANDBY</p>
+            <div id="version-tag">v2.5</div>
         </div>
     </div>
 
@@ -99,6 +57,7 @@
         const container = document.getElementById('chat-container');
         const isController = window.location.hash.includes('control');
         let thirdPartyEmotes = {};
+        let channelBadges = {};
 
         if(isController) { document.getElementById('controls').style.display = 'flex'; }
 
@@ -108,32 +67,36 @@
         peer.on('open', () => {
             if (isController) {
                 conn = peer.connect(CHAT_ID);
-                conn.on('open', () => { document.getElementById('status').innerText = "CONNECTED TO OBS"; });
+                conn.on('open', () => { document.getElementById('status').innerText = "LINKED TO OBS"; });
             }
         });
 
         peer.on('connection', (c) => {
             conn = c;
-            conn.on('data', (d) => {
-                if(d.action === 'sync_chan') { loadThirdPartyEmotes(d.chan); ComfyJS.Init(d.chan); }
-            });
+            conn.on('data', (d) => { if(d.action === 'sync_chan') { loadResources(d.chan); ComfyJS.Init(d.chan); } });
         });
 
         async function manualConnect() {
             const chan = document.getElementById('channel-input').value.trim();
             if(!chan) return;
-            loadThirdPartyEmotes(chan);
+            document.getElementById('status').innerText = "LOADING ASSETS...";
+            await loadResources(chan);
             ComfyJS.Init(chan);
             if(conn) conn.send({ action: 'sync_chan', chan: chan });
             document.getElementById('status').innerText = `ACTIVE: ${chan}`;
         }
 
-        async function loadThirdPartyEmotes(channel) {
-            thirdPartyEmotes = {}; 
+        async function loadResources(channel) {
             try {
-                const userRes = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
-                const userData = await userRes.json();
-                const twitchId = userData.room.twitch_id;
+                const ffzRes = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
+                const ffzData = await ffzRes.json();
+                const twitchId = ffzData.room.twitch_id;
+
+                // Load Badges (Twitch API via FFZ proxy for easy access)
+                const badgeRes = await fetch(`https://api.frankerfacez.com/v1/badges/twitch/${twitchId}`);
+                channelBadges = await badgeRes.json();
+
+                // Load 3rd Party Emotes (Same as v2.4)
                 const bttvG = await fetch('https://api.betterttv.net/3/cached/emotes/global');
                 (await bttvG.json()).forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
                 const bttvC = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${twitchId}`);
@@ -141,18 +104,27 @@
                 [...(bttvD.channelEmotes || []), ...(bttvD.sharedEmotes || [])].forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
                 const stvRes = await fetch(`https://7tv.io/v3/users/twitch/${twitchId}`);
                 const stvData = await stvRes.json();
-                if(stvData.emote_set) {
-                    stvData.emote_set.emotes.forEach(e => {
-                        thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`;
-                    });
-                }
-            } catch (err) { console.log("Emote Load Error"); }
+                if(stvData.emote_set) stvData.emote_set.emotes.forEach(e => thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`);
+            } catch (err) { console.log("Resource load error"); }
         }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             const row = document.createElement('div');
             row.className = 'message-row';
-            row.style.borderLeftColor = extra.userColor || '#9146ff';
+            row.style.borderLeft = `4px solid ${extra.userColor || '#9146ff'}`;
+
+            // BUILD BADGES
+            const badgeWrapper = document.createElement('div');
+            badgeWrapper.className = 'badges-wrapper';
+            
+            if (flags.broadcaster) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/5527c47c-427c-4a30-89bb-fd19ad9f010b/3">`;
+            else if (flags.moderator) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/326785d4-da13-4d24-8182-b03d151d0a01/3">`;
+            else if (flags.vip) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3">`;
+            
+            if (flags.subscriber) {
+                // Simplified Sub Badge link - works for most channels
+                badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/chat/badges/subscriber/static/0/3">`;
+            }
 
             const userSpan = document.createElement('span');
             userSpan.className = 'user-name';
@@ -161,47 +133,34 @@
 
             const contentSpan = document.createElement('span');
             contentSpan.className = 'message-content';
-
             const words = message.split(' ');
             const nodes = words.map(word => {
                 if (extra.emotes) {
                     for (let id in extra.emotes) {
                         for (let range of extra.emotes[id]) {
-                            let [start, end] = range.split('-').map(Number);
-                            if (message.substring(start, end + 1) === word) {
-                                return `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0">`;
-                            }
+                            let [s, e] = range.split('-').map(Number);
+                            if (message.substring(s, e + 1) === word) return `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0">`;
                         }
                     }
                 }
-                if (thirdPartyEmotes[word]) return `<img class="chat-emote" src="${thirdPartyEmotes[word]}">`;
-                return word;
+                return thirdPartyEmotes[word] ? `<img class="chat-emote" src="${thirdPartyEmotes[word]}">` : word;
             });
 
             contentSpan.innerHTML = nodes.join(' ');
+            row.appendChild(badgeWrapper);
             row.appendChild(userSpan);
             row.appendChild(contentSpan);
-            
             container.appendChild(row);
 
-            // AUTO-SCROLL LOGIC
-            // We temporarily disable transition to jump to the new height, 
-            // then re-enable it to slide.
-            const rowHeight = row.offsetHeight + 6; // height + gap
+            // LIQUID SCROLL
+            const rowHeight = row.offsetHeight + 6;
             container.style.transition = "none";
             container.style.transform = `translateY(${rowHeight}px)`;
-            
-            // Force reflow
             container.offsetHeight; 
-            
             container.style.transition = "transform 0.3s cubic-bezier(0.2, 0, 0.1, 1)";
             container.style.transform = "translateY(0px)";
 
-            setTimeout(() => {
-                row.style.opacity = "0";
-                setTimeout(() => row.remove(), 500);
-            }, 15000);
-
+            setTimeout(() => { row.style.opacity = "0"; setTimeout(() => row.remove(), 500); }, 15000);
             if (container.children.length > 20) container.removeChild(container.firstChild);
         };
     </script>
