@@ -1,43 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - v2.6</title>
+    <title>Mugi Chat - v2.8</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
             background: transparent; margin: 0; padding: 20px; overflow: hidden; height: 100vh; 
-            font-family: "Inter", sans-serif; font-weight: 700;
+            font-family: "Inter", sans-serif; font-weight: 800; /* Extra bold for better shadow contrast */
         }
 
-        #chat-viewport {
-            position: absolute; bottom: 40px; left: 20px; width: 100%; max-width: 800px;
-            height: 800px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
+        #chat-viewport { 
+            position: absolute; bottom: 40px; left: 20px; width: 100%; max-width: 800px; 
+            height: 800px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; 
         }
 
-        #chat-container { display: flex; flex-direction: column; gap: 6px; transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1); }
+        #chat-container { display: flex; flex-direction: column; gap: 4px; transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1); }
 
         .message-row { 
-            display: flex; align-items: flex-start; padding: 6px 12px; border-radius: 6px;
-            background: rgba(0, 0, 0, 0.7); width: fit-content; animation: fadeIn 0.4s ease-out forwards;
-            border-left: 4px solid transparent;
+            display: flex; align-items: flex-start; padding: 2px 0; 
+            background: transparent; /* BACKGROUND REMOVED */
+            width: fit-content; animation: fadeIn 0.4s ease-out forwards;
+            /* TEXT OUTLINE + DROP SHADOW FOR READABILITY */
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,1)) drop-shadow(0px 0px 4px rgba(0,0,0,0.5));
         }
 
-        .badges-wrapper { display: flex; align-items: center; gap: 4px; margin-right: 8px; margin-top: 4px; flex-shrink: 0; }
-        .badge-icon { width: 18px; height: 18px; }
+        .badges-wrapper { display: flex; align-items: center; gap: 4px; margin-right: 8px; margin-top: 6px; flex-shrink: 0; }
+        .badge-icon { width: 18px; height: 18px; filter: drop-shadow(1px 1px 1px black); }
 
-        .user-name { font-size: 20px; margin-right: 8px; white-space: nowrap; }
-        .message-content { color: #ffffff; font-size: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; line-height: 1.3; }
-        .chat-emote { height: 28px; vertical-align: middle; }
+        .user-name { 
+            font-size: 22px; margin-right: 8px; white-space: nowrap;
+            -webkit-text-stroke: 0.5px black; /* Thin outline */
+        }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .message-content { 
+            color: #ffffff; font-size: 22px; display: flex; flex-wrap: wrap; 
+            align-items: center; gap: 5px; line-height: 1.2;
+            -webkit-text-stroke: 0.5px black; /* Thin outline */
+        }
+
+        .chat-emote { height: 30px; vertical-align: middle; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
 
         /* CONTROLLER UI */
         #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f0f0f; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        .control-box { background: #1a1a1a; border: 2px solid #9146ff; padding: 30px; border-radius: 12px; width: 340px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .control-box { background: #1a1a1a; border: 2px solid #9146ff; padding: 30px; border-radius: 12px; width: 340px; position: relative; font-family: sans-serif; }
         input { width: 100%; padding: 12px; margin: 15px 0; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 4px; }
         button { width: 100%; padding: 12px; background: #9146FF; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        #debug-log { margin-top: 15px; font-family: monospace; font-size: 10px; color: #888; height: 60px; overflow-y: auto; background: #000; padding: 5px; width: 100%; box-sizing: border-box; }
+        #debug-log { margin-top: 15px; font-family: monospace; font-size: 10px; color: #888; height: 80px; overflow-y: auto; background: #000; padding: 5px; width: 100%; border-radius: 4px; }
         #version-tag { position: absolute; bottom: 8px; right: 12px; font-size: 10px; color: #444; }
     </style>
 </head>
@@ -46,11 +57,11 @@
     <div id="controls">
         <div class="control-box">
             <h2 style="margin:0; text-align:center; color:#9146ff;">MUGI CHAT</h2>
-            <input type="text" id="channel-input" placeholder="Enter Twitch Username">
+            <input type="text" id="channel-input" placeholder="Twitch Username">
             <button onclick="manualConnect()">GO LIVE</button>
             <p id="status" style="font-size: 12px; text-align: center; margin-top: 12px;">SYSTEM READY</p>
-            <div id="debug-log">Initialised...</div>
-            <div id="version-tag">v2.6</div>
+            <div id="debug-log">V2.8 Booted...</div>
+            <div id="version-tag">v2.8</div>
         </div>
     </div>
 
@@ -62,8 +73,7 @@
 
         function log(msg) {
             const d = document.getElementById('debug-log');
-            if(d) d.innerHTML += `<div>> ${msg}</div>`;
-            console.log(msg);
+            if(d) { d.innerHTML += `<div>> ${msg}</div>`; d.scrollTop = d.scrollHeight; }
         }
 
         if(isController) document.getElementById('controls').style.display = 'flex';
@@ -71,74 +81,54 @@
         let peer = new Peer(isController ? null : CHAT_ID);
         let conn;
 
-        peer.on('open', (id) => {
-            log(isController ? "Controller Peer Open" : "OBS Overlay Peer Open");
+        peer.on('open', () => {
             if (isController) {
-                attemptConnection();
+                conn = peer.connect(CHAT_ID);
+                conn.on('open', () => { document.getElementById('status').innerText = "LINKED TO OBS"; });
             }
         });
 
-        function attemptConnection() {
-            log("Attempting to link to OBS...");
-            conn = peer.connect(CHAT_ID);
-            conn.on('open', () => {
-                document.getElementById('status').innerText = "LINKED TO OBS";
-                log("Peer Link Successful");
-            });
-            conn.on('error', (err) => log("Peer Error: " + err));
-        }
-
         peer.on('connection', (c) => {
             conn = c;
-            log("Overlay received connection");
             conn.on('data', (d) => {
-                if(d.action === 'sync_chan') {
-                    log("Syncing channel: " + d.chan);
-                    loadResources(d.chan);
-                    ComfyJS.Init(d.chan);
-                }
+                if(d.action === 'sync_chan') { loadResources(d.chan); ComfyJS.Init(d.chan); }
             });
         });
 
         async function manualConnect() {
             const chan = document.getElementById('channel-input').value.trim();
             if(!chan) return;
-            log("Connecting to Twitch...");
+            log(`Attempting connection: ${chan}`);
             await loadResources(chan);
             ComfyJS.Init(chan);
-            if(conn && conn.open) {
-                conn.send({ action: 'sync_chan', chan: chan });
-                log("Sync signal sent to OBS");
-            } else {
-                log("OBS not linked. Try refreshing OBS source.");
-            }
+            if(conn && conn.open) conn.send({ action: 'sync_chan', chan: chan });
             document.getElementById('status').innerText = `LIVE: ${chan}`;
         }
 
-        async function loadResources(channel) {
-            log("Loading Emotes/Badges...");
+        async function loadResources(channel, retryCount = 0) {
             try {
-                const ffz = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`).then(r => r.json());
+                const ffzRes = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
+                if (!ffzRes.ok) throw new Error("API Busy");
+                const ffz = await ffzRes.json();
                 const tID = ffz.room.twitch_id;
-                
-                // Emotes Fetch (7TV/BTTV)
                 const bG = await fetch('https://api.betterttv.net/3/cached/emotes/global').then(r => r.json());
                 bG.forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
-                
                 const bC = await fetch(`https://api.betterttv.net/3/cached/users/twitch/${tID}`).then(r => r.json());
                 [...(bC.channelEmotes || []), ...(bC.sharedEmotes || [])].forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`);
-
                 const sV = await fetch(`https://7tv.io/v3/users/twitch/${tID}`).then(r => r.json());
                 if(sV.emote_set) sV.emote_set.emotes.forEach(e => thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`);
-                
-                log("Resources Loaded.");
-            } catch (e) { log("Resource Error: API busy."); }
+                log("All Emotes Loaded.");
+            } catch (e) {
+                if (retryCount < 3) {
+                    log(`API busy, retrying... (${retryCount + 1}/3)`);
+                    setTimeout(() => loadResources(channel, retryCount + 1), 2000);
+                }
+            }
         }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             const row = document.createElement('div');
             row.className = 'message-row';
-            row.style.borderLeftColor = extra.userColor || '#9146ff';
 
             const badgeWrapper = document.createElement('div');
             badgeWrapper.className = 'badges-wrapper';
@@ -149,13 +139,13 @@
 
             const userSpan = document.createElement('span');
             userSpan.className = 'user-name';
-            userSpan.style.color = extra.userColor || '#9146ff'; 
+            userSpan.style.color = extra.userColor || '#FFD700'; 
             userSpan.innerText = `${user}:`;
 
             const contentSpan = document.createElement('span');
             contentSpan.className = 'message-content';
-            const words = message.split(' ');
-            const nodes = words.map(word => {
+            
+            contentSpan.innerHTML = message.split(' ').map(word => {
                 if (extra.emotes) {
                     for (let id in extra.emotes) {
                         for (let range of extra.emotes[id]) {
@@ -165,15 +155,15 @@
                     }
                 }
                 return thirdPartyEmotes[word] ? `<img class="chat-emote" src="${thirdPartyEmotes[word]}">` : word;
-            });
+            }).join(' ');
 
-            contentSpan.innerHTML = nodes.join(' ');
             row.appendChild(badgeWrapper);
             row.appendChild(userSpan);
             row.appendChild(contentSpan);
             container.appendChild(row);
 
-            const rowHeight = row.offsetHeight + 6;
+            // LIQUID SCROLL
+            const rowHeight = row.offsetHeight + 4;
             container.style.transition = "none";
             container.style.transform = `translateY(${rowHeight}px)`;
             container.offsetHeight; 
