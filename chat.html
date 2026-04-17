@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - v3.1</title>
+    <title>Mugi Chat - v3.3</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -9,12 +9,18 @@
         #chat-viewport { position: absolute; bottom: 40px; left: 20px; width: 100%; max-width: 800px; height: 800px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
         #chat-container { display: flex; flex-direction: column; gap: 4px; transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1); }
         .message-row { display: flex; align-items: flex-start; padding: 2px 0; background: transparent; width: fit-content; animation: fadeIn 0.4s ease-out forwards; }
+        
         .badges-wrapper { display: flex; align-items: center; gap: 4px; margin-right: 8px; margin-top: 6px; flex-shrink: 0; }
-        .badge-icon { width: 18px; height: 18px; filter: drop-shadow(1px 1px 1px black); }
-        .user-name, .message-content { font-size: 22px; line-height: 1.2; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; }
+        .badge-icon { width: 18px; height: 18px; display: inline-block; filter: drop-shadow(1px 1px 0px black); }
+
+        .user-name, .message-content { 
+            font-size: 24px; line-height: 1.2; 
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; 
+        }
         .user-name { margin-right: 8px; white-space: nowrap; }
-        .message-content { color: #ffffff; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-        .chat-emote { height: 32px; vertical-align: middle; margin: -5px 0; }
+        .message-content { color: #ffffff; display: inline; vertical-align: middle; }
+        .chat-emote { height: 32px; vertical-align: middle; margin: -2px 2px; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
 
         /* CONTROLLER UI */
@@ -34,8 +40,8 @@
             <input type="text" id="channel-input" placeholder="Twitch Username">
             <button onclick="manualConnect()">GO LIVE</button>
             <p id="status" style="font-size: 12px; text-align: center; margin-top: 12px;">SYSTEM READY</p>
-            <div id="debug-log">V3.1 Online...</div>
-            <div id="version-tag">v3.1</div>
+            <div id="debug-log">V3.3 Initialising...</div>
+            <div id="version-tag">v3.3</div>
         </div>
     </div>
 
@@ -56,9 +62,7 @@
         const peer = new Peer(isController ? null : CHAT_ID);
         let conn;
 
-        peer.on('open', () => {
-            if (isController) setupController();
-        });
+        peer.on('open', () => { if (isController) setupController(); });
 
         function setupController() {
             conn = peer.connect(CHAT_ID);
@@ -73,94 +77,94 @@
             conn.on('data', (d) => {
                 if(d.action === 'sync' && activeChan !== d.chan) {
                     activeChan = d.chan;
-                    loadResources(d.chan);
+                    load3rdParty(d.chan);
                     ComfyJS.Init(d.chan);
                 }
             });
         });
 
         async function manualConnect() {
-            activeChan = document.getElementById('channel-input').value.trim();
+            activeChan = document.getElementById('channel-input').value.trim().toLowerCase();
             if(!activeChan) return;
-            log(`Starting: ${activeChan}`);
-            await loadResources(activeChan);
+            log(`Joining: ${activeChan}`);
+            await load3rdParty(activeChan);
             ComfyJS.Init(activeChan);
             document.getElementById('status').innerText = `LIVE: ${activeChan}`;
         }
 
-        async function loadResources(channel) {
+        async function load3rdParty(channel) {
             try {
-                // Using FFZ as the primary source for the numeric ID
                 const res = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
-                if(!res.ok) throw new Error("FFZ Down");
                 const data = await res.json();
                 const tID = data.room.twitch_id;
                 
-                // Fetch Emotes in parallel
-                Promise.all([
-                    fetch('https://api.betterttv.net/3/cached/emotes/global').then(r=>r.json()),
-                    fetch(`https://api.betterttv.net/3/cached/users/twitch/${tID}`).then(r=>r.json()),
-                    fetch(`https://7tv.io/v3/users/twitch/${tID}`).then(r=>r.json())
-                ]).then(([bg, bc, stv]) => {
-                    bg.forEach(e => thirdPartyEmotes[e.code] = e.id);
-                    [...(bc.channelEmotes||[]), ...(bc.sharedEmotes||[])].forEach(e => thirdPartyEmotes[e.code] = e.id);
-                    if(stv.emote_set) stv.emote_set.emotes.forEach(e => thirdPartyEmotes[e.name] = e.id);
-                    log("All Emotes Loaded.");
-                }).catch(e => log("Partial Emote Load. Check Console."));
-            } catch (e) { log("Resource Error - Fallback Mode Active."); }
+                fetch('https://api.betterttv.net/3/cached/emotes/global').then(r=>r.json()).then(d=>d.forEach(e=>thirdPartyEmotes[e.code]=e.id));
+                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tID}`).then(r=>r.json()).then(d=>[...(d.channelEmotes||[]),...(d.sharedEmotes||[])].forEach(e=>thirdPartyEmotes[e.code]=e.id));
+                fetch(`https://7tv.io/v3/users/twitch/${tID}`).then(r=>r.json()).then(d=>{if(d.emote_set) d.emote_set.emotes.forEach(e=>thirdPartyEmotes[e.name]=e.id)});
+                log("External Assets Loaded.");
+            } catch (e) { log("External Asset Skip."); }
         }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             const row = document.createElement('div');
             row.className = 'message-row';
 
+            // 1. BADGES
             const badgeWrapper = document.createElement('div');
             badgeWrapper.className = 'badges-wrapper';
-            // Fixed Badge Links
-            const b = "https://static-cdn.jtvnw.net/badges/v1/";
-            if(flags.broadcaster) badgeWrapper.innerHTML += `<img class="badge-icon" src="${b}5527c47c-427c-4a30-89bb-fd19ad9f010b/3">`;
-            if(flags.moderator) badgeWrapper.innerHTML += `<img class="badge-icon" src="${b}326785d4-da13-4d24-8182-b03d151d0a01/3">`;
-            if(flags.vip) badgeWrapper.innerHTML += `<img class="badge-icon" src="${b}b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3">`;
+            
+            // Hardcoded High-Res Global Twitch Badges for 2026
+            if(flags.broadcaster) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/5527c47c-427c-4a30-89bb-fd19ad9f010b/3">`;
+            if(flags.moderator) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/326785d4-da13-4d24-8182-b03d151d0a01/3">`;
+            if(flags.vip) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3">`;
             if(flags.subscriber) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/chat/badges/subscriber/static/0/3">`;
 
+            // 2. NAME
             const userSpan = document.createElement('span');
             userSpan.className = 'user-name';
-            userSpan.style.color = extra.userColor || '#FFD700'; 
+            userSpan.style.color = extra.userColor || '#00FF7F'; 
             userSpan.innerText = `${user}:`;
 
+            // 3. CONTENT
             const contentSpan = document.createElement('span');
             contentSpan.className = 'message-content';
             
-            // EMOTE PARSER FIX
-            let words = message.split(' ');
-            let formatted = words.map(word => {
-                // 1. Check Twitch Native Emotes first
-                if (extra.messageEmotes) {
-                    for (let id in extra.messageEmotes) {
-                        for (let range of extra.messageEmotes[id]) {
-                            let [s, e] = range.split('-').map(Number);
-                            if (message.substring(s, e + 1) === word) {
-                                return `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0">`;
-                            }
-                        }
-                    }
-                }
-                // 2. Check 3rd Party
-                if (thirdPartyEmotes[word]) {
-                    const id = thirdPartyEmotes[word];
-                    // BTTV uses short IDs, 7TV uses long hex IDs
-                    const url = id.length > 10 ? `https://cdn.7tv.app/emote/${id}/2x.webp` : `https://cdn.betterttv.net/emote/${id}/2x`;
-                    return `<img class="chat-emote" src="${url}">`;
-                }
-                return word;
+            let htmlContent = message;
+
+            // Twitch Emotes (By String Position)
+            if (extra.messageEmotes) {
+                const sortedEmotes = Object.entries(extra.messageEmotes).sort((a, b) => {
+                    return parseInt(b[1][0].split('-')[0]) - parseInt(a[1][0].split('-')[0]);
+                });
+
+                sortedEmotes.forEach(([id, ranges]) => {
+                    ranges.forEach(range => {
+                        const [start, end] = range.split('-').map(Number);
+                        const name = message.substring(start, end + 1);
+                        const img = `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0">`;
+                        // Safety: escape regex chars in emote names like :)
+                        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        htmlContent = htmlContent.replace(new RegExp(escapedName, 'g'), img);
+                    });
+                });
+            }
+
+            // 3rd Party Emotes (BTTV/7TV)
+            Object.keys(thirdPartyEmotes).forEach(code => {
+                const id = thirdPartyEmotes[code];
+                const url = id.length > 10 ? `https://cdn.7tv.app/emote/${id}/2x.webp` : `https://cdn.betterttv.net/emote/${id}/2x`;
+                const img = `<img class="chat-emote" src="${url}">`;
+                const escapedCode = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                htmlContent = htmlContent.replace(new RegExp(`\\b${escapedCode}\\b`, 'g'), img);
             });
 
-            contentSpan.innerHTML = formatted.join(' ');
+            contentSpan.innerHTML = htmlContent;
             row.appendChild(badgeWrapper);
             row.appendChild(userSpan);
             row.appendChild(contentSpan);
             container.appendChild(row);
 
+            // LIQUID SCROLL
             const rowHeight = row.offsetHeight + 4;
             container.style.transition = "none";
             container.style.transform = `translateY(${rowHeight}px)`;
