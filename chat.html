@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - v2.8</title>
+    <title>Mugi Chat - v2.9</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { 
             background: transparent; margin: 0; padding: 20px; overflow: hidden; height: 100vh; 
-            font-family: "Inter", sans-serif; font-weight: 800; /* Extra bold for better shadow contrast */
+            font-family: "Inter", sans-serif; font-weight: 800;
         }
 
         #chat-viewport { 
@@ -19,25 +19,24 @@
 
         .message-row { 
             display: flex; align-items: flex-start; padding: 2px 0; 
-            background: transparent; /* BACKGROUND REMOVED */
-            width: fit-content; animation: fadeIn 0.4s ease-out forwards;
-            /* TEXT OUTLINE + DROP SHADOW FOR READABILITY */
-            filter: drop-shadow(2px 2px 2px rgba(0,0,0,1)) drop-shadow(0px 0px 4px rgba(0,0,0,0.5));
+            background: transparent; width: fit-content; animation: fadeIn 0.4s ease-out forwards;
         }
 
         .badges-wrapper { display: flex; align-items: center; gap: 4px; margin-right: 8px; margin-top: 6px; flex-shrink: 0; }
         .badge-icon { width: 18px; height: 18px; filter: drop-shadow(1px 1px 1px black); }
 
-        .user-name { 
-            font-size: 22px; margin-right: 8px; white-space: nowrap;
-            -webkit-text-stroke: 0.5px black; /* Thin outline */
+        /* THE FIX: MULTI-LAYERED SHARP TEXT-SHADOW */
+        .user-name, .message-content {
+            font-size: 22px; line-height: 1.2;
+            text-shadow: 
+                -2px -2px 0 #000, /* Top Left */
+                 2px -2px 0 #000, /* Top Right */
+                -2px  2px 0 #000, /* Bottom Left */
+                 2px  2px 0 #000; /* Bottom Right */
         }
 
-        .message-content { 
-            color: #ffffff; font-size: 22px; display: flex; flex-wrap: wrap; 
-            align-items: center; gap: 5px; line-height: 1.2;
-            -webkit-text-stroke: 0.5px black; /* Thin outline */
-        }
+        .user-name { margin-right: 8px; white-space: nowrap; }
+        .message-content { color: #ffffff; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 
         .chat-emote { height: 30px; vertical-align: middle; }
 
@@ -60,8 +59,8 @@
             <input type="text" id="channel-input" placeholder="Twitch Username">
             <button onclick="manualConnect()">GO LIVE</button>
             <p id="status" style="font-size: 12px; text-align: center; margin-top: 12px;">SYSTEM READY</p>
-            <div id="debug-log">V2.8 Booted...</div>
-            <div id="version-tag">v2.8</div>
+            <div id="debug-log">V2.9 Booted...</div>
+            <div id="version-tag">v2.9</div>
         </div>
     </div>
 
