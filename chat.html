@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - v3.0</title>
+    <title>Mugi Chat - v3.1</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -14,10 +14,10 @@
         .user-name, .message-content { font-size: 22px; line-height: 1.2; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; }
         .user-name { margin-right: 8px; white-space: nowrap; }
         .message-content { color: #ffffff; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-        .chat-emote { height: 30px; vertical-align: middle; }
+        .chat-emote { height: 32px; vertical-align: middle; margin: -5px 0; }
         @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* CONTROLLER */
+        /* CONTROLLER UI */
         #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f0f0f; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .control-box { background: #1a1a1a; border: 2px solid #9146ff; padding: 30px; border-radius: 12px; width: 340px; position: relative; font-family: sans-serif; }
         input { width: 100%; padding: 12px; margin: 15px 0; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 4px; }
@@ -34,8 +34,8 @@
             <input type="text" id="channel-input" placeholder="Twitch Username">
             <button onclick="manualConnect()">GO LIVE</button>
             <p id="status" style="font-size: 12px; text-align: center; margin-top: 12px;">SYSTEM READY</p>
-            <div id="debug-log">V3.0 Online...</div>
-            <div id="version-tag">v3.0</div>
+            <div id="debug-log">V3.1 Online...</div>
+            <div id="version-tag">v3.1</div>
         </div>
     </div>
 
@@ -57,28 +57,22 @@
         let conn;
 
         peer.on('open', () => {
-            log(isController ? "Controller Ready" : "Overlay Ready");
-            if (isController) setupControllerConnection();
+            if (isController) setupController();
         });
 
-        function setupControllerConnection() {
+        function setupController() {
             conn = peer.connect(CHAT_ID);
             conn.on('open', () => {
-                log("Linked to OBS Overlay");
                 document.getElementById('status').innerText = "LINKED TO OBS";
-                // Start persistent heartbeat if a channel is already set
-                setInterval(() => {
-                    if(activeChan && conn.open) conn.send({ action: 'sync_chan', chan: activeChan });
-                }, 5000);
+                setInterval(() => { if(activeChan && conn.open) conn.send({ action: 'sync', chan: activeChan }); }, 5000);
             });
         }
 
         peer.on('connection', (c) => {
             conn = c;
             conn.on('data', (d) => {
-                if(d.action === 'sync_chan' && activeChan !== d.chan) {
+                if(d.action === 'sync' && activeChan !== d.chan) {
                     activeChan = d.chan;
-                    log("Syncing with Controller: " + d.chan);
                     loadResources(d.chan);
                     ComfyJS.Init(d.chan);
                 }
@@ -96,17 +90,24 @@
 
         async function loadResources(channel) {
             try {
-                const ffzRes = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
-                const ffz = await ffzRes.json();
-                const tID = ffz.room.twitch_id;
+                // Using FFZ as the primary source for the numeric ID
+                const res = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
+                if(!res.ok) throw new Error("FFZ Down");
+                const data = await res.json();
+                const tID = data.room.twitch_id;
                 
-                // Emotes
-                fetch('https://api.betterttv.net/3/cached/emotes/global').then(r=>r.json()).then(data => data.forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`));
-                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tID}`).then(r=>r.json()).then(data => [...(data.channelEmotes||[]),...(data.sharedEmotes||[])].forEach(e => thirdPartyEmotes[e.code] = `https://cdn.betterttv.net/emote/${e.id}/2x`));
-                fetch(`https://7tv.io/v3/users/twitch/${tID}`).then(r=>r.json()).then(data => { if(data.emote_set) data.emote_set.emotes.forEach(e => thirdPartyEmotes[e.name] = `https://cdn.7tv.app/emote/${e.id}/2x.webp`) });
-                
-                log("Assets Requested.");
-            } catch (e) { log("Resource Load Hit a Snag."); }
+                // Fetch Emotes in parallel
+                Promise.all([
+                    fetch('https://api.betterttv.net/3/cached/emotes/global').then(r=>r.json()),
+                    fetch(`https://api.betterttv.net/3/cached/users/twitch/${tID}`).then(r=>r.json()),
+                    fetch(`https://7tv.io/v3/users/twitch/${tID}`).then(r=>r.json())
+                ]).then(([bg, bc, stv]) => {
+                    bg.forEach(e => thirdPartyEmotes[e.code] = e.id);
+                    [...(bc.channelEmotes||[]), ...(bc.sharedEmotes||[])].forEach(e => thirdPartyEmotes[e.code] = e.id);
+                    if(stv.emote_set) stv.emote_set.emotes.forEach(e => thirdPartyEmotes[e.name] = e.id);
+                    log("All Emotes Loaded.");
+                }).catch(e => log("Partial Emote Load. Check Console."));
+            } catch (e) { log("Resource Error - Fallback Mode Active."); }
         }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
@@ -115,11 +116,12 @@
 
             const badgeWrapper = document.createElement('div');
             badgeWrapper.className = 'badges-wrapper';
-            // UPDATED 2026 BADGE PATHS
-            if(flags.broadcaster) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/5527c47c-427c-4a30-89bb-fd19ad9f010b/3">`;
-            if(flags.moderator) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/326785d4-da13-4d24-8182-b03d151d0a01/3">`;
-            if(flags.vip) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3">`;
-            if(flags.subscriber) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/5d9f294d-44c8-4d0d-88bc-98c91d84639f/3">`;
+            // Fixed Badge Links
+            const b = "https://static-cdn.jtvnw.net/badges/v1/";
+            if(flags.broadcaster) badgeWrapper.innerHTML += `<img class="badge-icon" src="${b}5527c47c-427c-4a30-89bb-fd19ad9f010b/3">`;
+            if(flags.moderator) badgeWrapper.innerHTML += `<img class="badge-icon" src="${b}326785d4-da13-4d24-8182-b03d151d0a01/3">`;
+            if(flags.vip) badgeWrapper.innerHTML += `<img class="badge-icon" src="${b}b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3">`;
+            if(flags.subscriber) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/chat/badges/subscriber/static/0/3">`;
 
             const userSpan = document.createElement('span');
             userSpan.className = 'user-name';
@@ -128,18 +130,32 @@
 
             const contentSpan = document.createElement('span');
             contentSpan.className = 'message-content';
-            contentSpan.innerHTML = message.split(' ').map(word => {
-                if (extra.emotes) {
-                    for (let id in extra.emotes) {
-                        for (let range of extra.emotes[id]) {
+            
+            // EMOTE PARSER FIX
+            let words = message.split(' ');
+            let formatted = words.map(word => {
+                // 1. Check Twitch Native Emotes first
+                if (extra.messageEmotes) {
+                    for (let id in extra.messageEmotes) {
+                        for (let range of extra.messageEmotes[id]) {
                             let [s, e] = range.split('-').map(Number);
-                            if (message.substring(s, e + 1) === word) return `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/2.0">`;
+                            if (message.substring(s, e + 1) === word) {
+                                return `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0">`;
+                            }
                         }
                     }
                 }
-                return thirdPartyEmotes[word] ? `<img class="chat-emote" src="${thirdPartyEmotes[word]}">` : word;
-            }).join(' ');
+                // 2. Check 3rd Party
+                if (thirdPartyEmotes[word]) {
+                    const id = thirdPartyEmotes[word];
+                    // BTTV uses short IDs, 7TV uses long hex IDs
+                    const url = id.length > 10 ? `https://cdn.7tv.app/emote/${id}/2x.webp` : `https://cdn.betterttv.net/emote/${id}/2x`;
+                    return `<img class="chat-emote" src="${url}">`;
+                }
+                return word;
+            });
 
+            contentSpan.innerHTML = formatted.join(' ');
             row.appendChild(badgeWrapper);
             row.appendChild(userSpan);
             row.appendChild(contentSpan);
