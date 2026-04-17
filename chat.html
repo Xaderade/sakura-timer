@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - v3.6</title>
+    <title>Mugi Chat - v3.8</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -9,15 +9,21 @@
         #chat-viewport { position: absolute; bottom: 40px; left: 20px; width: 100%; max-width: 800px; height: 800px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
         #chat-container { display: flex; flex-direction: column; gap: 4px; transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1); }
         .message-row { display: flex; align-items: flex-start; padding: 2px 0; background: transparent; width: fit-content; animation: fadeIn 0.4s ease-out forwards; }
+        
         .badges-wrapper { display: flex; align-items: center; gap: 5px; margin-right: 10px; margin-top: 6px; flex-shrink: 0; }
-        .badge-icon { width: 20px; height: 20px; filter: drop-shadow(1px 1px 0px black); object-fit: contain; }
-        .user-name, .message-content { font-size: 24px; line-height: 1.2; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; }
+        .badge-icon { width: 20px; height: 20px; filter: drop-shadow(1px 1px 1px black); display: inline-block; }
+
+        .user-name, .message-content { 
+            font-size: 24px; line-height: 1.2; 
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000; 
+        }
         .user-name { margin-right: 8px; white-space: nowrap; }
         .message-content { color: #ffffff; display: inline; vertical-align: middle; }
         .chat-emote { height: 32px; vertical-align: middle; margin: -2px 2px; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* CONTROLLER */
+        /* UI CONTROLS */
         #controls { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f0f0f; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .control-box { background: #1a1a1a; border: 2px solid #9146ff; padding: 30px; border-radius: 12px; width: 340px; position: relative; font-family: sans-serif; }
         input { width: 100%; padding: 12px; margin: 15px 0; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 4px; }
@@ -33,7 +39,7 @@
             <input type="text" id="channel-input" placeholder="Twitch Username">
             <button onclick="manualConnect()">GO LIVE</button>
             <p id="status" style="font-size: 12px; text-align: center; margin-top: 12px;">SYSTEM READY</p>
-            <div id="debug-log">V3.6 Channel Badge Fix...</div>
+            <div id="debug-log">V3.8 V3-Badge Mode...</div>
         </div>
     </div>
 
@@ -41,16 +47,10 @@
         const CHAT_ID = 'mugi-chat-2026';
         const container = document.getElementById('chat-container');
         const isController = window.location.hash.includes('control');
-        let thirdPartyEmotes = {};
-        let channelBadges = {};
         let activeChan = "";
 
-        const GLOBAL_BADGES = {
-            'broadcaster': 'https://static-cdn.jtvnw.net/badges/v1/5527c47c-427c-4a30-89bb-fd19ad9f010b/3',
-            'moderator':   'https://static-cdn.jtvnw.net/badges/v1/326785d4-da13-4d24-8182-b03d151d0a01/3',
-            'vip':         'https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3',
-            'partner':     'https://static-cdn.jtvnw.net/badges/v1/d12a2e27-16f6-41d0-ab77-b78058f83199/3'
-        };
+        // MODERN 2026 PATHS (No more dead V1 IDs)
+        const MODERN_PATH = "https://static-cdn.jtvnw.net/chat/badges/";
 
         function log(msg) {
             const d = document.getElementById('debug-log');
@@ -76,74 +76,52 @@
             conn.on('data', (d) => {
                 if(d.action === 'sync' && activeChan !== d.chan) {
                     activeChan = d.chan;
-                    initChat(d.chan);
+                    ComfyJS.Init(d.chan);
+                    log(`Sync: ${d.chan}`);
                 }
             });
         });
 
-        async function manualConnect() {
+        function manualConnect() {
             activeChan = document.getElementById('channel-input').value.trim().toLowerCase();
             if(!activeChan) return;
-            initChat(activeChan);
+            ComfyJS.Init(activeChan);
             document.getElementById('status').innerText = `LIVE: ${activeChan}`;
-        }
-
-        async function initChat(channel) {
-            log(`Joining: ${channel}`);
-            await loadChannelAssets(channel);
-            ComfyJS.Init(channel);
-        }
-
-        async function loadChannelAssets(channel) {
-            try {
-                const res = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
-                const data = await res.json();
-                const tID = data.room.twitch_id;
-
-                // Load Channel Custom Badges
-                const bRes = await fetch(`https://api.frankerfacez.com/v1/badges/twitch/${tID}`);
-                if(bRes.ok) {
-                    const bData = await bRes.json();
-                    channelBadges = bData; 
-                    log("Channel Badges Synced.");
-                }
-
-                // Load Emotes
-                fetch(`https://api.betterttv.net/3/cached/users/twitch/${tID}`).then(r=>r.json()).then(d=>[...(d.channelEmotes||[]),...(d.sharedEmotes||[])].forEach(e=>thirdPartyEmotes[e.code]=e.id));
-                fetch(`https://7tv.io/v3/users/twitch/${tID}`).then(r=>r.json()).then(d=>{if(d.emote_set) d.emote_set.emotes.forEach(e=>thirdPartyEmotes[e.name]=e.id)});
-            } catch (e) { log("Asset Snag - Fallback Active."); }
         }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             const row = document.createElement('div');
             row.className = 'message-row';
 
+            // 1. DYNAMIC BADGE CONSTRUCTOR (V3)
             const badgeWrapper = document.createElement('div');
             badgeWrapper.className = 'badges-wrapper';
             
             if (extra.userBadges) {
                 Object.keys(extra.userBadges).forEach(type => {
-                    const version = extra.userBadges[type];
-                    // 1. Try Channel Specific (Subs)
-                    if (type === 'subscriber' && channelBadges[version]) {
-                        badgeWrapper.innerHTML += `<img class="badge-icon" src="${channelBadges[version]}">`;
-                    } 
-                    // 2. Try Global Manifest (Mod/VIP/Broadcaster)
-                    else if (GLOBAL_BADGES[type]) {
-                        badgeWrapper.innerHTML += `<img class="badge-icon" src="${GLOBAL_BADGES[type]}">`;
+                    let version = extra.userBadges[type];
+                    let badgeUrl = "";
+
+                    // Construct the modern static path
+                    if(type === 'subscriber') {
+                        badgeUrl = `${MODERN_PATH}subscriber/static/0/3`; // Base sub badge
+                    } else if (type === 'broadcaster' || type === 'moderator' || type === 'vip') {
+                        badgeUrl = `${MODERN_PATH}${type}/static/1/3`;
+                    } else {
+                        badgeUrl = `${MODERN_PATH}${type}/static/1/3`;
                     }
-                    // 3. Fallback to generic star if sub icon is missing
-                    else if (type === 'subscriber') {
-                        badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/5d9f294d-44c8-4d0d-88bc-98c91d84639f/3">`;
-                    }
+
+                    badgeWrapper.innerHTML += `<img class="badge-icon" src="${badgeUrl}" onerror="this.style.display='none'">`;
                 });
             }
 
+            // 2. NAME
             const userSpan = document.createElement('span');
             userSpan.className = 'user-name';
             userSpan.style.color = extra.userColor || '#00FF7F'; 
             userSpan.innerText = `${user}:`;
 
+            // 3. CONTENT
             const contentSpan = document.createElement('span');
             contentSpan.className = 'message-content';
             let htmlContent = message;
@@ -155,18 +133,13 @@
                 });
             }
 
-            Object.keys(thirdPartyEmotes).forEach(code => {
-                const id = thirdPartyEmotes[code];
-                const url = id.length > 10 ? `https://cdn.7tv.app/emote/${id}/2x.webp` : `https://cdn.betterttv.net/emote/${id}/2x`;
-                htmlContent = htmlContent.split(code).join(`<img class="chat-emote" src="${url}">`);
-            });
-
             contentSpan.innerHTML = htmlContent;
             row.appendChild(badgeWrapper);
             row.appendChild(userSpan);
             row.appendChild(contentSpan);
             container.appendChild(row);
 
+            // SCROLL
             const rowHeight = row.offsetHeight + 4;
             container.style.transition = "none";
             container.style.transform = `translateY(${rowHeight}px)`;
@@ -175,7 +148,6 @@
             container.style.transform = "translateY(0px)";
 
             setTimeout(() => { row.style.opacity = "0"; setTimeout(() => row.remove(), 500); }, 20000);
-            if (container.children.length > 25) container.removeChild(container.firstChild);
         };
     </script>
 </body>
