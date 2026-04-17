@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mugi Chat - v3.3</title>
+    <title>Mugi Chat - v3.4</title>
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -10,8 +10,9 @@
         #chat-container { display: flex; flex-direction: column; gap: 4px; transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1); }
         .message-row { display: flex; align-items: flex-start; padding: 2px 0; background: transparent; width: fit-content; animation: fadeIn 0.4s ease-out forwards; }
         
+        /* SHARP BADGES */
         .badges-wrapper { display: flex; align-items: center; gap: 4px; margin-right: 8px; margin-top: 6px; flex-shrink: 0; }
-        .badge-icon { width: 18px; height: 18px; display: inline-block; filter: drop-shadow(1px 1px 0px black); }
+        .badge-icon { width: 20px; height: 20px; display: inline-block; filter: drop-shadow(1px 1px 0px black); }
 
         .user-name, .message-content { 
             font-size: 24px; line-height: 1.2; 
@@ -40,8 +41,8 @@
             <input type="text" id="channel-input" placeholder="Twitch Username">
             <button onclick="manualConnect()">GO LIVE</button>
             <p id="status" style="font-size: 12px; text-align: center; margin-top: 12px;">SYSTEM READY</p>
-            <div id="debug-log">V3.3 Initialising...</div>
-            <div id="version-tag">v3.3</div>
+            <div id="debug-log">V3.4 Active...</div>
+            <div id="version-tag">v3.4</div>
         </div>
     </div>
 
@@ -50,6 +51,7 @@
         const container = document.getElementById('chat-container');
         const isController = window.location.hash.includes('control');
         let thirdPartyEmotes = {};
+        let badgeData = {};
         let activeChan = "";
 
         function log(msg) {
@@ -58,7 +60,6 @@
         }
 
         if(isController) document.getElementById('controls').style.display = 'flex';
-
         const peer = new Peer(isController ? null : CHAT_ID);
         let conn;
 
@@ -77,8 +78,7 @@
             conn.on('data', (d) => {
                 if(d.action === 'sync' && activeChan !== d.chan) {
                     activeChan = d.chan;
-                    load3rdParty(d.chan);
-                    ComfyJS.Init(d.chan);
+                    initChat(d.chan);
                 }
             });
         });
@@ -86,10 +86,30 @@
         async function manualConnect() {
             activeChan = document.getElementById('channel-input').value.trim().toLowerCase();
             if(!activeChan) return;
-            log(`Joining: ${activeChan}`);
-            await load3rdParty(activeChan);
-            ComfyJS.Init(activeChan);
+            initChat(activeChan);
             document.getElementById('status').innerText = `LIVE: ${activeChan}`;
+        }
+
+        async function initChat(channel) {
+            log(`Joining: ${channel}`);
+            await fetchBadges(channel);
+            await load3rdParty(channel);
+            ComfyJS.Init(channel);
+        }
+
+        async function fetchBadges(channel) {
+            try {
+                // We fetch the channel's specific badge set to get live URLs
+                const res = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
+                const data = await res.json();
+                const tID = data.room.twitch_id;
+                
+                // Get Global + Channel Badges from Twitch API via FFZ proxy
+                const bRes = await fetch(`https://api.frankerfacez.com/v1/badges/twitch/${tID}`);
+                const bData = await bRes.json();
+                badgeData = bData; // Store the URL mapping
+                log("Badge URLs Synced.");
+            } catch (e) { log("Badge Sync Failed."); }
         }
 
         async function load3rdParty(channel) {
@@ -97,65 +117,53 @@
                 const res = await fetch(`https://api.frankerfacez.com/v1/room/${channel}`);
                 const data = await res.json();
                 const tID = data.room.twitch_id;
-                
-                fetch('https://api.betterttv.net/3/cached/emotes/global').then(r=>r.json()).then(d=>d.forEach(e=>thirdPartyEmotes[e.code]=e.id));
                 fetch(`https://api.betterttv.net/3/cached/users/twitch/${tID}`).then(r=>r.json()).then(d=>[...(d.channelEmotes||[]),...(d.sharedEmotes||[])].forEach(e=>thirdPartyEmotes[e.code]=e.id));
                 fetch(`https://7tv.io/v3/users/twitch/${tID}`).then(r=>r.json()).then(d=>{if(d.emote_set) d.emote_set.emotes.forEach(e=>thirdPartyEmotes[e.name]=e.id)});
-                log("External Assets Loaded.");
-            } catch (e) { log("External Asset Skip."); }
+            } catch (e) {}
         }
 
         ComfyJS.onChat = (user, message, flags, self, extra) => {
             const row = document.createElement('div');
             row.className = 'message-row';
 
-            // 1. BADGES
             const badgeWrapper = document.createElement('div');
             badgeWrapper.className = 'badges-wrapper';
             
-            // Hardcoded High-Res Global Twitch Badges for 2026
-            if(flags.broadcaster) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/5527c47c-427c-4a30-89bb-fd19ad9f010b/3">`;
-            if(flags.moderator) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/326785d4-da13-4d24-8182-b03d151d0a01/3">`;
-            if(flags.vip) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/badges/v1/b817aba4-fad8-49e2-b88a-7cc744dfa6ec/3">`;
-            if(flags.subscriber) badgeWrapper.innerHTML += `<img class="badge-icon" src="https://static-cdn.jtvnw.net/chat/badges/subscriber/static/0/3">`;
+            // DYNAMIC BADGE LOADING
+            if (extra.userBadges) {
+                Object.keys(extra.userBadges).forEach(type => {
+                    const version = extra.userBadges[type];
+                    // Direct Twitch Badge URL Construction for 2026
+                    // Most global/channel badges follow this pattern
+                    const url = `https://static-cdn.jtvnw.net/badges/v1/${getStaticID(type, version)}/3`;
+                    badgeWrapper.innerHTML += `<img class="badge-icon" src="${url}" onerror="this.style.display='none'">`;
+                });
+            }
 
-            // 2. NAME
             const userSpan = document.createElement('span');
             userSpan.className = 'user-name';
             userSpan.style.color = extra.userColor || '#00FF7F'; 
             userSpan.innerText = `${user}:`;
 
-            // 3. CONTENT
             const contentSpan = document.createElement('span');
             contentSpan.className = 'message-content';
             
             let htmlContent = message;
 
-            // Twitch Emotes (By String Position)
+            // TWITCH EMOTES
             if (extra.messageEmotes) {
-                const sortedEmotes = Object.entries(extra.messageEmotes).sort((a, b) => {
-                    return parseInt(b[1][0].split('-')[0]) - parseInt(a[1][0].split('-')[0]);
-                });
-
-                sortedEmotes.forEach(([id, ranges]) => {
-                    ranges.forEach(range => {
-                        const [start, end] = range.split('-').map(Number);
-                        const name = message.substring(start, end + 1);
-                        const img = `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0">`;
-                        // Safety: escape regex chars in emote names like :)
-                        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        htmlContent = htmlContent.replace(new RegExp(escapedName, 'g'), img);
-                    });
+                Object.entries(extra.messageEmotes).forEach(([id, ranges]) => {
+                    const name = message.substring(parseInt(ranges[0].split('-')[0]), parseInt(ranges[0].split('-')[1]) + 1);
+                    const img = `<img class="chat-emote" src="https://static-cdn.jtvnw.net/emoticons/v2/${id}/default/dark/3.0">`;
+                    htmlContent = htmlContent.split(name).join(img);
                 });
             }
 
-            // 3rd Party Emotes (BTTV/7TV)
+            // 3rd PARTY EMOTES
             Object.keys(thirdPartyEmotes).forEach(code => {
                 const id = thirdPartyEmotes[code];
                 const url = id.length > 10 ? `https://cdn.7tv.app/emote/${id}/2x.webp` : `https://cdn.betterttv.net/emote/${id}/2x`;
-                const img = `<img class="chat-emote" src="${url}">`;
-                const escapedCode = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                htmlContent = htmlContent.replace(new RegExp(`\\b${escapedCode}\\b`, 'g'), img);
+                htmlContent = htmlContent.split(code).join(`<img class="chat-emote" src="${url}">`);
             });
 
             contentSpan.innerHTML = htmlContent;
@@ -164,7 +172,6 @@
             row.appendChild(contentSpan);
             container.appendChild(row);
 
-            // LIQUID SCROLL
             const rowHeight = row.offsetHeight + 4;
             container.style.transition = "none";
             container.style.transform = `translateY(${rowHeight}px)`;
@@ -175,6 +182,17 @@
             setTimeout(() => { row.style.opacity = "0"; setTimeout(() => row.remove(), 500); }, 20000);
             if (container.children.length > 25) container.removeChild(container.firstChild);
         };
+
+        function getStaticID(type, version) {
+            const map = {
+                'broadcaster': '5527c47c-427c-4a30-89bb-fd19ad9f010b',
+                'moderator': '326785d4-da13-4d24-8182-b03d151d0a01',
+                'vip': 'b817aba4-fad8-49e2-b88a-7cc744dfa6ec',
+                'subscriber': '5d9f294d-44c8-4d0d-88bc-98c91d84639f', // Base sub badge
+                'partner': 'd12a2e27-16f6-41d0-ab77-b78058f83199'
+            };
+            return map[type] || map['subscriber'];
+        }
     </script>
 </body>
 </html>
